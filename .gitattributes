@@ -1,0 +1,9 @@
+# Skrypty Windows wymagają CRLF, skrypty Linux LF - niezależnie od ustawień gita.
+* text=auto
+*.bat text eol=crlf
+*.sh text eol=lf
+*.service text eol=lf
+*.gif binary
+*.ttf binary
+# Zbudowany Tailwind: plik generowany, bez diffów w przeglądach.
+static/css/tailwind.css linguist-generated=true -diff

@@ -1,0 +1,865 @@
+{% extends "layout.html" %}
+{% block title %}{{ company.name if company else _('Nowa firma') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ company.name if company and not is_new else _('Nowa firma') }}{% endblock %}
+{% block page_subtitle %}{% if company and not is_new %}{% set stage_labels = {'lead':_('Lead'),'audit':_('Audyt'),'contact':_('Kontakt'),'visit':_('Wizyta'),'offer':_('Oferta'),'client':_('Klient')} %}{{ stage_labels.get(company.pipeline_stage, company.pipeline_stage) }}{% if company.industry %} · {{ company.industry }}{% endif %}{% else %}{{ _('Dodaj nowego klienta / leada') }}{% endif %}{% endblock %}
+
+{% block topbar_actions %}
+{% if company and not is_new %}
+<a href="/audits/new/{{ company.id }}" class="btn btn-primary"><i class="bi bi-clipboard2-data"></i><span class="hidden sm:inline">{{ _('Nowy audyt') }}</span></a>
+{% if company.google_maps_url %}
+<a href="{{ company.google_maps_url }}" target="_blank" class="btn btn-ghost" title="Google Maps"><i class="bi bi-geo-alt"></i></a>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if is_new %}
+{# ═════ NEW COMPANY FORM ═════ #}
+<form method="POST" action="/companies/new" style="max-width: 720px;">
+    <div class="card-sm" style="padding: 22px;">
+        <h2 style="font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-subtle); font-weight: 600; margin-bottom: 16px;">{{ _('Dane firmy') }}</h2>
+
+        <div class="form-field" style="margin-bottom: 14px;">
+            <label>{{ _('Nazwa firmy *') }}</label>
+            <input type="text" name="name" required class="input-focus" style="width: 100%; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text); outline: none;">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <div class="form-field">
+                <label>{{ _('Adres') }}</label>
+                <input type="text" name="address" class="input-focus" style="width: 100%; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text); outline: none;">
+            </div>
+            <div class="form-field">
+                <label>{{ _('Telefon') }}</label>
+                <input type="text" name="phone" class="input-focus" style="width: 100%; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text); outline: none;">
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <div class="form-field">
+                <label>{{ _('Strona www') }}</label>
+                <input type="text" name="website" class="input-focus" style="width: 100%; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text); outline: none;">
+            </div>
+            <div class="form-field">
+                <label>{{ _('Branża') }}</label>
+                <input type="text" name="industry" class="input-focus" style="width: 100%; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text); outline: none;">
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-field">
+                <label>{{ _('Osoba kontaktowa') }}</label>
+                <input type="text" name="contact_person" class="input-focus" style="width: 100%; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text); outline: none;">
+            </div>
+            <div class="form-field">
+                <label>{{ _('Email kontaktowy') }}</label>
+                <input type="text" name="contact_email" class="input-focus" style="width: 100%; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--text); outline: none;">
+            </div>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary" style="margin-top: 14px;"><i class="bi bi-check2"></i>{{ _('Dodaj firmę') }}</button>
+</form>
+
+{% else %}
+
+{# ═════ Header chip row (badge + rating) ═════ #}
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 18px;">
+    {% set stage_colors = {'lead':'#94a3b8','audit':'#a78bfa','contact':'#60a5fa','visit':'#fbbf24','offer':'#fb923c','client':'#34d399'} %}
+    <span class="badge-stage" style="background: {{ stage_colors.get(company.pipeline_stage, '#94a3b8') }}22; color: {{ stage_colors.get(company.pipeline_stage, '#94a3b8') }}; border: 1px solid {{ stage_colors.get(company.pipeline_stage, '#94a3b8') }}66;">
+        {{ company.stage_label }}
+    </span>
+    {% if company.is_retainer %}<span class="badge-stage badge-success"><i class="bi bi-arrow-repeat"></i>Retainer{% if company.monthly_fee_net %} · {{ '{:,.0f}'.format(company.monthly_fee_net).replace(',', ' ') }} {{ _('zł/mc') }}{% endif %}</span>{% endif %}
+    {% if company.rating %}<span style="font-size: 12px; color: var(--warning-light);">★ {{ company.rating }} <span style="color: var(--text-subtle);">({{ _('%(count)s opinii', count=company.user_ratings_total or 0) }})</span></span>{% endif %}
+</div>
+
+<!-- Tabs -->
+<div class="flex border-b border-border mb-4 gap-1 overflow-x-auto" id="tabs">
+    <button onclick="showTab('info')" class="tab-btn active px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="info">{{ _('Dane firmy') }}</button>
+    <button onclick="showTab('tasks')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="tasks">{{ _('Zadania') }} ({{ tasks|length }})</button>
+    <button onclick="showTab('payments')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="payments">{{ _('Finanse') }} ({{ payments|length }})</button>
+    <button onclick="showTab('projects')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="projects">{{ _('Projekty') }} ({{ projects|length }})</button>
+    <button onclick="showTab('content')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="content">Content ({{ content_posts|length }})</button>
+    <button onclick="showTab('audits')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="audits">{{ _('Audyty') }} ({{ audits|length }})</button>
+    <button onclick="showTab('offers')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="offers">{{ _('Oferty') }} ({{ offers|length }})</button>
+    <button onclick="showTab('visits')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="visits">{{ _('Wizyty') }} ({{ visits|length }})</button>
+    <button onclick="showTab('notes')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="notes">{{ _('Notatki') }} ({{ notes|length }})</button>
+    <button onclick="showTab('credentials')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="credentials">{{ _('Dostępy') }} ({{ credentials|length }})</button>
+    <button onclick="showTab('contracts')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="contracts">{{ _('Umowy') }} ({{ contracts|length }})</button>
+    <button onclick="showTab('files')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="files">{{ _('Pliki') }} ({{ files|length }})</button>
+    <button onclick="showTab('whiteboards')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="whiteboards">{{ _('Tablice') }} ({{ whiteboards|length if whiteboards else 0 }})</button>
+    <button onclick="showTab('analytics')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="analytics">{{ _('Analityka') }}</button>
+    <button onclick="showTab('emails')" class="tab-btn px-4 py-2 text-sm font-medium rounded-t-lg transition whitespace-nowrap" data-tab="emails">{{ _('Emaile') }} ({{ email_log|length }})</button>
+</div>
+
+<!-- Tab: Info -->
+<div class="tab-content" id="tab-info">
+<form method="POST" class="space-y-4">
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">{{ _('Informacje podstawowe') }}</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Nazwa') }}</label>
+                <input type="text" name="name" value="{{ company.name }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Adres') }}</label>
+                <input type="text" name="address" value="{{ company.address }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Telefon') }}</label>
+                <input type="text" name="phone" value="{{ company.phone }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Strona www') }}</label>
+                <input type="text" name="website" value="{{ company.website }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">{{ _('Kontekst biznesowy') }}</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Branża') }}</label>
+                <input type="text" name="industry" value="{{ company.industry }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none" placeholder="{{ _('np. gabinet medyczny') }}">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Segment klientów') }}</label>
+                <input type="text" name="client_segment" value="{{ company.client_segment }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none" placeholder="{{ _('np. B2C lokalni') }}">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Osoba kontaktowa (decydent)') }}</label>
+                <input type="text" name="contact_person" value="{{ company.contact_person }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Email kontaktowy') }}</label>
+                <input type="text" name="contact_email" value="{{ company.contact_email }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Główne usługi') }}</label>
+                <textarea name="main_services" rows="2" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">{{ company.main_services }}</textarea>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Szacowany budżet mies. (PLN)') }}</label>
+                <input type="number" name="ltv_potential" value="{{ company.ltv_potential or '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">{{ _('Abonament (retainer)') }}</h2>
+        <div class="grid md:grid-cols-4 gap-4">
+            <label class="flex items-center gap-2 text-sm text-gray-300">
+                <input type="checkbox" name="is_retainer" class="accent-accent" {% if company.is_retainer %}checked{% endif %}>
+                {{ _('Klient abonamentowy') }}
+            </label>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Kwota netto / mies.') }}</label>
+                <input type="number" step="0.01" name="monthly_fee_net" value="{{ company.monthly_fee_net or '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Dzień fakturowania (1-28)') }}</label>
+                <input type="number" min="1" max="28" name="billing_day" value="{{ company.billing_day or 1 }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Data startu') }}</label>
+                <input type="date" name="retainer_started_at" value="{{ company.retainer_started_at.isoformat() if company.retainer_started_at else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">{{ _('Dane prawne klienta (do umów)') }}</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Pełna nazwa') }}</label>
+                <input type="text" name="client_legal_name" value="{{ company.client_legal_name }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('NIP') }}</label>
+                <input type="text" name="client_nip" value="{{ company.client_nip }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Adres formalny') }}</label>
+                <textarea name="client_address" rows="2" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">{{ company.client_address }}</textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">{{ _('Integracje Google') }}</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">GSC site URL</label>
+                <input type="text" name="gsc_site_url" value="{{ company.gsc_site_url }}" placeholder="sc-domain:example.com" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">GA4 property ID</label>
+                <input type="text" name="ga_property_id" value="{{ company.ga_property_id }}" placeholder="123456789" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+        </div>
+        <p class="text-xs text-gray-600 mt-3">{{ _('Dane do synchronizacji w zakładce <b>Analityka</b>. OAuth skonfiguruj w <a href="/settings#google_oauth" class="text-accent hover:underline">Ustawieniach</a>.') }}</p>
+    </div>
+
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Pipeline</h2>
+        <div class="grid md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Etap') }}</label>
+                <select name="pipeline_stage" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+                    {% set labels = {'lead':_('Lead'),'audit':_('Audyt'),'contact':_('Kontakt'),'visit':_('Wizyta'),'offer':_('Oferta'),'client':_('Klient')} %}
+                    {% for s in stages %}
+                    <option value="{{ s }}" {% if company.pipeline_stage == s %}selected{% endif %}>{{ labels[s] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Następna akcja') }}</label>
+                <input type="text" name="next_action" value="{{ company.next_action }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none" placeholder="{{ _('np. zadzwonić w poniedziałek') }}">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Data następnej akcji') }}</label>
+                <input type="date" name="next_action_date" value="{{ company.next_action_date.isoformat() if company.next_action_date else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+            </div>
+        </div>
+    </div>
+
+    <!-- Results (only for clients) -->
+    {% if company.pipeline_stage == 'client' %}
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm" id="tab-results-inner">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
+            <i class="bi bi-graph-up-arrow mr-1 text-emerald-400"></i>{{ _('Wyniki współpracy (case study)') }}
+        </h2>
+        <div class="grid md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Opis osiągniętych wyników') }}</label>
+                <textarea name="results_description" rows="2" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">{{ company.results_description }}</textarea>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Telefony/mies. PRZED') }}</label>
+                <input type="number" name="results_calls_before" value="{{ company.results_calls_before or '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Telefony/mies. PO') }}</label>
+                <input type="number" name="results_calls_after" value="{{ company.results_calls_after or '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Widoczność Google PRZED') }}</label>
+                <input type="text" name="results_visibility_before" value="{{ company.results_visibility_before }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none" placeholder="{{ _('np. strona 3') }}">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Widoczność Google PO') }}</label>
+                <input type="text" name="results_visibility_after" value="{{ company.results_visibility_after }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none" placeholder="{{ _('np. top 3') }}">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Opinie PRZED') }}</label>
+                <input type="number" name="results_reviews_before" value="{{ company.results_reviews_before or '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Opinie PO') }}</label>
+                <input type="number" name="results_reviews_after" value="{{ company.results_reviews_after or '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus transition outline-none">
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="flex gap-3">
+        <button type="submit" class="bg-accent hover:bg-accent-dark text-white font-semibold px-6 py-2.5 rounded-lg btn-lift transition">
+            <i class="bi bi-check2 mr-1"></i>{{ _('Zapisz zmiany') }}
+        </button>
+        <button type="submit" form="delete-company-form" class="bg-red-900/30 border border-red-700/50 text-red-400 hover:bg-red-900/50 px-4 py-2.5 rounded-lg text-sm transition">
+            <i class="bi bi-trash3 mr-1"></i>{{ _('Usuń') }}
+        </button>
+    </div>
+</form>
+{# Osobny formularz poza formularzem edycji - zagnieżdżony <form> przeglądarka ignoruje. #}
+<form id="delete-company-form" method="POST" action="/companies/{{ company.id }}/delete" onsubmit='return confirm({{ _("Na pewno usunąć tę firmę?")|tojson }})' hidden></form>
+</div>
+
+<!-- Tab: Audits -->
+<div class="tab-content hidden" id="tab-audits">
+    {% if audits %}
+    <div class="space-y-3">
+        {% for a in audits %}
+        <div class="bg-surface border border-border rounded-xl p-4 flex items-center justify-between card-hover">
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-gray-200">{{ _('Audyt #%(id)s', id=a.id) }}</span>
+                    {% if a.score_overall %}
+                    <span class="text-accent font-bold text-sm">{{ a.score_overall }}/5</span>
+                    {% endif %}
+                    <span class="badge-stage {% if a.status == 'completed' %}bg-emerald-500{% else %}bg-gray-600{% endif %} text-white">
+                        {{ _('Ukończony') if a.status == 'completed' else _('Szkic') }}
+                    </span>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">{{ a.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+            </div>
+            <div class="flex gap-2">
+                <a href="/audits/{{ a.id }}/edit" class="text-accent hover:text-accent-light text-sm no-underline transition"><i class="bi bi-pencil"></i> {{ _('Edytuj') }}</a>
+                <a href="/audits/{{ a.id }}/report" class="text-emerald-400 hover:text-emerald-300 text-sm no-underline transition"><i class="bi bi-file-text"></i> {{ _('Raport') }}</a>
+                <a href="/audits/{{ a.id }}/pdf" class="text-amber-400 hover:text-amber-300 text-sm no-underline transition"><i class="bi bi-filetype-pdf"></i> PDF</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-surface border border-border rounded-xl p-6 text-center empty-state">
+        <i class="bi bi-clipboard2-data"></i>
+        <p>{{ _('Brak audytów.') }}</p>
+        <a href="/audits/new/{{ company.id }}" class="text-accent text-sm no-underline mt-2 inline-block">{{ _('Utwórz pierwszy audyt') }}</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tab: Offers -->
+<div class="tab-content hidden" id="tab-offers">
+    <!-- New offer form -->
+    <div class="bg-surface border border-border rounded-xl p-4 mb-4">
+        <h3 class="text-sm font-semibold text-gray-400 mb-3">{{ _('Nowa oferta') }}</h3>
+        <form method="POST" action="/companies/{{ company.id }}/offers/new" class="flex flex-wrap gap-3 items-end">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Pakiet') }}</label>
+                <select name="package_id" class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none">
+                    {% for p in packages %}
+                    <option value="{{ p.id }}">{{ p.name }} - {{ p.price }} PLN</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Cena custom (opcj.)') }}</label>
+                <input type="number" name="custom_price" class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 w-32 input-focus transition outline-none">
+            </div>
+            <div class="flex-1">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Notatki') }}</label>
+                <input type="text" name="custom_notes" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none">
+            </div>
+            <button type="submit" class="bg-accent hover:bg-accent-dark text-white text-sm font-medium px-4 py-1.5 rounded-lg transition">
+                <i class="bi bi-plus mr-1"></i>{{ _('Utwórz') }}
+            </button>
+        </form>
+    </div>
+    {% if offers %}
+    <div class="space-y-3">
+        {% for o in offers %}
+        <div class="bg-surface border border-border rounded-xl p-4 flex items-center justify-between">
+            <div>
+                <span class="font-medium text-sm text-gray-200">{{ o.package.name }}</span>
+                <span class="text-accent font-bold ml-2">{{ o.effective_price }} PLN</span>
+                {% if o.custom_notes %}<div class="text-xs text-gray-500 mt-1">{{ o.custom_notes }}</div>{% endif %}
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="badge-stage {% if o.status == 'accepted' %}bg-emerald-500{% elif o.status == 'sent' %}bg-blue-500{% elif o.status == 'rejected' %}bg-red-600{% else %}bg-gray-600{% endif %} text-white">
+                    {{ {'draft':_('Szkic'),'sent':_('Wysłana'),'accepted':_('Zaakceptowana'),'rejected':_('Odrzucona')}.get(o.status, o.status) }}
+                </span>
+                <form method="POST" action="/offers/{{ o.id }}/status" class="flex gap-1">
+                    {% if o.status == 'draft' %}
+                    <input type="hidden" name="status" value="sent">
+                    <button class="text-xs text-blue-400 hover:text-blue-300 transition">{{ _('Wyślij') }}</button>
+                    {% elif o.status == 'sent' %}
+                    <input type="hidden" name="status" value="accepted">
+                    <button class="text-xs text-emerald-400 hover:text-emerald-300 transition">{{ _('Akceptuj') }}</button>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4">
+        <i class="bi bi-briefcase"></i>
+        <p>{{ _('Brak ofert.') }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tab: Visits -->
+<div class="tab-content hidden" id="tab-visits">
+    <div class="bg-surface border border-border rounded-xl p-4 mb-4">
+        <h3 class="text-sm font-semibold text-gray-400 mb-3">{{ _('Zaplanuj wizytę') }}</h3>
+        <form method="POST" action="/visits/new/{{ company.id }}" class="flex flex-wrap gap-3 items-end">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Data i godzina') }}</label>
+                <input type="datetime-local" name="scheduled_at" required class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Typ') }}</label>
+                <select name="visit_type" class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none">
+                    <option value="consultation">{{ _('Konsultacja') }}</option>
+                    <option value="follow_up">Follow-up</option>
+                    <option value="closing">{{ _('Domknięcie') }}</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Czas (min)') }}</label>
+                <input type="number" name="duration_minutes" value="60" class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 w-20 input-focus transition outline-none">
+            </div>
+            <button type="submit" class="bg-accent hover:bg-accent-dark text-white text-sm font-medium px-4 py-1.5 rounded-lg transition">
+                <i class="bi bi-calendar-plus mr-1"></i>{{ _('Zaplanuj') }}
+            </button>
+        </form>
+    </div>
+    {% if visits %}
+    <div class="space-y-3">
+        {% for v in visits %}
+        <a href="/visits/{{ v.id }}" class="bg-surface border border-border rounded-xl p-4 flex items-center justify-between card-hover no-underline block">
+            <div>
+                <span class="font-medium text-sm text-gray-200">{{ v.type_label }}</span>
+                <span class="text-xs text-gray-500 ml-2">{{ v.scheduled_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                {% if v.notes %}<div class="text-xs text-gray-500 mt-1 truncate max-w-md">{{ v.notes }}</div>{% endif %}
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-500">Prep: {{ v.prep_done_count }}/4</span>
+                <span class="badge-stage {% if v.status == 'completed' %}bg-emerald-500{% elif v.status == 'cancelled' %}bg-red-600{% else %}bg-accent{% endif %} text-white">
+                    {{ v.status_label }}
+                </span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4">
+        <i class="bi bi-calendar-x"></i>
+        <p>{{ _('Brak wizyt.') }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tab: Notes -->
+<div class="tab-content hidden" id="tab-notes">
+    <div class="bg-surface border border-border rounded-xl p-4 mb-4">
+        <form method="POST" action="/companies/{{ company.id }}/notes" class="flex flex-wrap gap-3 items-end">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Nowa notatka') }}</label>
+                <input type="text" name="content" required class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none" placeholder="{{ _('Treść notatki...') }}">
+            </div>
+            <div>
+                <select name="note_type" class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none">
+                    <option value="general">{{ _('Notatka') }}</option>
+                    <option value="call">{{ _('Telefon') }}</option>
+                    <option value="meeting">{{ _('Spotkanie') }}</option>
+                    <option value="follow_up">Follow-up</option>
+                </select>
+            </div>
+            <button type="submit" class="bg-accent hover:bg-accent-dark text-white text-sm font-medium px-4 py-1.5 rounded-lg transition">
+                <i class="bi bi-plus mr-1"></i>{{ _('Dodaj') }}
+            </button>
+        </form>
+    </div>
+    {% if notes %}
+    <div class="space-y-2">
+        {% for n in notes %}
+        <div class="bg-surface border border-border rounded-lg p-3 flex items-start gap-3">
+            <div class="text-lg {% if n.note_type == 'call' %}text-blue-400{% elif n.note_type == 'meeting' %}text-amber-400{% elif n.note_type == 'follow_up' %}text-emerald-400{% else %}text-gray-500{% endif %}">
+                <i class="bi {% if n.note_type == 'call' %}bi-telephone{% elif n.note_type == 'meeting' %}bi-people{% elif n.note_type == 'follow_up' %}bi-arrow-repeat{% else %}bi-sticky{% endif %}"></i>
+            </div>
+            <div class="flex-1">
+                <div class="text-sm text-gray-300">{{ n.content }}</div>
+                <div class="text-xs text-gray-600 mt-1">{{ n.type_label }} - {{ n.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4">
+        <i class="bi bi-sticky"></i>
+        <p>{{ _('Brak notatek.') }}</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tab: Tasks -->
+<div class="tab-content hidden" id="tab-tasks">
+    <div class="flex justify-between items-center mb-3">
+        <h3 class="text-sm text-gray-400">{{ _('Zadania przypisane do firmy') }}</h3>
+        <a href="/tasks/new?company_id={{ company.id }}" class="bg-accent text-white text-sm px-3 py-1.5 rounded-lg no-underline btn-lift"><i class="bi bi-plus-lg mr-1"></i>{{ _('Nowe zadanie') }}</a>
+    </div>
+    {% if tasks %}
+    {% set pcolors = {'urgent':'badge-danger','high':'badge-warning','medium':'badge-info','low':'badge-neutral'} %}
+    <div class="space-y-2">
+        {% for t in tasks %}
+        <div class="bg-surface border border-border rounded-lg p-3 flex items-center gap-3">
+            <span class="badge-stage {{ pcolors.get(t.priority, 'badge-neutral') }}">{{ t.priority_label }}</span>
+            <a href="/tasks/{{ t.id }}/edit" class="flex-1 text-sm text-gray-200 hover:text-white no-underline {% if t.status == 'done' %}line-through text-gray-500{% endif %}">{{ t.title }}</a>
+            {% if t.deadline %}<span class="text-xs {% if t.is_overdue %}text-red-400{% else %}text-gray-500{% endif %}">{{ t.deadline.strftime('%d.%m') }}</span>{% endif %}
+            <span class="text-xs text-gray-500">{{ t.status_label }}</span>
+            {% if t.status != 'done' %}
+            <form method="POST" action="/tasks/{{ t.id }}/status" class="inline">
+                <input type="hidden" name="status" value="done">
+                <button class="text-xs bg-emerald-700 text-white rounded px-2 py-1 btn-lift"><i class="bi bi-check2"></i></button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4"><i class="bi bi-check2-square"></i><p>{{ _('Brak zadań dla tej firmy.') }}</p></div>
+    {% endif %}
+</div>
+
+<!-- Tab: Payments -->
+<div class="tab-content hidden" id="tab-payments">
+    <div class="flex justify-between items-center mb-3">
+        <h3 class="text-sm text-gray-400">{{ _('Przychody / płatności') }}</h3>
+        <a href="/finances/payments/new?company_id={{ company.id }}" class="bg-accent text-white text-sm px-3 py-1.5 rounded-lg no-underline btn-lift"><i class="bi bi-plus-lg mr-1"></i>{{ _('Nowa płatność') }}</a>
+    </div>
+    {% if payments %}
+    {% set scolors = {'paid':'badge-success','unpaid':'badge-warning','overdue':'badge-danger','cancelled':'badge-neutral'} %}
+    <div class="space-y-2">
+        {% for p in payments %}
+        <div class="bg-surface border border-border rounded-lg p-3 flex items-center gap-3">
+            <div class="flex-1">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-500 font-mono">{{ p.payment_number or '-' }}</span>
+                    <span class="text-sm text-gray-200">{{ p.title }}</span>
+                </div>
+                <div class="text-xs text-gray-500 mt-0.5">{{ p.kind_label }} · {{ _('wystawiono %(date)s', date=(p.issued_at.strftime('%d.%m.%Y') if p.issued_at else '-')) }} · {{ _('termin %(date)s', date=(p.due_at.strftime('%d.%m.%Y') if p.due_at else '-')) }}</div>
+            </div>
+            <div class="text-right">
+                <div class="text-sm font-bold text-gray-200">{{ '{:,.2f}'.format(p.amount_gross or 0).replace(',', ' ') }} zł</div>
+                <div class="text-xs text-gray-500">{{ '{:,.2f}'.format(p.amount_net or 0).replace(',', ' ') }} {{ _('netto') }}</div>
+            </div>
+            <span class="badge-stage {{ scolors.get(p.status, 'badge-neutral') }}">{{ p.status_label }}</span>
+            <a href="/finances/payments/{{ p.id }}/edit" class="text-gray-400 hover:text-white no-underline"><i class="bi bi-pencil"></i></a>
+            {% if p.status != 'paid' %}
+            <form method="POST" action="/finances/payments/{{ p.id }}/mark-paid" class="inline">
+                <button class="text-emerald-400 hover:text-emerald-300" title="{{ _('Oznacz jako opłacone') }}"><i class="bi bi-cash-coin"></i></button>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4"><i class="bi bi-cash-coin"></i><p>{{ _('Brak płatności.') }}</p></div>
+    {% endif %}
+</div>
+
+<!-- Tab: Projects -->
+<div class="tab-content hidden" id="tab-projects">
+    <div class="flex justify-between items-center mb-3">
+        <h3 class="text-sm text-gray-400">{{ _('Projekty (strony WWW, kampanie)') }}</h3>
+        <a href="/projects/new?company_id={{ company.id }}" class="bg-accent text-white text-sm px-3 py-1.5 rounded-lg no-underline btn-lift"><i class="bi bi-plus-lg mr-1"></i>{{ _('Nowy projekt') }}</a>
+    </div>
+    {% if projects %}
+    <div class="space-y-2">
+        {% for pr in projects %}
+        <a href="/projects/{{ pr.id }}" class="bg-surface border border-border rounded-lg p-3 flex items-center gap-3 hover:border-accent no-underline transition">
+            <div class="flex-1">
+                <div class="text-sm text-gray-200">{{ pr.name }}</div>
+                <div class="text-xs text-gray-500">{{ pr.kind_label }}{% if pr.domain %} · {{ pr.domain }}{% endif %}{% if pr.deadline %} · deadline {{ pr.deadline.strftime('%d.%m.%Y') }}{% endif %}</div>
+            </div>
+            <div class="w-28">
+                <div class="text-xs text-gray-500 text-right mb-1">{{ pr.progress_percent }}%</div>
+                <div class="h-1.5 bg-surface-dark rounded-full overflow-hidden"><div class="h-full bg-accent" style="width: {{ pr.progress_percent }}%"></div></div>
+            </div>
+            <span class="badge-stage {% if pr.status == 'done' %}badge-success{% elif pr.status == 'active' %}badge-info{% else %}badge-neutral{% endif %}">{{ pr.status_label }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4"><i class="bi bi-diagram-3"></i><p>{{ _('Brak projektów.') }}</p></div>
+    {% endif %}
+</div>
+
+<!-- Tab: Content -->
+<div class="tab-content hidden" id="tab-content">
+    <div class="flex justify-between items-center mb-3">
+        <h3 class="text-sm text-gray-400">{{ _('Kalendarz publikacji') }}</h3>
+        <a href="/content/new?company_id={{ company.id }}" class="bg-accent text-white text-sm px-3 py-1.5 rounded-lg no-underline btn-lift"><i class="bi bi-plus-lg mr-1"></i>{{ _('Nowa publikacja') }}</a>
+    </div>
+    {% if content_posts %}
+    {% set ccolors = {'idea':'badge-neutral','writing':'badge-info','review':'badge-warning','approved':'badge-success','published':'badge-accent'} %}
+    <div class="space-y-2">
+        {% for cp in content_posts %}
+        <div class="bg-surface border border-border rounded-lg p-3 flex items-center gap-3">
+            <div class="flex-1">
+                <a href="/content/{{ cp.id }}/edit" class="text-sm text-gray-200 hover:text-white no-underline">{{ cp.title }}</a>
+                <div class="text-xs text-gray-500 mt-0.5">
+                    {{ cp.type_label }}
+                    {% if cp.writer_name %} · ✍ {{ cp.writer_name }}{% endif %}
+                    {% if cp.deadline %} · {{ cp.deadline.strftime('%d.%m.%Y') }}{% endif %}
+                    {% if cp.keywords %} · {{ cp.keywords|join(', ') }}{% endif %}
+                </div>
+            </div>
+            <span class="badge-stage {{ ccolors.get(cp.status, 'badge-neutral') }}">{{ cp.status_label }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4"><i class="bi bi-file-text"></i><p>{{ _('Brak publikacji.') }}</p></div>
+    {% endif %}
+</div>
+
+<!-- Tab: Credentials -->
+<div class="tab-content hidden" id="tab-credentials">
+    <div class="bg-surface border border-border rounded-xl p-4 mb-4">
+        <h3 class="text-sm font-semibold text-gray-400 mb-3">{{ _('Dodaj dostęp (link do sejfu)') }}</h3>
+        <p class="text-xs text-gray-600 mb-3">{{ _('Apka trzyma tylko linki do Bitwarden/1Password (<code>bitwarden://item?...</code> / <code>onepassword://...</code>) oraz URL logowania. Haseł nie przechowujemy.') }}</p>
+        <form method="POST" action="/companies/{{ company.id }}/credentials/new" class="grid md:grid-cols-2 gap-3">
+            <input type="text" name="label" required placeholder="{{ _('Etykieta (np. WP admin)') }}" class="bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm input-focus outline-none">
+            <input type="text" name="login_url" placeholder="{{ _('URL logowania') }}" class="bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm input-focus outline-none">
+            <input type="text" name="username_hint" placeholder="{{ _('Login hint (np. admin)') }}" class="bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm input-focus outline-none">
+            <input type="text" name="vault_link" placeholder="{{ _('bitwarden://item?id=... lub onepassword://...') }}" class="bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm input-focus outline-none">
+            <input type="date" name="expires_at" placeholder="{{ _('Wygasa') }}" class="bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm input-focus outline-none">
+            <div class="md:col-span-2">
+                <textarea name="notes" rows="1" placeholder="{{ _('Uwagi') }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm input-focus outline-none"></textarea>
+            </div>
+            <button type="submit" class="md:col-span-2 bg-accent hover:bg-accent-dark text-white text-sm font-medium px-4 py-2 rounded-lg btn-lift"><i class="bi bi-plus-lg mr-1"></i>{{ _('Dodaj dostęp') }}</button>
+        </form>
+    </div>
+    {% if credentials %}
+    <div class="space-y-2">
+        {% for cr in credentials %}
+        <div class="bg-surface border border-border rounded-lg p-3 flex items-center gap-3 flex-wrap">
+            <div class="flex-1 min-w-0">
+                <div class="text-sm text-gray-200">{{ cr.label }}</div>
+                <div class="text-xs text-gray-500">
+                    {% if cr.username_hint %}Login: <code>{{ cr.username_hint }}</code> · {% endif %}
+                    {% if cr.expires_at %}{{ _('Wygasa %(date)s', date=cr.expires_at.strftime('%d.%m.%Y')) }}{% endif %}
+                </div>
+                {% if cr.notes %}<div class="text-xs text-gray-600 mt-1">{{ cr.notes }}</div>{% endif %}
+            </div>
+            {% if cr.login_url %}<a href="{{ cr.login_url }}" target="_blank" class="text-blue-400 hover:text-blue-300 text-xs no-underline"><i class="bi bi-box-arrow-up-right"></i> Login</a>{% endif %}
+            {% if cr.vault_link %}<a href="{{ cr.vault_link }}" class="text-accent hover:text-accent-light text-xs no-underline"><i class="bi bi-safe"></i> {{ _('Sejf') }}</a>{% endif %}
+            <form method="POST" action="/credentials/{{ cr.id }}/delete" class="inline" onsubmit='return confirm({{ _("Usunąć dostęp?")|tojson }})'>
+                <button class="text-red-400 hover:text-red-300 text-xs"><i class="bi bi-trash3"></i></button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4"><i class="bi bi-shield-lock"></i><p>{{ _('Brak zapisanych dostępów.') }}</p></div>
+    {% endif %}
+</div>
+
+<!-- Tab: Whiteboards -->
+<div class="tab-content hidden" id="tab-whiteboards">
+    <div class="flex justify-between items-center mb-3">
+        <h3 class="text-sm text-gray-400">{{ _('Tablice przypisane do klienta') }}</h3>
+        <a href="/tablica/nowa?company_id={{ company.id }}" class="bg-accent text-white text-sm px-3 py-1.5 rounded-lg no-underline btn-lift"><i class="bi bi-plus-lg mr-1"></i>{{ _('Nowa tablica') }}</a>
+    </div>
+    {% if whiteboards %}
+    <div class="grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+        {% for wb in whiteboards %}
+        <a href="{{ url_for('whiteboard_detail', id=wb.id) }}" class="no-underline" style="text-decoration: none; color: inherit;">
+            <div class="bg-surface border border-border rounded-xl p-4 card-sm" style="transition: transform 0.15s;"
+                 onmouseover="this.style.transform='translateY(-2px)'"
+                 onmouseout="this.style.transform='translateY(0)'">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 36px; height: 36px; border-radius: 8px; background: {{ wb.bg_color }}; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-easel-fill" style="color: {% if wb.bg_color == '#0f0f1a' %}#fff{% else %}#333{% endif %}; font-size: 14px;"></i>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ wb.name }}</div>
+                        <div style="font-size: 11.5px; color: var(--text-subtle); margin-top: 1px;">
+                            {{ _('%(count)s elem.', count=wb.strokes_count) }} · {{ wb.updated_at.strftime('%d.%m.%Y') }}
+                        </div>
+                    </div>
+                </div>
+                {% if wb.description %}
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 8px; line-height: 1.4; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ wb.description }}</div>
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4">
+        <i class="bi bi-easel"></i>
+        <p>{{ _('Brak tablic przypisanych do tego klienta.') }}</p>
+        <a href="/tablica/nowa?company_id={{ company.id }}" class="text-accent">{{ _('Stwórz pierwszą →') }}</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tab: Contracts -->
+<div class="tab-content hidden" id="tab-contracts">
+    <div class="flex justify-between items-center mb-3">
+        <h3 class="text-sm text-gray-400">{{ _('Umowy') }}</h3>
+        <a href="/companies/{{ company.id }}/contracts/new" class="bg-accent text-white text-sm px-3 py-1.5 rounded-lg no-underline btn-lift"><i class="bi bi-file-earmark-plus mr-1"></i>{{ _('Nowa umowa') }}</a>
+    </div>
+    {% if contracts %}
+    <div class="space-y-2">
+        {% for ct in contracts %}
+        <div class="bg-surface border border-border rounded-lg p-3 flex items-center gap-3">
+            <div class="flex-1">
+                <div class="text-sm text-gray-200">{{ ct.name }}</div>
+                <div class="text-xs text-gray-500">{{ ct.created_at.strftime('%d.%m.%Y') }}{% if ct.signed_at %} · {{ _('podpisana %(date)s', date=ct.signed_at.strftime('%d.%m.%Y')) }}{% endif %}</div>
+            </div>
+            <span class="badge-stage {% if ct.status == 'signed' %}badge-success{% elif ct.status == 'sent' %}badge-info{% elif ct.status == 'archived' %}badge-neutral{% else %}badge-warning{% endif %}">{{ ct.status_label }}</span>
+            {% if ct.pdf_file %}<a href="/files/{{ ct.pdf_file.id }}/download" class="text-amber-400 hover:text-amber-300 text-xs no-underline"><i class="bi bi-filetype-pdf"></i> PDF</a>{% endif %}
+            <form method="POST" action="/contracts/{{ ct.id }}/status" class="inline flex gap-1">
+                <select name="status" class="bg-surface-dark border border-border rounded px-2 py-1 text-xs text-gray-200 input-focus outline-none">
+                    <option value="draft" {% if ct.status == 'draft' %}selected{% endif %}>{{ _('Szkic') }}</option>
+                    <option value="sent" {% if ct.status == 'sent' %}selected{% endif %}>{{ _('Wysłana') }}</option>
+                    <option value="signed" {% if ct.status == 'signed' %}selected{% endif %}>{{ _('Podpisana') }}</option>
+                    <option value="archived" {% if ct.status == 'archived' %}selected{% endif %}>{{ _('Zarchiwizowana') }}</option>
+                </select>
+                <button class="text-xs bg-accent text-white rounded px-2 btn-lift"><i class="bi bi-check2"></i></button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4"><i class="bi bi-file-earmark-text"></i><p>{{ _('Brak umów.') }}</p></div>
+    {% endif %}
+</div>
+
+<!-- Tab: Files -->
+<div class="tab-content hidden" id="tab-files">
+    <div class="bg-surface border border-border rounded-xl p-4 mb-4">
+        <h3 class="text-sm font-semibold text-gray-400 mb-3">{{ _('Upload pliku') }}</h3>
+        <form method="POST" action="/companies/{{ company.id }}/files/upload" enctype="multipart/form-data" class="flex flex-wrap gap-3 items-end">
+            <input type="file" name="file" required class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-300 input-focus outline-none file:bg-accent file:text-white file:border-0 file:rounded file:px-2 file:py-0.5 file:mr-2 file:text-xs file:cursor-pointer">
+            <input type="text" name="label" placeholder="{{ _('Etykieta (dla wersjonowania)') }}" class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm input-focus outline-none">
+            <select name="category" class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus outline-none">
+                <option value="brief">Brief</option>
+                <option value="mockup">{{ _('Makieta') }}</option>
+                <option value="contract">{{ _('Umowa') }}</option>
+                <option value="report">{{ _('Raport') }}</option>
+                <option value="other">{{ _('Inny') }}</option>
+            </select>
+            <button class="bg-accent text-white text-sm px-3 py-1.5 rounded-lg btn-lift"><i class="bi bi-upload mr-1"></i>{{ _('Wgraj') }}</button>
+        </form>
+    </div>
+    {% if files %}
+    <div class="space-y-2">
+        {% for f in files %}
+        <div class="bg-surface border border-border rounded-lg p-3 flex items-center gap-3">
+            <i class="bi bi-file-earmark text-xl text-gray-500"></i>
+            <div class="flex-1 min-w-0">
+                <div class="text-sm text-gray-200 truncate">{{ f.filename }}</div>
+                <div class="text-xs text-gray-500">{{ f.label or '-' }} · {{ f.category_label }} · {{ _('wersja %(version)s', version=f.version) }} · {{ (f.size_bytes/1024)|int }} KB · {{ f.uploaded_at.strftime('%d.%m.%Y %H:%M') }}</div>
+            </div>
+            <a href="/files/{{ f.id }}/download" class="text-accent hover:text-accent-light text-sm no-underline"><i class="bi bi-download"></i></a>
+            <form method="POST" action="/files/{{ f.id }}/delete" class="inline" onsubmit='return confirm({{ _("Usunąć plik?")|tojson }})'>
+                <button class="text-red-400 hover:text-red-300 text-xs"><i class="bi bi-trash3"></i></button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4"><i class="bi bi-folder2-open"></i><p>{{ _('Brak plików.') }}</p></div>
+    {% endif %}
+</div>
+
+<!-- Tab: Analytics (GSC + GA) -->
+<div class="tab-content hidden" id="tab-analytics">
+    <div class="flex gap-2 mb-4">
+        {% if company.gsc_site_url %}
+        <form method="POST" action="/api/gsc/sync/{{ company.id }}" class="inline">
+            <button class="bg-blue-600 hover:bg-blue-500 text-white text-sm px-3 py-1.5 rounded-lg btn-lift"><i class="bi bi-arrow-repeat mr-1"></i>{{ _('Synchronizuj GSC') }}</button>
+        </form>
+        {% endif %}
+        {% if company.ga_property_id %}
+        <form method="POST" action="/api/ga/sync/{{ company.id }}" class="inline">
+            <button class="bg-orange-600 hover:bg-orange-500 text-white text-sm px-3 py-1.5 rounded-lg btn-lift"><i class="bi bi-arrow-repeat mr-1"></i>{{ _('Synchronizuj GA4') }}</button>
+        </form>
+        {% endif %}
+        {% if not company.gsc_site_url and not company.ga_property_id %}
+        <p class="text-xs text-gray-500">{{ _('Najpierw uzupełnij <code>gsc_site_url</code> i/lub <code>ga_property_id</code> w sekcji „Integracje Google" w zakładce Info.') }}</p>
+        {% endif %}
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-4">
+        <div class="bg-surface border border-border rounded-xl p-4 card-sm">
+            <h3 class="text-sm font-semibold text-gray-400 mb-3"><i class="bi bi-search mr-1"></i>Google Search Console</h3>
+            {% if gsc_snapshot %}
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div><div class="text-xs text-gray-500">{{ _('Kliknięcia') }}</div><div class="text-xl font-bold text-blue-400">{{ gsc_snapshot.total_clicks }}</div></div>
+                <div><div class="text-xs text-gray-500">{{ _('Wyświetlenia') }}</div><div class="text-xl font-bold text-gray-200">{{ gsc_snapshot.total_impressions }}</div></div>
+                <div><div class="text-xs text-gray-500">CTR</div><div class="text-xl font-bold text-emerald-400">{{ gsc_snapshot.avg_ctr }}%</div></div>
+                <div><div class="text-xs text-gray-500">{{ _('Śr. pozycja') }}</div><div class="text-xl font-bold text-amber-400">{{ gsc_snapshot.avg_position }}</div></div>
+            </div>
+            <div class="text-xs text-gray-500 mb-2">{{ _('Okres: %(start)s - %(end)s', start=gsc_snapshot.date_range_start, end=gsc_snapshot.date_range_end) }}</div>
+            {% if gsc_snapshot.top_queries %}
+            <div class="text-xs text-gray-400 mb-1 mt-3">{{ _('Top frazy:') }}</div>
+            <div class="space-y-1 text-xs">
+                {% for q in gsc_snapshot.top_queries[:5] %}
+                <div class="flex justify-between"><span class="text-gray-300">{{ q.query }}</span><span class="text-gray-500">{{ _('%(clicks)s klik · poz. %(position)s', clicks=q.clicks, position=q.position) }}</span></div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% else %}
+            <p class="text-xs text-gray-500">{{ _('Brak danych - kliknij „Synchronizuj GSC".') }}</p>
+            {% endif %}
+        </div>
+
+        <div class="bg-surface border border-border rounded-xl p-4 card-sm">
+            <h3 class="text-sm font-semibold text-gray-400 mb-3"><i class="bi bi-graph-up mr-1"></i>Google Analytics 4</h3>
+            {% if ga_snapshot %}
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div><div class="text-xs text-gray-500">{{ _('Użytkownicy') }}</div><div class="text-xl font-bold text-blue-400">{{ ga_snapshot.users }}</div></div>
+                <div><div class="text-xs text-gray-500">{{ _('Sesje') }}</div><div class="text-xl font-bold text-gray-200">{{ ga_snapshot.sessions }}</div></div>
+                <div><div class="text-xs text-gray-500">{{ _('Konwersje') }}</div><div class="text-xl font-bold text-emerald-400">{{ ga_snapshot.conversions }}</div></div>
+                <div><div class="text-xs text-gray-500">{{ _('Śr. czas') }}</div><div class="text-xl font-bold text-amber-400">{{ ga_snapshot.avg_engagement_time }}s</div></div>
+            </div>
+            <div class="text-xs text-gray-500 mb-2">{{ _('Okres: %(start)s - %(end)s', start=ga_snapshot.date_range_start, end=ga_snapshot.date_range_end) }}</div>
+            {% if ga_snapshot.top_sources %}
+            <div class="text-xs text-gray-400 mb-1 mt-3">{{ _('Top źródła:') }}</div>
+            <div class="space-y-1 text-xs">
+                {% for s in ga_snapshot.top_sources[:5] %}
+                <div class="flex justify-between"><span class="text-gray-300">{{ s.source }}</span><span class="text-gray-500">{{ _('%(count)s sesji', count=s.sessions) }}</span></div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% else %}
+            <p class="text-xs text-gray-500">{{ _('Brak danych - kliknij „Synchronizuj GA4".') }}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Tab: Emails -->
+<div class="tab-content hidden" id="tab-emails">
+    <div class="flex justify-between items-center mb-3">
+        <h3 class="text-sm text-gray-400">{{ _('Historia wiadomości') }}</h3>
+        <div class="flex gap-2">
+            {% for et in email_templates[:3] %}
+            <a href="/companies/{{ company.id }}/email/compose?template={{ et.key }}" class="bg-accent text-white text-xs px-3 py-1.5 rounded-lg no-underline btn-lift"><i class="bi bi-envelope mr-1"></i>{{ et.name }}</a>
+            {% endfor %}
+            <a href="/companies/{{ company.id }}/email/compose" class="bg-surface-light border border-border text-gray-300 text-xs px-3 py-1.5 rounded-lg no-underline btn-lift"><i class="bi bi-pencil-square"></i></a>
+        </div>
+    </div>
+    {% if email_log %}
+    <div class="space-y-2">
+        {% for log in email_log %}
+        <div class="bg-surface border border-border rounded-lg p-3">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm text-gray-200 truncate">{{ log.subject_rendered or _('(bez tematu)') }}</div>
+                    <div class="text-xs text-gray-500">{{ _('Do: %(address)s', address=log.to_address) }} · {{ log.sent_at.strftime('%d.%m.%Y %H:%M') }}{% if log.template_key %} · {{ _('szablon: %(key)s', key=log.template_key) }}{% endif %}</div>
+                </div>
+                <span class="badge-stage {% if log.status == 'sent' %}badge-success{% elif log.status == 'failed' %}badge-danger{% else %}badge-info{% endif %}">{{ log.status }}</span>
+            </div>
+            {% if log.error_message %}<div class="text-xs text-red-400 mt-1">{{ log.error_message }}</div>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state py-4"><i class="bi bi-envelope"></i><p>{{ _('Brak wysłanych wiadomości.') }}</p></div>
+    {% endif %}
+</div>
+
+<!-- Tab: Results (alias) -->
+<div class="tab-content hidden" id="tab-results">
+    <div class="bg-surface border border-border rounded-xl p-6 text-center">
+        <p class="text-gray-400">{{ _('Wyniki współpracy dostępne w zakładce "Dane firmy" na dole formularza.') }}</p>
+        <button onclick="showTab('info'); document.getElementById('tab-results-inner')?.scrollIntoView({behavior:'smooth'})"
+                class="text-accent text-sm mt-2">{{ _('Przejdź do wyników') }}</button>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function showTab(name) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    const tab = document.getElementById('tab-' + name);
+    if (tab) tab.classList.remove('hidden');
+    const btn = document.querySelector(`[data-tab="${name}"]`);
+    if (btn) btn.classList.add('active');
+}
+showTab('info');
+</script>
+{% endblock %}

@@ -1,0 +1,140 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Firmy') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Firmy') }}{% endblock %}
+{% block page_subtitle %}{{ _('%(count)s firm w bazie', count=companies|length) }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/companies/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Dodaj firmę') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'list' %}{% include '_company_tabs.html' %}
+
+{# ═════ TOP STATS BENTO ═════ #}
+{% set client_count = companies|selectattr('pipeline_stage','equalto','client')|list|length %}
+{% set lead_count = companies|selectattr('pipeline_stage','equalto','lead')|list|length %}
+{% set retainer_count = companies|selectattr('is_retainer')|list|length %}
+<div class="bento-top" style="grid-template-columns: repeat(4, 1fr);">
+    <div class="cell cell-clients" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-building" style="color: var(--info);"></i>{{ _('Wszystkich') }}</div>
+        <div class="cell-value sm gradient-info mono">{{ companies|length }}</div>
+        <div class="cell-sub">{{ _('w bazie') }}</div>
+    </div>
+    <div class="cell cell-audits" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-check-circle" style="color: var(--accent-light);"></i>{{ _('Klientów') }}</div>
+        <div class="cell-value sm gradient-accent mono">{{ client_count }}</div>
+        <div class="cell-sub">{{ _('aktywnych') }}</div>
+    </div>
+    <div class="cell cell-mrr" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-arrow-repeat" style="color: var(--success-light);"></i>{{ _('Abonamentowych') }}</div>
+        <div class="cell-value sm gradient-positive mono">{{ retainer_count }}</div>
+        <div class="cell-sub">retainer</div>
+    </div>
+    <div class="cell cell-overdue" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-person-plus" style="color: var(--warning);"></i>{{ _('Leady') }}</div>
+        <div class="cell-value sm gradient-warning mono">{{ lead_count }}</div>
+        <div class="cell-sub">{{ _('do obróbki') }}</div>
+    </div>
+</div>
+
+{# ═════ FILTERS ═════ #}
+<form method="GET" class="card-sm" style="padding: 14px 16px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 12px; align-items: end;">
+    <div style="flex: 1; min-width: 200px;">
+        <label style="display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-weight: 600;">{{ _('Szukaj') }}</label>
+        <input type="text" name="q" value="{{ q }}"
+               class="input-focus"
+               style="width: 100%; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; color: var(--text); outline: none;"
+               placeholder="{{ _('Nazwa, adres...') }}">
+    </div>
+    <div>
+        <label style="display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-weight: 600;">{{ _('Etap') }}</label>
+        <select name="stage" class="input-focus" style="background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; color: var(--text); outline: none;">
+            <option value="">{{ _('Wszystkie') }}</option>
+            {% set labels = {'lead':_('Lead'),'audit':_('Audyt'),'contact':_('Kontakt'),'visit':_('Wizyta'),'offer':_('Oferta'),'client':_('Klient')} %}
+            {% for s in stages %}
+            <option value="{{ s }}" {% if stage == s %}selected{% endif %}>{{ labels[s] }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label style="display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-weight: 600;">{{ _('Branża') }}</label>
+        <select name="industry" class="input-focus" style="background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px; color: var(--text); outline: none;">
+            <option value="">{{ _('Wszystkie') }}</option>
+            {% for ind in industries %}
+            <option value="{{ ind }}" {% if industry_filter == ind %}selected{% endif %}>{{ ind }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i>{{ _('Filtruj') }}</button>
+</form>
+
+{# ═════ COMPANIES TABLE ═════ #}
+{% if companies %}
+{% set stage_colors = {'lead':'#94a3b8','audit':'#a78bfa','contact':'#60a5fa','visit':'#fbbf24','offer':'#fb923c','client':'#34d399'} %}
+{% set stage_labels = {'lead':_('Lead'),'audit':_('Audyt'),'contact':_('Kontakt'),'visit':_('Wizyta'),'offer':_('Oferta'),'client':_('Klient')} %}
+<div class="card-sm" style="padding: 0; overflow: hidden;">
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{{ _('Nazwa') }}</th>
+                    <th>{{ _('Branża') }}</th>
+                    <th>{{ _('Etap') }}</th>
+                    <th>{{ _('Ocena') }}</th>
+                    <th>{{ _('Opinii') }}</th>
+                    <th>Score</th>
+                    <th>{{ _('Następna akcja') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in companies %}
+                <tr onclick="window.location='/companies/{{ c.id }}'">
+                    <td>
+                        <div style="font-weight: 600; color: white;">
+                            {{ c.name }}
+                            {% if c.is_retainer %}<span class="badge-stage badge-success" style="margin-left: 4px; font-size: 9px; padding: 1px 6px;"><i class="bi bi-arrow-repeat"></i>Retainer</span>{% endif %}
+                        </div>
+                        <div class="col-muted" style="max-width: 340px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ c.address }}</div>
+                    </td>
+                    <td class="col-muted">{{ c.industry or '-' }}</td>
+                    <td>
+                        <span class="badge-stage" style="background: {{ stage_colors.get(c.pipeline_stage, '#94a3b8') }}22; color: {{ stage_colors.get(c.pipeline_stage, '#94a3b8') }}; border: 1px solid {{ stage_colors.get(c.pipeline_stage, '#94a3b8') }}66;">
+                            {{ stage_labels.get(c.pipeline_stage, c.pipeline_stage) }}
+                        </span>
+                    </td>
+                    <td class="col-muted">
+                        {% if c.rating %}<span style="color: var(--warning-light);">★</span> <span class="mono">{{ c.rating }}</span>{% else %}-{% endif %}
+                    </td>
+                    <td class="col-muted mono">{{ c.user_ratings_total or '-' }}</td>
+                    <td>
+                        {% if c.latest_audit and c.latest_audit.score_overall %}
+                        <span style="color: var(--accent-light); font-weight: 700;" class="mono">{{ c.latest_audit.score_overall }}/5</span>
+                        {% else %}<span class="col-muted">-</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if c.next_action %}
+                        <div style="font-size: 12px; color: var(--text);">{{ c.next_action }}</div>
+                        {% if c.next_action_date %}
+                        <div class="mono" style="font-size: 11px; color: {% if c.next_action_date <= today %}var(--danger-light){% else %}var(--text-subtle){% endif %};">
+                            {{ c.next_action_date.strftime('%d.%m.%Y') }}
+                        </div>
+                        {% endif %}
+                        {% else %}<span class="col-muted">-</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state" style="padding: 60px 24px;">
+    <i class="bi bi-building"></i>
+    <p>{{ _('Brak firm. Użyj wyszukiwarki lub dodaj firmę ręcznie.') }}</p>
+    <a href="/companies/new" class="btn btn-primary" style="margin-top: 16px; display: inline-flex;"><i class="bi bi-plus-lg"></i>{{ _('Dodaj pierwszą firmę') }}</a>
+</div>
+{% endif %}
+
+{% endblock %}

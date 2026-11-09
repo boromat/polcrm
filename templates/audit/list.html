@@ -1,0 +1,90 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Audyty') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Audyty') }}{% endblock %}
+{% block page_subtitle %}{{ _('%(count)s audytów w bazie', count=audits|length) }}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'audits' %}{% include '_company_tabs.html' %}
+
+{% if audits %}
+<div class="bg-surface border border-border rounded-xl overflow-hidden card-sm">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b-2 border-accent/30">
+                    <th class="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wide">{{ _('Firma') }}</th>
+                    <th class="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wide">{{ _('Data') }}</th>
+                    <th class="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wide">Score</th>
+                    <th class="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wide">{{ _('Widoczność') }}</th>
+                    <th class="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wide">{{ _('Oferta') }}</th>
+                    <th class="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wide">{{ _('Zaufanie') }}</th>
+                    <th class="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wide">{{ _('Konwersja') }}</th>
+                    <th class="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wide">{{ _('Analityka') }}</th>
+                    <th class="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wide">Status</th>
+                    <th class="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wide">{{ _('Akcje') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in audits %}
+                <tr class="border-b border-border/50 hover:bg-surface-light transition">
+                    <td class="px-4 py-3">
+                        <a href="/companies/{{ a.company_id }}" class="text-gray-200 hover:text-accent no-underline font-medium">{{ a.company.name }}</a>
+                        {% if a.company.industry %}
+                        <div class="text-xs text-gray-500">{{ a.company.industry }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-gray-400 text-xs">{{ a.created_at.strftime('%d.%m.%Y') }}</td>
+                    <td class="px-4 py-3">
+                        {% if a.score_overall %}
+                        <span class="text-accent font-bold text-lg">{{ a.score_overall }}/5</span>
+                        {% else %}-{% endif %}
+                    </td>
+                    {% for s in [a.score_visibility, a.score_offer, a.score_trust, a.score_conversion, a.score_analytics] %}
+                    <td class="px-4 py-3">
+                        {% if s %}
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-12 bg-surface-dark rounded-full h-2">
+                                <div class="h-2 rounded-full {% if s >= 4 %}bg-emerald-400{% elif s >= 3 %}bg-amber-400{% else %}bg-red-400{% endif %}"
+                                     style="width: {{ s / 5 * 100 }}%"></div>
+                            </div>
+                            <span class="text-xs text-gray-400">{{ s }}</span>
+                        </div>
+                        {% else %}-{% endif %}
+                    </td>
+                    {% endfor %}
+                    <td class="px-4 py-3">
+                        {% if a.status == 'completed' %}
+                        <span class="badge-stage bg-emerald-500 text-white">{{ _('Ukończony') }}</span>
+                        {% else %}
+                        <span class="badge-stage bg-gray-600 text-white">{{ _('Szkic') }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        <div class="flex gap-1">
+                            <a href="/audits/{{ a.id }}/edit" class="text-accent hover:text-accent-light text-base no-underline transition" title="{{ _('Edytuj') }}">
+                                <i class="bi bi-pencil-square"></i>
+                            </a>
+                            <a href="/audits/{{ a.id }}/report" class="text-blue-400 hover:text-blue-300 text-base no-underline transition" title="{{ _('Raport HTML') }}">
+                                <i class="bi bi-file-earmark-richtext"></i>
+                            </a>
+                            <a href="/audits/{{ a.id }}/pdf" class="text-red-400 hover:text-red-300 text-base no-underline transition" title="{{ _('Raport PDF') }}">
+                                <i class="bi bi-file-earmark-pdf"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="bg-surface border border-border rounded-xl p-8 text-center">
+    <i class="bi bi-clipboard2-data text-4xl text-gray-600"></i>
+    <p class="text-gray-500 mt-3">{{ _('Brak audytów. Utwórz audyt ze strony szczegółów firmy.') }}</p>
+</div>
+{% endif %}
+{% endblock %}

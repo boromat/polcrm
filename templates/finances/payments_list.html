@@ -1,0 +1,100 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Przychody') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Przychody') }}{% endblock %}
+{% block page_subtitle %}{{ _('Ewidencja płatności - status opłacone / nieopłacone') }}{% endblock %}
+
+{% block topbar_actions %}
+<form method="POST" action="/finances/payments/generate-retainers" class="inline">
+    <button class="btn btn-ghost"><i class="bi bi-arrow-repeat"></i><span class="hidden sm:inline">{{ _('Generuj abonamenty') }}</span></button>
+</form>
+<a href="/finances/payments/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Nowa płatność') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'payments' %}{% include 'finances/_tabs.html' %}
+
+{# Filters #}
+<form method="GET" class="card-sm" style="padding: 12px 14px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+    {% set slabels = {'unpaid':_('Nieopłacone'),'paid':_('Opłacone'),'overdue':_('Przeterminowane'),'cancelled':_('Anulowane')} %}
+    <select name="status" class="input-focus" style="background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; font-size: 13px; color: var(--text); outline: none;">
+        <option value="">{{ _('Wszystkie statusy') }}</option>
+        {% for s in statuses %}<option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ slabels[s] }}</option>{% endfor %}
+    </select>
+    <select name="company_id" class="input-focus" style="background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; font-size: 13px; color: var(--text); outline: none;">
+        <option value="">{{ _('Wszystkie firmy') }}</option>
+        {% for c in companies %}<option value="{{ c.id }}" {% if selected_company_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary"><i class="bi bi-funnel"></i>{{ _('Filtruj') }}</button>
+    <a href="/finances/payments" class="chip">{{ _('Wyczyść') }}</a>
+</form>
+
+{% if payments %}
+{% set scolors = {'paid':'badge-success','unpaid':'badge-warning','overdue':'badge-danger','cancelled':'badge-neutral'} %}
+<div class="card-sm" style="padding: 0; overflow: hidden;">
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{{ _('Nr') }}</th>
+                    <th>{{ _('Firma') }}</th>
+                    <th>{{ _('Tytuł') }}</th>
+                    <th>{{ _('Rodzaj') }}</th>
+                    <th class="col-num">{{ _('Netto') }}</th>
+                    <th class="col-num">{{ _('Brutto') }}</th>
+                    <th>{{ _('Termin') }}</th>
+                    <th>Status</th>
+                    <th>{{ _('Autor') }}</th>
+                    <th style="text-align: right;">{{ _('Akcje') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr>
+                    <td class="mono" style="font-size: 11.5px; color: var(--text-subtle);">{{ p.payment_number or '-' }}</td>
+                    <td><a href="/companies/{{ p.company_id }}" style="color: var(--accent-light); text-decoration: none;">{{ p.company.name }}</a></td>
+                    <td style="color: var(--text);">{{ p.title }}</td>
+                    <td class="col-muted" style="font-size: 11.5px;">{{ p.kind_label }}</td>
+                    <td class="col-num col-muted">{{ '{:,.2f}'.format(p.amount_net or 0).replace(',', ' ') }}</td>
+                    <td class="col-num" style="color: white; font-weight: 600;">{{ '{:,.2f}'.format(p.amount_gross or 0).replace(',', ' ') }}</td>
+                    <td class="mono" style="font-size: 11.5px; color: var(--text-muted); white-space: nowrap;">{{ p.due_at.strftime('%d.%m.%Y') if p.due_at else '-' }}</td>
+                    <td><span class="badge-stage {{ scolors.get(p.status, 'badge-neutral') }}">{{ p.status_label }}</span></td>
+                    <td>
+                        {% if p.created_by_user_id %}
+                        {% set author = all_users|selectattr('id','equalto',p.created_by_user_id)|first %}
+                        {% if author %}<span class="author-avatar-xs" style="background: linear-gradient(135deg, {{ author.avatar_color }}, {{ author.avatar_color }}cc);" title="{{ author.name }}">{{ author.initials or author.name[0] }}</span>{% endif %}
+                        {% else %}<span class="col-muted">-</span>{% endif %}
+                    </td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        {% if p.status != 'paid' %}
+                        <form method="POST" action="/finances/payments/{{ p.id }}/mark-paid" class="inline">
+                            <button class="btn-success-sm" title="{{ _('Oznacz jako opłacone') }}"><i class="bi bi-cash-coin"></i></button>
+                        </form>
+                        {% endif %}
+                        <a href="/finances/payments/{{ p.id }}/edit" class="btn-ghost" style="padding: 6px 9px; font-size: 11.5px; display: inline-flex;"><i class="bi bi-pencil"></i></a>
+                        <form method="POST" action="/finances/payments/{{ p.id }}/delete" class="inline" onsubmit="return confirm({{ _('Usunąć płatność?')|tojson|forceescape }})">
+                            <button class="btn-danger-sm"><i class="bi bi-trash3"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-cash-coin"></i>
+    <p>{{ _('Brak płatności w tym widoku.') }}</p>
+    <span class="empty-hint">{{ _('Dodaj pierwszą fakturę albo wygeneruj abonamenty dla klientów retainerowych.') }}</span>
+    <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+        <a href="/finances/payments/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i>{{ _('Dodaj płatność') }}</a>
+        <form method="POST" action="/finances/payments/generate-retainers" class="inline">
+            <button class="btn btn-ghost"><i class="bi bi-arrow-repeat"></i>{{ _('Generuj abonamenty') }}</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

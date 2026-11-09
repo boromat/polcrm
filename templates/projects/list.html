@@ -1,0 +1,106 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Projekty WWW') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Projekty') }}{% endblock %}
+{% block page_subtitle %}{{ _('Strony WWW, kampanie content, projekty SEO') }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/projects/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Nowy projekt') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'projects' %}{% include '_produkcja_tabs.html' %}
+
+{% set slabels = {'planning': _('Planowanie'), 'active': _('W toku'), 'on_hold': _('Wstrzymany'), 'done': _('Zakończony'), 'cancelled': _('Anulowany')} %}
+{% set scolors_class = {'planning':'badge-neutral','active':'badge-info','on_hold':'badge-warning','done':'badge-success','cancelled':'badge-neutral'} %}
+
+{# ═════ STATS BENTO ═════ #}
+{% set active_count = projects|selectattr('status','equalto','active')|list|length %}
+{% set planning_count = projects|selectattr('status','equalto','planning')|list|length %}
+{% set done_count = projects|selectattr('status','equalto','done')|list|length %}
+{% set on_hold_count = projects|selectattr('status','equalto','on_hold')|list|length %}
+<div class="bento-top" style="grid-template-columns: repeat(4, 1fr);">
+    <div class="cell cell-clients" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-play-circle" style="color: var(--info);"></i>{{ _('W toku') }}</div>
+        <div class="cell-value sm gradient-info mono">{{ active_count }}</div>
+        <div class="cell-sub">{{ _('aktywne projekty') }}</div>
+    </div>
+    <div class="cell cell-audits" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-hourglass-split" style="color: var(--accent-light);"></i>{{ _('Planowanie') }}</div>
+        <div class="cell-value sm gradient-accent mono">{{ planning_count }}</div>
+        <div class="cell-sub">{{ _('do startu') }}</div>
+    </div>
+    <div class="cell cell-overdue" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-pause-circle" style="color: var(--warning);"></i>{{ _('Wstrzymane') }}</div>
+        <div class="cell-value sm gradient-warning mono">{{ on_hold_count }}</div>
+        <div class="cell-sub">on hold</div>
+    </div>
+    <div class="cell cell-balance" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-check2-circle" style="color: var(--success);"></i>{{ _('Zakończone') }}</div>
+        <div class="cell-value sm gradient-positive mono">{{ done_count }}</div>
+        <div class="cell-sub">done</div>
+    </div>
+</div>
+
+{# ═════ FILTERS ═════ #}
+<form method="GET" class="card-sm" style="padding: 12px 14px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+    <select name="status" class="input-focus" style="background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; font-size: 13px; color: var(--text); outline: none;">
+        <option value="">{{ _('Wszystkie statusy') }}</option>
+        {% for s in statuses %}<option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ slabels[s] }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary"><i class="bi bi-funnel"></i>{{ _('Filtruj') }}</button>
+</form>
+
+{# ═════ PROJECTS GRID ═════ #}
+{% if projects %}
+<div class="bento-bottom" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
+    {% for p in projects %}
+    <a href="/projects/{{ p.id }}" class="cell cell-audits" style="grid-column: span 1; display: block; text-decoration: none;">
+        <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px; margin-bottom: 12px;">
+            <h3 style="font-size: 15px; font-weight: 700; color: white; letter-spacing: -0.01em;">{{ p.name }}</h3>
+            <span class="badge-stage {{ scolors_class.get(p.status, 'badge-neutral') }}" style="flex-shrink: 0;">{{ p.status_label }}</span>
+        </div>
+
+        <div class="cell-sub" style="margin: 0 0 6px; display: flex; gap: 6px; flex-wrap: wrap;">
+            <span><i class="bi bi-tag"></i> {{ p.kind_label }}</span>
+            <span style="color: var(--text-subtle);">·</span>
+            <span><i class="bi bi-building"></i> {{ p.company.name }}</span>
+        </div>
+
+        {% if p.domain %}
+        <div class="mono" style="font-size: 11.5px; color: var(--accent-light); margin-bottom: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            <i class="bi bi-globe"></i> {{ p.domain }}
+        </div>
+        {% endif %}
+
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-subtle); margin-bottom: 6px;">
+            <span>{{ _('Postęp') }}</span>
+            <span class="mono">{{ p.progress_percent }}%</span>
+        </div>
+        <div class="pbar" style="flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; margin-bottom: 10px;">
+            <div class="pbar-fill" style="height: 100%; width: {{ p.progress_percent }}%; background: linear-gradient(90deg, var(--accent), var(--accent-light));"></div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: var(--text-muted); border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 8px; margin-top: 2px;">
+            <span><i class="bi bi-check2-square"></i> {{ ngettext('%(num)s zadanie', '%(num)s zadań', p.tasks|length) }}</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px;">
+                {% if p.deadline %}<span class="mono"><i class="bi bi-calendar-check"></i> {{ p.deadline.strftime('%d.%m.%Y') }}</span>{% endif %}
+                {% if p.created_by_user_id %}
+                {% set author = all_users|selectattr('id','equalto',p.created_by_user_id)|first %}
+                {% if author %}<span class="author-avatar-xs" style="background: linear-gradient(135deg, {{ author.avatar_color }}, {{ author.avatar_color }}cc);" title="{{ author.name }}">{{ author.initials or author.name[0] }}</span>{% endif %}
+                {% endif %}
+            </span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="padding: 60px 24px;">
+    <i class="bi bi-diagram-3"></i>
+    <p>{{ _('Brak projektów.') }}</p>
+    <a href="/projects/new" class="btn btn-primary" style="margin-top: 16px; display: inline-flex;"><i class="bi bi-plus-lg"></i>{{ _('Dodaj pierwszy') }}</a>
+</div>
+{% endif %}
+
+{% endblock %}

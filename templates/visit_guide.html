@@ -1,0 +1,242 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Scenariusz rozmowy') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Scenariusz rozmowy konsultacyjnej') }}{% endblock %}
+{% block page_subtitle %}{{ _('Interaktywny przewodnik po spotkaniu z klientem') }}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+<div class="max-w-3xl space-y-3">
+
+    <!-- Stage 1: Opening -->
+    <div class="guide-section bg-surface border border-border rounded-xl overflow-hidden card-sm">
+        <button type="button" onclick="toggleSection(this)"
+                class="w-full px-5 py-4 flex items-center gap-3 hover:bg-surface-light transition text-left">
+            <div class="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center flex-shrink-0 font-bold text-sm">1</div>
+            <div class="flex-1">
+                <div class="font-semibold text-white">{{ _('Otwarcie') }}</div>
+                <div class="text-xs text-gray-500">{{ _('2-3 min · Przedstawienie się, cel spotkania') }}</div>
+            </div>
+            <i class="bi bi-chevron-down text-gray-500 transition-transform section-arrow"></i>
+        </button>
+        <div class="section-content px-5 pb-5 pt-1 border-t border-border/50 hidden">
+            <div class="space-y-3 text-sm text-gray-300">
+                <div class="bg-surface-dark rounded-lg p-3">
+                    <div class="text-xs text-accent uppercase font-semibold mb-2">{{ _('Co powiedzieć') }}</div>
+                    <p>"{{ _('Dzień dobry, jestem [imię] z [nazwa agencji]. Dziękuję za poświęcony czas.') }}"</p>
+                    <p class="mt-2">"{{ _('Przeprowadziłem/am bezpłatny audyt marketingowy Państwa firmy. Chciałbym pokazać kilka konkretnych wniosków - co działa dobrze, a gdzie widzę szansę na więcej klientów.') }}"</p>
+                    <p class="mt-2">"{{ _('Spotkanie potrwa około 20-30 minut. Na końcu pokażę, jak moglibyśmy wspólnie nad tym pracować.') }}"</p>
+                </div>
+                <div class="bg-accent/10 border border-accent/20 rounded-lg p-3">
+                    <div class="text-xs text-accent uppercase font-semibold mb-1">{{ _('Cel etapu') }}</div>
+                    <ul class="list-disc list-inside text-gray-400 space-y-1">
+                        <li>{{ _('Zbudować rapport i zaufanie') }}</li>
+                        <li>{{ _('Ustalić ramy spotkania (czas, agenda)') }}</li>
+                        <li>{{ _('Pokazać profesjonalizm (masz przygotowany raport)') }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stage 2: Diagnosis -->
+    <div class="guide-section bg-surface border border-border rounded-xl overflow-hidden card-sm">
+        <button type="button" onclick="toggleSection(this)"
+                class="w-full px-5 py-4 flex items-center gap-3 hover:bg-surface-light transition text-left">
+            <div class="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center flex-shrink-0 font-bold text-sm">2</div>
+            <div class="flex-1">
+                <div class="font-semibold text-white">{{ _('Diagnoza') }}</div>
+                <div class="text-xs text-gray-500">{{ _('5-7 min · Pytania pogłębiające') }}</div>
+            </div>
+            <i class="bi bi-chevron-down text-gray-500 transition-transform section-arrow"></i>
+        </button>
+        <div class="section-content px-5 pb-5 pt-1 border-t border-border/50 hidden">
+            <div class="space-y-3 text-sm text-gray-300">
+                <div class="bg-surface-dark rounded-lg p-3">
+                    <div class="text-xs text-accent uppercase font-semibold mb-2">{{ _('Pytania do zadania') }}</div>
+                    <ol class="space-y-3">
+                        <li class="flex gap-2">
+                            <span class="text-accent font-bold">1.</span>
+                            <div>
+                                <p class="text-gray-200 font-medium">"{{ _('Skąd teraz przychodzą Pana/Pani klienci?') }}"</p>
+                                <p class="text-gray-500 text-xs mt-0.5">{{ _('Cel: zrozumieć obecne źródła leadów') }}</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-2">
+                            <span class="text-accent font-bold">2.</span>
+                            <div>
+                                <p class="text-gray-200 font-medium">"{{ _('Czy prowadzicie jakieś działania marketingowe online?') }}"</p>
+                                <p class="text-gray-500 text-xs mt-0.5">{{ _('Cel: ocenić świadomość i doświadczenie z marketingiem') }}</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-2">
+                            <span class="text-accent font-bold">3.</span>
+                            <div>
+                                <p class="text-gray-200 font-medium">"{{ _('Co jest największym wyzwaniem w pozyskiwaniu nowych klientów?') }}"</p>
+                                <p class="text-gray-500 text-xs mt-0.5">{{ _('Cel: zidentyfikować pain point (to jest klucz do sprzedaży)') }}</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-2">
+                            <span class="text-accent font-bold">4.</span>
+                            <div>
+                                <p class="text-gray-200 font-medium">"{{ _('Ile nowych klientów miesięcznie chcielibyście pozyskiwać?') }}"</p>
+                                <p class="text-gray-500 text-xs mt-0.5">{{ _('Cel: zrozumieć oczekiwania i budżet') }}</p>
+                            </div>
+                        </li>
+                        <li class="flex gap-2">
+                            <span class="text-accent font-bold">5.</span>
+                            <div>
+                                <p class="text-gray-200 font-medium">"{{ _('Czy korzystacie z Google Ads lub social media?') }}"</p>
+                                <p class="text-gray-500 text-xs mt-0.5">{{ _('Cel: ocenić obecne kanały i budżet') }}</p>
+                            </div>
+                        </li>
+                    </ol>
+                </div>
+                <div class="bg-amber-900/20 border border-amber-700/30 rounded-lg p-3">
+                    <div class="text-xs text-amber-400 uppercase font-semibold mb-1">{{ _('Wskazówka') }}</div>
+                    <p class="text-gray-400">{{ _('Słuchaj aktywnie - notuj odpowiedzi. Te informacje wykorzystasz w etapie 4 do dopasowania pakietu. Im więcej dowiesz się o problemach klienta, tym łatwiej pokażesz wartość współpracy.') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stage 3: Presentation -->
+    <div class="guide-section bg-surface border border-border rounded-xl overflow-hidden card-sm">
+        <button type="button" onclick="toggleSection(this)"
+                class="w-full px-5 py-4 flex items-center gap-3 hover:bg-surface-light transition text-left">
+            <div class="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center flex-shrink-0 font-bold text-sm">3</div>
+            <div class="flex-1">
+                <div class="font-semibold text-white">{{ _('Prezentacja wniosków') }}</div>
+                <div class="text-xs text-gray-500">{{ _('5-7 min · Pokaż raport: problemy + szanse + scoring') }}</div>
+            </div>
+            <i class="bi bi-chevron-down text-gray-500 transition-transform section-arrow"></i>
+        </button>
+        <div class="section-content px-5 pb-5 pt-1 border-t border-border/50 hidden">
+            <div class="space-y-3 text-sm text-gray-300">
+                <div class="bg-surface-dark rounded-lg p-3">
+                    <div class="text-xs text-accent uppercase font-semibold mb-2">{{ _('Jak prezentować raport') }}</div>
+                    <ol class="space-y-2 list-decimal list-inside text-gray-400">
+                        <li><span class="text-gray-200">{{ _('Pokaż ogólny scoring') }}</span> - "{{ _('Państwa firma uzyskała X/5 punktów w naszym audycie') }}"</li>
+                        <li><span class="text-gray-200">{{ _('Omów 3 główne problemy') }}</span> - {{ _('zacznij od najważniejszego, pokaż konkretne screenshoty') }}</li>
+                        <li><span class="text-gray-200">{{ _('Pokaż 3 szanse') }}</span> - "{{ _('To są obszary, gdzie widzę największy potencjał wzrostu') }}"</li>
+                        <li><span class="text-gray-200">{{ _('Porównaj z konkurencją') }}</span> - "{{ _('Proszę zobaczyć, jak wypadacie na tle konkurentów w okolicy') }}"</li>
+                    </ol>
+                </div>
+                <div class="bg-accent/10 border border-accent/20 rounded-lg p-3">
+                    <div class="text-xs text-accent uppercase font-semibold mb-1">{{ _('Kluczowe zasady') }}</div>
+                    <ul class="list-disc list-inside text-gray-400 space-y-1">
+                        <li>{{ _('Mów o <strong class="text-gray-200">szansach</strong>, nie o "błędach" - nikt nie lubi krytyki') }}</li>
+                        <li>{{ _('Używaj <strong class="text-gray-200">konkretnych liczb</strong> - "Wasz konkurent ma 47 opinii, a Wy 8"') }}</li>
+                        <li>{{ _('Pokazuj <strong class="text-gray-200">screenshoty</strong> - wizualny dowód działa lepiej niż słowa') }}</li>
+                        <li>{{ _('Nawiązuj do <strong class="text-gray-200">odpowiedzi z etapu 2</strong> - "Mówił Pan, że brakuje klientów z internetu - oto dlaczego"') }}</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stage 4: Proposal -->
+    <div class="guide-section bg-surface border border-border rounded-xl overflow-hidden card-sm">
+        <button type="button" onclick="toggleSection(this)"
+                class="w-full px-5 py-4 flex items-center gap-3 hover:bg-surface-light transition text-left">
+            <div class="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center flex-shrink-0 font-bold text-sm">4</div>
+            <div class="flex-1">
+                <div class="font-semibold text-white">{{ _('Propozycja współpracy') }}</div>
+                <div class="text-xs text-gray-500">{{ _('3-5 min · Dopasowany pakiet z uzasadnieniem') }}</div>
+            </div>
+            <i class="bi bi-chevron-down text-gray-500 transition-transform section-arrow"></i>
+        </button>
+        <div class="section-content px-5 pb-5 pt-1 border-t border-border/50 hidden">
+            <div class="space-y-3 text-sm text-gray-300">
+                <div class="bg-surface-dark rounded-lg p-3">
+                    <div class="text-xs text-accent uppercase font-semibold mb-2">{{ _('Jak proponować') }}</div>
+                    <ol class="space-y-2 list-decimal list-inside text-gray-400">
+                        <li><span class="text-gray-200">{{ _('Zaproponuj 1-2 pakiety') }}</span> - {{ _('nie pokazuj wszystkich trzech, dopasuj do skali firmy') }}</li>
+                        <li><span class="text-gray-200">{{ _('Uzasadnij wybór') }}</span> - "{{ _('Na podstawie tego co widzę w audycie, rekomendowałbym pakiet GROWTH, bo...') }}"</li>
+                        <li><span class="text-gray-200">{{ _('Pokaż konkretne deliverables') }}</span> - {{ _('lista co klient dostanie') }}</li>
+                        <li><span class="text-gray-200">{{ _('Podaj cenę pewnie') }}</span> - {{ _('nie przepraszaj za cenę, pokaż wartość') }}</li>
+                    </ol>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div class="bg-accent/10 border border-accent/20 rounded-lg p-3 text-center">
+                        <div class="text-accent font-bold">START</div>
+                        <div class="text-xs text-gray-500 mt-1">{{ _('Quick wins · 30 dni') }}</div>
+                        <div class="text-xs text-gray-400 mt-1">{{ _('Dla firm startujących online') }}</div>
+                    </div>
+                    <div class="bg-blue-900/20 border border-blue-700/30 rounded-lg p-3 text-center">
+                        <div class="text-blue-400 font-bold">GROWTH</div>
+                        <div class="text-xs text-gray-500 mt-1">{{ _('Rozszerzony · 60 dni') }}</div>
+                        <div class="text-xs text-gray-400 mt-1">{{ _('Najczęściej rekomendowany') }}</div>
+                    </div>
+                    <div class="bg-amber-900/20 border border-amber-700/30 rounded-lg p-3 text-center">
+                        <div class="text-amber-400 font-bold">PREMIUM</div>
+                        <div class="text-xs text-gray-500 mt-1">{{ _('Pełny marketing · 90 dni') }}</div>
+                        <div class="text-xs text-gray-400 mt-1">{{ _('Dla ambitnych firm') }}</div>
+                    </div>
+                </div>
+
+                <div class="bg-amber-900/20 border border-amber-700/30 rounded-lg p-3">
+                    <div class="text-xs text-amber-400 uppercase font-semibold mb-1">{{ _('Jak reagować na "za drogo"') }}</div>
+                    <ul class="list-disc list-inside text-gray-400 space-y-1">
+                        <li>"{{ _('Rozumiem. Proszę spojrzeć na to tak: jeden nowy klient z internetu to ile dla Państwa wart?') }}"</li>
+                        <li>"{{ _('Możemy zacząć od pakietu START i rozbudować po pierwszych efektach') }}"</li>
+                        <li>"{{ _('Oferujemy też warianty płatności - możemy rozłożyć na raty') }}"</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stage 5: Closing -->
+    <div class="guide-section bg-surface border border-border rounded-xl overflow-hidden card-sm">
+        <button type="button" onclick="toggleSection(this)"
+                class="w-full px-5 py-4 flex items-center gap-3 hover:bg-surface-light transition text-left">
+            <div class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 font-bold text-sm">5</div>
+            <div class="flex-1">
+                <div class="font-semibold text-white">{{ _('Domknięcie') }}</div>
+                <div class="text-xs text-gray-500">{{ _('2-3 min · Ustal następny krok') }}</div>
+            </div>
+            <i class="bi bi-chevron-down text-gray-500 transition-transform section-arrow"></i>
+        </button>
+        <div class="section-content px-5 pb-5 pt-1 border-t border-border/50 hidden">
+            <div class="space-y-3 text-sm text-gray-300">
+                <div class="bg-surface-dark rounded-lg p-3">
+                    <div class="text-xs text-accent uppercase font-semibold mb-2">{{ _('Warianty domknięcia') }}</div>
+                    <div class="space-y-3">
+                        <div class="border-l-2 border-emerald-500 pl-3">
+                            <div class="text-emerald-400 font-medium text-xs uppercase">{{ _('Klient chce współpracować') }}</div>
+                            <p class="text-gray-400 mt-1">"{{ _('Świetnie! Przygotuję umowę i wyślę do Państwa mailem jeszcze dziś. Kiedy moglibyśmy zacząć?') }}"</p>
+                        </div>
+                        <div class="border-l-2 border-amber-500 pl-3">
+                            <div class="text-amber-400 font-medium text-xs uppercase">{{ _('Klient się zastanawia') }}</div>
+                            <p class="text-gray-400 mt-1">"{{ _('Rozumiem, to ważna decyzja. Wyślę Panu podsumowanie mailem. Czy mogę zadzwonić w czwartek, żeby omówić pytania?') }}"</p>
+                        </div>
+                        <div class="border-l-2 border-red-500 pl-3">
+                            <div class="text-red-400 font-medium text-xs uppercase">{{ _('Klient odmawia') }}</div>
+                            <p class="text-gray-400 mt-1">"{{ _('Dziękuję za spotkanie. Raport zostawiamy - gdyby cokolwiek się zmieniło, zapraszam do kontaktu. Tymczasem polecam chociaż [jedno quick win działanie].') }}"</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-emerald-900/20 border border-emerald-700/30 rounded-lg p-3">
+                    <div class="text-xs text-emerald-400 uppercase font-semibold mb-1">{{ _('Zawsze ustal next step') }}</div>
+                    <p class="text-gray-400">{{ _('Nigdy nie wychodź ze spotkania bez ustalonego następnego kroku - data follow-up, mail z ofertą, kolejne spotkanie. Wpisz to od razu w aplikacji (wizyta → follow-up).') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleSection(btn) {
+    const content = btn.nextElementSibling;
+    const arrow = btn.querySelector('.section-arrow');
+    content.classList.toggle('hidden');
+    arrow.style.transform = content.classList.contains('hidden') ? '' : 'rotate(180deg)';
+}
+</script>
+{% endblock %}

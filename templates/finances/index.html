@@ -1,0 +1,301 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Finanse') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Finanse') }}{% endblock %}
+{% block page_subtitle %}{{ _('Bilans za %(month)s %(year)s', month=balance.month_label, year=balance.year) }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/finances/payments/new" class="btn btn-ghost"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Płatność') }}</span></a>
+<a href="/finances/expenses/new" class="btn btn-ghost"><i class="bi bi-receipt"></i><span class="hidden sm:inline">{{ _('Koszt') }}</span></a>
+<a href="/finances/report/internal" class="btn btn-primary"><i class="bi bi-graph-up"></i><span class="hidden sm:inline">{{ _('Raport') }}</span></a>
+{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC" crossorigin="anonymous"></script>
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'index' %}{% include 'finances/_tabs.html' %}
+
+{# ═════ TOP BENTO ═════ #}
+<div class="bento-top">
+
+    {# Bilans (HERO) #}
+    <div class="cell cell-hero" style="grid-column: span 3; grid-row: span 2;">
+        <div class="hero-inner">
+            <div>
+                <div class="hero-greeting">{{ _('Bilans miesiąca - %(month)s %(year)s', month=balance.month_label, year=balance.year) }}</div>
+                <div class="hero-title" style="font-size: 48px;">
+                    <span class="mono {% if balance.balance >= 0 %}gradient-positive{% else %}gradient-negative{% endif %}">
+                        {{ '{:,.2f}'.format(balance.balance).replace(',', ' ') }}
+                    </span>
+                    <span style="font-size: 18px; color: var(--text-muted); font-weight: 600;">zł</span>
+                </div>
+                <div class="hero-line" style="display: flex; gap: 16px; flex-wrap: wrap;">
+                    <span class="up mono">↑ {{ '{:,.2f}'.format(balance.revenue_total).replace(',', ' ') }} zł</span>
+                    <span class="down mono">↓ {{ '{:,.2f}'.format(balance.expense_total).replace(',', ' ') }} zł</span>
+                    <span style="color: var(--text-muted);">{{ _('subskr:') }} <span class="mono">{{ '{:,.2f}'.format(balance.subscription_allocation).replace(',', ' ') }} zł</span></span>
+                </div>
+            </div>
+            <div class="hero-actions">
+                <a href="/finances/payments" class="btn btn-primary"><i class="bi bi-cash-coin"></i>{{ _('Przychody') }}</a>
+                <a href="/finances/expenses" class="btn btn-ghost"><i class="bi bi-receipt"></i>{{ _('Koszty') }}</a>
+                <a href="/finances/subscriptions" class="btn btn-ghost"><i class="bi bi-arrow-repeat"></i>{{ _('Subskrypcje') }}</a>
+            </div>
+        </div>
+    </div>
+
+    {# Przychód #}
+    <div class="cell cell-balance" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-arrow-up-right-circle" style="color: var(--success);"></i>{{ _('Przychód') }}</div>
+        <div class="cell-value sm gradient-positive mono">{{ '{:,.0f}'.format(balance.revenue_total).replace(',', ' ') }}</div>
+        <div class="cell-sub">{{ _('zapłacone w mies.') }}</div>
+    </div>
+
+    {# Koszty #}
+    <div class="cell cell-overdue" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-arrow-down-right-circle" style="color: var(--danger);"></i>{{ _('Koszty') }}</div>
+        <div class="cell-value sm gradient-negative mono">{{ '{:,.0f}'.format(balance.expense_total).replace(',', ' ') }}</div>
+        <div class="cell-sub">{{ _('data płatności') }}</div>
+    </div>
+
+    {# Subskrypcje #}
+    <div class="cell cell-content-wip" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-arrow-repeat" style="color: var(--pink-light);"></i>{{ _('Subskr.') }}</div>
+        <div class="cell-value sm gradient-warning mono">{{ '{:,.0f}'.format(balance.subscription_allocation).replace(',', ' ') }}</div>
+        <div class="cell-sub">{{ _('amortyzacja') }}</div>
+    </div>
+
+    {# Zaległe #}
+    <div class="cell cell-overdue {% if not overdue.count %}empty{% endif %}" style="grid-column: span 3;">
+        <div class="cell-label">
+            {% if overdue.count %}<i class="bi bi-exclamation-triangle-fill" style="color: var(--warning);"></i>{% else %}<i class="bi bi-check-circle-fill" style="color: var(--success);"></i>{% endif %}
+            {{ _('Zaległe płatności') }}
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;">
+            <div class="cell-value big {% if overdue.count %}gradient-warning{% else %}gradient-positive{% endif %} mono">{{ overdue.count }}</div>
+            <div class="mono" style="color: var(--text-muted); font-size: 18px; font-weight: 700;">{{ '{:,.0f}'.format(overdue.total_gross).replace(',', ' ') }} zł</div>
+        </div>
+        <div class="cell-sub">{% if overdue.count %}{{ _('do odzyskania') }}{% else %}{{ _('wszystko opłacone') }}{% endif %}</div>
+    </div>
+
+</div>
+
+{# ═════ TREND 6M (Chart.js) ═════ #}
+<div class="section-label">{{ _('Trend ostatnich 6 miesięcy') }}</div>
+<div class="card-sm" style="padding: 18px; margin-bottom: 22px;">
+    <div style="position: relative; height: 260px;">
+        <canvas id="financeTrendChart"></canvas>
+    </div>
+</div>
+
+{# ═════ BOTTOM BENTO ═════ #}
+<div class="bento-bottom">
+
+    {# Zaległe - lista #}
+    <div class="cell cell-attention" style="grid-column: span 3;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="cell-label" style="margin-bottom: 0;"><i class="bi bi-exclamation-triangle" style="color: var(--danger);"></i>{{ _('Lista zaległych') }}</div>
+            <a href="/finances/payments?status=overdue" class="chip">{{ _('Wszystkie →') }}</a>
+        </div>
+        {% if overdue.count %}
+        <div style="margin-top: 12px;">
+            {% for p in overdue.payments[:8] %}
+            <a href="/finances/payments/{{ p.id }}/edit" class="panel-row">
+                <div style="min-width: 0; flex: 1;">
+                    <strong>{{ p.payment_number }}</strong> - {{ p.title }}
+                    {% if p.company %}<div class="meta">{{ p.company.name }}</div>{% endif %}
+                </div>
+                <span class="right" style="color: var(--danger-light); font-weight: 700;">{{ '{:,.2f}'.format(p.amount_gross).replace(',', ' ') }} zł</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="panel-empty"><i class="bi bi-check-circle" style="color: var(--success);"></i>{{ _('Brak zaległości') }}</div>
+        {% endif %}
+    </div>
+
+    {# Koszty wg kategorii - donut chart #}
+    <div class="cell cell-pipeline" style="grid-column: span 3;">
+        <div class="cell-label"><i class="bi bi-tags" style="color: var(--pink-light);"></i>{{ _('Koszty wg kategorii') }}</div>
+        {% set cat_labels = {'seo_tools':_('Narzędzia SEO'),'subcontractor':_('Podwykonawcy'),'marketing':_('Marketing własny'),'office_transport':_('Biuro i transport')} %}
+        {% set cat_colors = {'seo_tools':'#a78bfa','subcontractor':'#fbbf24','marketing':'#60a5fa','office_transport':'#34d399'} %}
+        {% if category_breakdown %}
+        <div style="display: grid; grid-template-columns: minmax(180px, 200px) 1fr; gap: 20px; align-items: center; margin-top: 12px;">
+            <div style="position: relative; height: 180px;">
+                <canvas id="financeCategoryChart"></canvas>
+            </div>
+            <div class="pipe-list" style="gap: 8px;">
+                {% set cat_total = category_breakdown.values()|sum %}
+                {% for cat, amt in category_breakdown.items() %}
+                <div class="pipe-item">
+                    <span class="pdot" style="background: {{ cat_colors.get(cat, '#94a3b8') }}; box-shadow: 0 0 10px {{ cat_colors.get(cat, '#94a3b8') }};"></span>
+                    <span class="pname">{{ cat_labels.get(cat, cat) }}</span>
+                    <strong class="mono">{{ '{:,.0f}'.format(amt).replace(',', ' ') }} <span style="color: var(--text-subtle); font-weight: 500; font-size: 11px;">zł · {{ (amt/cat_total*100)|round if cat_total else 0 }}%</span></strong>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="panel-empty"><i class="bi bi-receipt"></i>{{ _('Brak kosztów w tym miesiącu') }}</div>
+        {% endif %}
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    function waitForChart(cb) {
+        if (window.Chart) cb();
+        else setTimeout(() => waitForChart(cb), 50);
+    }
+
+    const trend = {{ trend|tojson }};
+    const categoryData = {{ category_breakdown|tojson if category_breakdown else '{}' }};
+    const CAT_LABELS = {'seo_tools':{{ _('Narzędzia SEO')|tojson }},'subcontractor':{{ _('Podwykonawcy')|tojson }},'marketing':{{ _('Marketing własny')|tojson }},'office_transport':{{ _('Biuro i transport')|tojson }}};
+    const CAT_COLORS = {'seo_tools':'#a78bfa','subcontractor':'#fbbf24','marketing':'#60a5fa','office_transport':'#34d399'};
+
+    document.addEventListener('DOMContentLoaded', () => waitForChart(() => {
+        Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+        Chart.defaults.color = '#a1a5b0';
+        Chart.defaults.borderColor = 'rgba(108, 92, 231, 0.12)';
+
+        // Trend chart (line)
+        const trendEl = document.getElementById('financeTrendChart');
+        if (trendEl && trend.length) {
+            const ctx = trendEl.getContext('2d');
+            const grad1 = ctx.createLinearGradient(0, 0, 0, 260);
+            grad1.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
+            grad1.addColorStop(1, 'rgba(16, 185, 129, 0)');
+            const grad2 = ctx.createLinearGradient(0, 0, 0, 260);
+            grad2.addColorStop(0, 'rgba(239, 68, 68, 0.25)');
+            grad2.addColorStop(1, 'rgba(239, 68, 68, 0)');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: trend.map(t => t.label),
+                    datasets: [
+                        {
+                            label: {{ _('Przychód')|tojson }},
+                            data: trend.map(t => t.revenue),
+                            borderColor: '#34d399',
+                            backgroundColor: grad1,
+                            fill: true,
+                            tension: 0.35,
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#34d399',
+                            pointBorderColor: '#0a0a14',
+                            pointBorderWidth: 2,
+                            pointHoverRadius: 6,
+                        },
+                        {
+                            label: {{ _('Koszt')|tojson }},
+                            data: trend.map(t => t.expense),
+                            borderColor: '#f87171',
+                            backgroundColor: grad2,
+                            fill: true,
+                            tension: 0.35,
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#f87171',
+                            pointBorderColor: '#0a0a14',
+                            pointBorderWidth: 2,
+                            pointHoverRadius: 6,
+                        },
+                        {
+                            label: {{ _('Bilans')|tojson }},
+                            data: trend.map(t => t.balance),
+                            borderColor: '#a29bfe',
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.35,
+                            borderWidth: 2,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#a29bfe',
+                            pointHoverRadius: 5,
+                        },
+                    ],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e5e7eb', usePointStyle: true, pointStyle: 'circle', boxWidth: 8, padding: 16 },
+                        },
+                        tooltip: {
+                            backgroundColor: '#1a1a2e',
+                            titleColor: '#fff',
+                            bodyColor: '#e5e7eb',
+                            borderColor: '#2a2a44',
+                            borderWidth: 1,
+                            padding: 10,
+                            titleFont: { weight: '600' },
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} zł`,
+                            },
+                        },
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(42, 42, 68, 0.3)' }, ticks: { color: '#6b7280' } },
+                        y: {
+                            grid: { color: 'rgba(42, 42, 68, 0.3)' },
+                            ticks: {
+                                color: '#6b7280',
+                                callback: (v) => (v / 1000).toLocaleString('pl-PL') + 'k',
+                            },
+                        },
+                    },
+                },
+            });
+        }
+
+        // Category donut
+        const catEl = document.getElementById('financeCategoryChart');
+        if (catEl && Object.keys(categoryData).length) {
+            const labels = Object.keys(categoryData).map(k => CAT_LABELS[k] || k);
+            const values = Object.values(categoryData);
+            const colors = Object.keys(categoryData).map(k => CAT_COLORS[k] || '#94a3b8');
+            new Chart(catEl, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: '#0f0f1a',
+                        borderWidth: 3,
+                        hoverOffset: 6,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1a1a2e',
+                            titleColor: '#fff',
+                            bodyColor: '#e5e7eb',
+                            borderColor: '#2a2a44',
+                            borderWidth: 1,
+                            padding: 10,
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.label}: ${ctx.parsed.toLocaleString('pl-PL')} zł`,
+                            },
+                        },
+                    },
+                },
+            });
+        }
+    }));
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,19 @@
+{# Zakladki finansow - include na kazdej stronie /finances/* #}
+{# Uzycie: {% set active_tab = 'payments' %}  {% include 'finances/_tabs.html' %} #}
+
+<div class="fin-tabs" style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 0;">
+    {% set tabs = [
+        ('index', 'bi-pie-chart-fill', _('Bilans'), url_for('finances_index')),
+        ('payments', 'bi-cash-coin', _('Przychody'), url_for('finances_payments')),
+        ('expenses', 'bi-receipt', _('Koszty'), url_for('finances_expenses')),
+        ('subscriptions', 'bi-arrow-repeat', _('Subskrypcje'), url_for('finances_subscriptions')),
+        ('report', 'bi-graph-up', _('Raport wewnetrzny'), url_for('finances_report_internal')),
+    ] %}
+    {% for key, icon, label, href in tabs %}
+        <a href="{{ href }}"
+           class="fin-tab {% if active_tab == key %}active{% endif %}"
+           style="padding: 10px 16px; text-decoration: none; color: {% if active_tab == key %}var(--accent){% else %}var(--text-muted){% endif %}; border-bottom: 2px solid {% if active_tab == key %}var(--accent){% else %}transparent{% endif %}; font-weight: {% if active_tab == key %}700{% else %}500{% endif %}; font-size: 14px; transition: all 0.15s; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -1px;">
+            <i class="bi {{ icon }}"></i>{{ label }}
+        </a>
+    {% endfor %}
+</div>

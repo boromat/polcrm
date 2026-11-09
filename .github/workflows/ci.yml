@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Tylko odczyt: nic tutaj nie zapisuje do repozytorium.
+permissions:
+  contents: read
+
+# Nowy push na tę samą gałąź sprawia, że poprzednie uruchomienie nie ma już sensu.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Testy (Python ${{ matrix.python }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.12", "3.13"]
+        include:
+          # Windows, bo lokalnie aplikację uruchamia się przez scripts/start.bat.
+          - os: windows-latest
+            python: "3.13"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Instalacja (z polanonem, żeby testy maskowania szły na prawdziwej bibliotece)
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Lint (pyflakes przez ruff)
+        run: python -m ruff check .
+
+      - name: Testy
+        run: python -m pytest
+
+  postgres:
+    name: Testy na PostgreSQL 16
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: polcrm
+          POSTGRES_PASSWORD: polcrm-ci
+          POSTGRES_DB: polcrm_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U polcrm -d polcrm_test"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Instalacja
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Testy (cały zestaw na PostgreSQL)
+        env:
+          TEST_DATABASE_URL: postgresql+psycopg://polcrm:polcrm-ci@localhost:5432/polcrm_test
+        run: python -m pytest
+
+  docker:
+    name: Obraz Dockera i docker-compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Budowanie obrazu
+        run: docker build -t polcrm:ci .
+
+      - name: Walidacja docker-compose.yml
+        run: cp .env.example .env && POSTGRES_PASSWORD=ci docker compose config --quiet
+
+  tailwind:
+    name: Zbudowany Tailwind jest aktualny
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # static/css/tailwind.css jest w repozytorium. Gdy ktoś doda klasę w szablonie i nie przebuduje
+      # CSS, ten krok pokaże różnicę zamiast cicho rozjechanego wyglądu.
+      - name: Przebuduj i porównaj
+        run: |
+          npx --yes tailwindcss@3.4.17 -c tailwind.config.js -i static/css/tailwind.input.css -o /tmp/tailwind.css --minify
+          diff -q /tmp/tailwind.css static/css/tailwind.css

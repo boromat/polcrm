@@ -1,0 +1,96 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Wyniki wyszukiwania') }} - PolCRM{% endblock %}
+{% block page_title %}{{ _('Wyszukiwarka globalna') }}{% endblock %}
+{% block page_subtitle %}{% if q %}{{ _('Wyniki dla: <strong>%(q)s</strong> · znaleziono %(total)s', q=q, total=total) }}{% else %}{{ _('Wpisz frazę, aby przeszukać wszystko') }}{% endif %}{% endblock %}
+
+{% block content %}
+<form method="GET" action="{{ url_for('global_search') }}" class="card-sm" style="padding: 18px; margin-bottom: 20px;">
+    <div style="display: flex; gap: 10px;">
+        <input type="search" name="q" value="{{ q }}" autofocus
+               placeholder="{{ _('Szukaj wszędzie: firmy, zadania, projekty, notatki, content, baza wiedzy, płatności, dostępy, szablony, kontrakty...') }}"
+               style="flex: 1; padding: 10px 14px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px;">
+        <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">
+            <i class="bi bi-search"></i> {{ _('Szukaj') }}
+        </button>
+    </div>
+</form>
+
+{% if q and total == 0 %}
+<div class="card-sm" style="padding: 40px; text-align: center; color: var(--text-subtle);">
+    <i class="bi bi-search" style="font-size: 40px; opacity: 0.4;"></i>
+    <p style="margin-top: 16px;">{{ _('Brak wyników dla <strong>%(q)s</strong>.', q=q) }}</p>
+</div>
+{% endif %}
+
+{% for label, icon, endpoint, id_key, items in groups %}
+    {% if items %}
+    <div class="section-label" style="margin-top: 24px;">
+        <i class="{{ icon }}"></i> {{ label }}
+        <span class="chip" style="margin-left: 8px;">{{ items|length }}</span>
+    </div>
+    <div class="card-sm" style="padding: 6px;">
+        {% for item in items %}
+            {% set href = url_for(endpoint, **{id_key: item.id}) if endpoint else None %}
+            <a {% if href %}href="{{ href }}"{% endif %}
+               class="search-row"
+               style="display: flex; gap: 12px; padding: 12px 14px; border-radius: 8px; text-decoration: none; color: inherit; transition: background 0.15s; {% if not href %}cursor: default;{% endif %}"
+               onmouseover="this.style.background='var(--surface-dark)'"
+               onmouseout="this.style.background='transparent'">
+
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 600; font-size: 14px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {# Pokaz najlepsza nazwe zaleznie od typu #}
+                        {%- if item.__class__.__name__ == 'Company' -%}
+                            {{ item.name }}
+                        {%- elif item.__class__.__name__ == 'Task' -%}
+                            {{ item.title }}
+                        {%- elif item.__class__.__name__ == 'Project' -%}
+                            {{ item.name }}
+                        {%- elif item.__class__.__name__ == 'Note' -%}
+                            {{ item.title or (item.content[:60] ~ '...' if item.content and item.content|length > 60 else item.content) }}
+                        {%- elif item.__class__.__name__ == 'ContentPost' -%}
+                            {{ item.title }}
+                        {%- elif item.__class__.__name__ == 'KnowledgeArticle' -%}
+                            {{ item.title }}
+                        {%- elif item.__class__.__name__ == 'Payment' -%}
+                            {{ item.payment_number or _('Płatność') }} - {{ item.title }}
+                        {%- elif item.__class__.__name__ == 'ClientCredential' -%}
+                            {{ item.label }}
+                        {%- elif item.__class__.__name__ == 'EmailTemplate' -%}
+                            {{ item.name }} <span style="color: var(--text-subtle); font-weight: 400;">({{ item.key }})</span>
+                        {%- elif item.__class__.__name__ == 'Contract' -%}
+                            {{ item.name }}
+                        {%- endif -%}
+                    </div>
+
+                    <div style="font-size: 12px; color: var(--text-subtle); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {%- if item.__class__.__name__ == 'Company' -%}
+                            {{ item.address }}{% if item.industry %} · {{ item.industry }}{% endif %}{% if item.pipeline_stage %} · {{ item.pipeline_stage }}{% endif %}
+                        {%- elif item.__class__.__name__ == 'Task' -%}
+                            {{ item.status }}{% if item.priority %} · {{ item.priority }}{% endif %}{% if item.deadline %} · {{ _('do %(date)s', date=item.deadline.strftime('%d.%m.%Y')) }}{% endif %}
+                        {%- elif item.__class__.__name__ == 'Project' -%}
+                            {{ item.status }}{% if item.kind %} · {{ item.kind }}{% endif %}
+                        {%- elif item.__class__.__name__ == 'Note' -%}
+                            {{ item.scope }}{% if item.created_at %} · {{ item.created_at.strftime('%d.%m.%Y') }}{% endif %}
+                        {%- elif item.__class__.__name__ == 'ContentPost' -%}
+                            {{ item.content_type }} · {{ item.status }}
+                        {%- elif item.__class__.__name__ == 'KnowledgeArticle' -%}
+                            {{ item.category }}
+                        {%- elif item.__class__.__name__ == 'Payment' -%}
+                            {{ item.amount_gross or item.amount_net }} zł · {{ item.status }}
+                        {%- elif item.__class__.__name__ == 'ClientCredential' -%}
+                            {{ item.login_url }}
+                        {%- elif item.__class__.__name__ == 'EmailTemplate' -%}
+                            {{ item.subject_template[:80] }}
+                        {%- elif item.__class__.__name__ == 'Contract' -%}
+                            {{ item.status }}
+                        {%- endif -%}
+                    </div>
+                </div>
+            </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+{% endfor %}
+
+{% endblock %}

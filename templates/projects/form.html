@@ -1,0 +1,73 @@
+{% extends "layout.html" %}
+{% block title %}{% if project %}{{ _('Edycja projektu') }}{% else %}{{ _('Nowy projekt') }}{% endif %} - PolCRM{% endblock %}
+
+{% block page_title %}{% if project %}{{ _('Edycja projektu') }}{% else %}{{ _('Nowy projekt') }}{% endif %}{% endblock %}
+{% block page_subtitle %}{{ _('Strona WWW, SEO retainer, kampania content') }}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="max-w-2xl space-y-4">
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="grid md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Nazwa *') }}</label>
+                <input type="text" name="name" required value="{{ project.name if project else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none" placeholder="{{ _('np. Strona WWW dla X') }}">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Firma *') }}</label>
+                <select name="company_id" required class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    <option value="">-</option>
+                    {% for c in companies %}<option value="{{ c.id }}" {% if (project and project.company_id == c.id) or (preset_company_id == c.id) %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Rodzaj') }}</label>
+                <select name="kind" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    {% set klabels = {'website': _('Strona WWW'), 'seo_retainer': _('Abonament SEO'), 'content_campaign': _('Kampania content'), 'other': _('Inny')} %}
+                    {% for k in kinds %}<option value="{{ k }}" {% if project and project.kind == k %}selected{% endif %}>{{ klabels[k] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Domena') }}</label>
+                <input type="text" name="domain" value="{{ project.domain if project else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none" placeholder="example.com">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">CMS</label>
+                <input type="text" name="cms" value="{{ project.cms if project else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none" placeholder="WordPress / Shopify / custom">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Hosting</label>
+                <input type="text" name="hosting" value="{{ project.hosting if project else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Budżet netto') }}</label>
+                <input type="number" step="0.01" name="budget_net" value="{{ project.budget_net if project else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Status</label>
+                <select name="status" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    {% set slabels = {'planning': _('Planowanie'), 'active': _('W toku'), 'on_hold': _('Wstrzymany'), 'done': _('Zakończony'), 'cancelled': _('Anulowany')} %}
+                    {% for s in statuses %}<option value="{{ s }}" {% if project and project.status == s %}selected{% endif %}>{{ slabels[s] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Data startu') }}</label>
+                <input type="date" name="started_at" value="{{ project.started_at.isoformat() if project and project.started_at else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Deadline</label>
+                <input type="date" name="deadline" value="{{ project.deadline.isoformat() if project and project.deadline else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Uwagi') }}</label>
+                <textarea name="notes" rows="3" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">{{ project.notes if project else '' }}</textarea>
+            </div>
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 14px;">
+        <button class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+        <a href="/projects" class="btn btn-ghost">{{ _('Anuluj') }}</a>
+    </div>
+</form>
+{% endblock %}

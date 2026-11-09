@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Skrzynka') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Skrzynka') }}{% endblock %}
+{% block page_subtitle %}{{ _('Wzmianki @%(name)s z zadań i notatek', name=(current_user.name if current_user else '')) }}{% endblock %}
+
+{% block topbar_actions %}
+{% set unread = mentions|rejectattr('read_at')|list|length %}
+{% if unread %}
+<form method="POST" action="/inbox/read-all" class="inline">
+    <button class="btn btn-ghost"><i class="bi bi-check2-all"></i><span class="hidden sm:inline">{{ _('Oznacz wszystko przeczytane') }}</span></button>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% if mentions %}
+<div style="max-width: 780px;">
+    {% for m in mentions %}
+    <form method="POST" action="/inbox/{{ m.id }}/read" style="display: block;">
+        <button type="submit" class="inbox-item {% if m.read_at %}read{% else %}unread{% endif %}" style="background: {% if m.read_at %}var(--surface){% else %}var(--surface){% endif %}; width: 100%; text-align: left; cursor: pointer; font-family: inherit;">
+            {% if m.author %}
+            <span class="author-avatar-sm" style="background: linear-gradient(135deg, {{ m.author.avatar_color }}, {{ m.author.avatar_color }}cc);">{{ m.author.initials or m.author.name[0] }}</span>
+            {% else %}
+            <span class="author-avatar-sm" style="background: var(--text-subtle);">?</span>
+            {% endif %}
+            <div style="flex: 1; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <strong style="color: white; font-size: 13px;">{{ m.author.name if m.author else _('Ktoś') }}</strong>
+                    {% set kinds = {'task_comment': _('komentarzu'), 'note': _('notatce'), 'task_description': _('opisie zadania')} %}
+                    <span style="color: var(--text-muted); font-size: 12px;">{{ _('wspomniał(a) Cię w %(where)s', where=kinds.get(m.source_type, m.source_type)) }}</span>
+                    {% if not m.read_at %}<span class="inbox-badge" style="margin-left: auto;">{{ _('Nowe') }}</span>{% endif %}
+                    <time class="mono" style="color: var(--text-subtle); font-size: 11px; {% if m.read_at %}margin-left: auto;{% endif %}">{{ m.created_at.strftime('%d.%m %H:%M') }}</time>
+                </div>
+                <div class="inbox-snippet">{{ m.snippet or '' }}</div>
+            </div>
+            <i class="bi bi-arrow-right" style="color: var(--text-subtle); align-self: center;"></i>
+        </button>
+    </form>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="padding: 60px 24px;">
+    <i class="bi bi-inbox"></i>
+    {% set mention_tag %}<code style="background: rgba(108,92,231,0.15); color: var(--accent-light); padding: 1px 6px; border-radius: 4px;">@{{ current_user.name if current_user else _('Ciebie') }}</code>{% endset %}
+    <p>{{ _('Brak wzmianek. Gdy ktoś Cię oznaczy %(tag)s w komentarzu lub opisie - pojawi się tutaj.', tag=mention_tag) }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

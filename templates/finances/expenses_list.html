@@ -1,0 +1,80 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Koszty') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Koszty') }}{% endblock %}
+{% block page_subtitle %}{{ _('Ewidencja wydatków w 4 kategoriach') }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/finances/expenses/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Nowy koszt') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'expenses' %}{% include 'finances/_tabs.html' %}
+
+{# Filters #}
+<form method="GET" class="card-sm" style="padding: 12px 14px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+    {% set cat_labels = {'seo_tools':_('Narzędzia SEO'),'subcontractor':_('Podwykonawca'),'marketing':_('Marketing własny'),'office_transport':_('Biuro i transport')} %}
+    <select name="category" class="input-focus" style="background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; font-size: 13px; color: var(--text); outline: none;">
+        <option value="">{{ _('Wszystkie kategorie') }}</option>
+        {% for c in categories %}<option value="{{ c }}" {% if category == c %}selected{% endif %}>{{ cat_labels[c] }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary"><i class="bi bi-funnel"></i>{{ _('Filtruj') }}</button>
+    <a href="/finances/expenses" class="chip">{{ _('Wyczyść') }}</a>
+</form>
+
+{% if expenses %}
+<div class="card-sm" style="padding: 0; overflow: hidden;">
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{{ _('Data') }}</th>
+                    <th>{{ _('Kategoria') }}</th>
+                    <th>{{ _('Tytuł') }}</th>
+                    <th>{{ _('Dostawca') }}</th>
+                    <th>{{ _('Klient') }}</th>
+                    <th class="col-num">{{ _('Netto') }}</th>
+                    <th class="col-num">{{ _('Brutto') }}</th>
+                    <th style="text-align: right;">{{ _('Akcje') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in expenses %}
+                <tr>
+                    <td class="mono" style="font-size: 11.5px; color: var(--text-muted);">{{ e.payment_date.strftime('%d.%m.%Y') if e.payment_date else '-' }}</td>
+                    <td><span class="badge-stage badge-info">{{ e.category_label }}</span></td>
+                    <td style="color: var(--text);">{{ e.title }}{% if e.subcategory %} <span style="color: var(--text-subtle); font-size: 11px;">({{ e.subcategory }})</span>{% endif %}</td>
+                    <td class="col-muted">{{ e.vendor }}</td>
+                    <td>{% if e.client %}<a href="/companies/{{ e.client.id }}" style="color: var(--accent-light); text-decoration: none;">{{ e.client.name }}</a>{% else %}<span class="col-muted">-</span>{% endif %}</td>
+                    <td class="col-num col-muted">{{ '{:,.2f}'.format(e.amount_net or 0).replace(',', ' ') }}</td>
+                    <td class="col-num" style="color: white; font-weight: 600;">{{ '{:,.2f}'.format(e.amount_gross or 0).replace(',', ' ') }}</td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        <a href="/finances/expenses/{{ e.id }}/edit" class="btn-ghost" style="padding: 6px 9px; font-size: 11.5px; display: inline-flex;"><i class="bi bi-pencil"></i></a>
+                        <form method="POST" action="/finances/expenses/{{ e.id }}/delete" class="inline" onsubmit="return confirm({{ _('Usunąć koszt?')|tojson|forceescape }})">
+                            <button class="btn-danger-sm"><i class="bi bi-trash3"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background: var(--surface-dark); border-top: 1px solid var(--border);">
+                    <td colspan="5" style="padding: 12px 14px; text-align: right; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-subtle);">{{ _('Suma') }}</td>
+                    <td class="col-num" style="padding: 12px 14px; color: var(--text); font-weight: 600;">{{ '{:,.2f}'.format(expenses|sum(attribute='amount_net')).replace(',', ' ') }}</td>
+                    <td class="col-num" style="padding: 12px 14px; color: white; font-weight: 700;">{{ '{:,.2f}'.format(expenses|sum(attribute='amount_gross')).replace(',', ' ') }}</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state" style="padding: 60px 24px;">
+    <i class="bi bi-receipt"></i>
+    <p>{{ _('Brak kosztów.') }}</p>
+    <a href="/finances/expenses/new" class="btn btn-primary" style="margin-top: 16px; display: inline-flex;"><i class="bi bi-plus-lg"></i>{{ _('Dodaj pierwszy') }}</a>
+</div>
+{% endif %}
+
+{% endblock %}

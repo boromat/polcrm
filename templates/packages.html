@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Pakiety') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Pakiety ofertowe') }}{% endblock %}
+{% block page_subtitle %}{{ _('Zarządzaj pakietami START / GROWTH / PREMIUM') }}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'packages' %}{% include '_szablony_tabs.html' %}
+
+{% set pkg_icons = {'START': 'bi-rocket-takeoff', 'GROWTH': 'bi-graph-up-arrow', 'PREMIUM': 'bi-gem'} %}
+{% set pkg_accent = {'START': 'var(--accent)', 'GROWTH': 'var(--info)', 'PREMIUM': 'var(--warning)'} %}
+{% set pkg_border_rgba = {'START': 'rgba(108,92,231,0.35)', 'GROWTH': 'rgba(59,130,246,0.35)', 'PREMIUM': 'rgba(245,158,11,0.35)'} %}
+
+<div class="bento-bottom" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
+    {% for p in packages %}
+    <div class="cell pkg-card" style="grid-column: span 1; padding: 0; border-color: {{ pkg_border_rgba.get(p.name, 'var(--border)') }}; border-top: 3px solid {{ pkg_accent.get(p.name, 'var(--accent)') }};">
+        <form method="POST" action="/packages/{{ p.id }}/edit" style="padding: 18px;">
+
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                <i class="bi {{ pkg_icons.get(p.name, 'bi-box') }}" style="font-size: 20px; color: {{ pkg_accent.get(p.name, 'var(--accent)') }};"></i>
+                <input type="text" name="name" value="{{ p.name }}" class="form-input" style="background: transparent; border: 0; padding: 0; font-size: 20px; font-weight: 800; color: {{ pkg_accent.get(p.name, 'var(--accent)') }};">
+            </div>
+            <textarea name="description" rows="2" class="form-input" style="background: transparent; border: 0; padding: 0; font-size: 12.5px; color: var(--text-muted); resize: none; margin-bottom: 14px;">{{ p.description }}</textarea>
+
+            <div class="form-row form-grid-2" style="margin-bottom: 12px;">
+                <div class="form-field">
+                    <label>{{ _('Cena (PLN)') }}</label>
+                    <input type="number" step="0.01" name="price" value="{{ p.price }}" class="form-input">
+                </div>
+                <div class="form-field">
+                    <label>{{ _('Czas (dni)') }}</label>
+                    <input type="number" name="duration_days" value="{{ p.duration_days }}" class="form-input">
+                </div>
+            </div>
+
+            <div class="form-field" style="margin-bottom: 12px;">
+                <label>{{ _('Co dostarczamy') }} <span style="color: var(--text-subtle); text-transform: none;">{{ _('(jedno na linię)') }}</span></label>
+                <textarea name="deliverables" rows="4" class="form-input">{% for d in (p.deliverables or []) %}{{ d }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
+            </div>
+
+            <div class="form-field" style="margin-bottom: 12px;">
+                <label>{{ _('Spodziewane efekty') }}</label>
+                <textarea name="expected_results" rows="3" class="form-input">{% for r in (p.expected_results or []) %}{{ r }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
+            </div>
+
+            <div class="form-field" style="margin-bottom: 12px;">
+                <label>{{ _('Warianty płatności') }}</label>
+                <textarea name="payment_variants" rows="2" class="form-input">{% for v in (p.payment_variants or []) %}{{ v }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 12px;">
+                <label class="form-check">
+                    <input type="checkbox" name="is_active" {% if p.is_active %}checked{% endif %}>
+                    {{ _('Aktywny') }}
+                </label>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-floppy"></i>{{ _('Zapisz') }}</button>
+            </div>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+
+{% if not packages %}
+<div class="empty-state" style="padding: 60px 24px;">
+    <i class="bi bi-briefcase"></i>
+    <p>{{ _('Brak pakietów. Zrestartuj aplikację, aby utworzyć domyślne pakiety.') }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

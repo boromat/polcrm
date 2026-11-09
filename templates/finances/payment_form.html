@@ -1,0 +1,81 @@
+{% extends "layout.html" %}
+{% block title %}{% if payment %}{{ _('Edycja płatności') }}{% else %}{{ _('Nowa płatność') }}{% endif %} - PolCRM{% endblock %}
+
+{% block page_title %}{% if payment %}{{ _('Edycja płatności') }}{% else %}{{ _('Nowa płatność') }}{% endif %}{% endblock %}
+{% block page_subtitle %}{% if payment %}{{ payment.payment_number }}{% else %}{{ _('Ewidencja - abonament, dodatek, projekt, jednorazowe') }}{% endif %}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="max-w-3xl space-y-4">
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="grid md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Firma *') }}</label>
+                <select name="company_id" required class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    <option value="">{{ _('- wybierz -') }}</option>
+                    {% for c in companies %}<option value="{{ c.id }}" {% if (payment and payment.company_id == c.id) or (preset_company_id == c.id) %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Rodzaj') }}</label>
+                <select name="kind" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    {% set klabels = {'retainer':_('Abonament'),'addon':_('Dodatek'),'project_milestone':_('Etap projektu'),'one_time':_('Jednorazowe')} %}
+                    {% for k in kinds %}<option value="{{ k }}" {% if payment and payment.kind == k %}selected{% endif %}>{{ klabels[k] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Tytuł *') }}</label>
+                <input type="text" name="title" required value="{{ payment.title if payment else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none" placeholder="{{ _('np. Abonament czerwiec 2026') }}">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Opis') }}</label>
+                <textarea name="description" rows="2" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">{{ payment.description if payment else '' }}</textarea>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Kwota netto *') }}</label>
+                <input type="number" step="0.01" name="amount_net" required value="{{ payment.amount_net if payment else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">VAT (%)</label>
+                <input type="number" step="0.01" name="vat_rate" value="{{ payment.vat_rate if payment else 23 }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Status</label>
+                <select name="status" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    {% set slabels = {'unpaid':_('Nieopłacone'),'paid':_('Opłacone'),'overdue':_('Przeterminowane'),'cancelled':_('Anulowane')} %}
+                    {% for s in statuses %}<option value="{{ s }}" {% if payment and payment.status == s %}selected{% endif %}>{{ slabels[s] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Data wystawienia') }}</label>
+                <input type="date" name="issued_at" value="{{ payment.issued_at.isoformat() if payment and payment.issued_at else today_date.isoformat() }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Termin płatności') }}</label>
+                <input type="date" name="due_at" value="{{ payment.due_at.isoformat() if payment and payment.due_at else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Data zapłaty') }}</label>
+                <input type="date" name="paid_at" value="{{ payment.paid_at.isoformat() if payment and payment.paid_at else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Miesiąc okresu') }}</label>
+                <input type="number" min="1" max="12" name="period_month" value="{{ payment.period_month or '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Rok okresu') }}</label>
+                <input type="number" name="period_year" value="{{ payment.period_year or '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Nr faktury zewnętrznej (np. z Fakturowni)') }}</label>
+                <input type="text" name="external_invoice_number" value="{{ payment.external_invoice_number if payment else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 14px;">
+        <button class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+        <a href="/finances/payments" class="btn btn-ghost">{{ _('Anuluj') }}</a>
+    </div>
+</form>
+{% endblock %}

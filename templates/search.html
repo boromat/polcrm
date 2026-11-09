@@ -1,0 +1,188 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Wyszukiwarka') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Wyszukiwarka firm') }}{% endblock %}
+{% block page_subtitle %}{{ _('Znajdź firmy bez strony WWW w Google Places') }}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'search' %}{% include '_company_tabs.html' %}
+
+<form id="search-form" action="/search/run" method="POST" class="max-w-3xl space-y-4">
+    <!-- Map -->
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="flex items-center justify-between mb-3">
+            <label class="text-sm font-semibold text-gray-400 uppercase tracking-wide">{{ _('Obszar wyszukiwania') }}</label>
+            <span id="coord-display" class="text-xs text-gray-500">{{ _('Kliknij na mapie') }}</span>
+        </div>
+
+        <div class="mb-3">
+            <input type="text" id="map-search"
+                   class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm text-gray-200 input-focus transition outline-none"
+                   placeholder="{{ _('Wyszukaj miasto lub adres...') }}">
+        </div>
+
+        <div id="map-container" class="h-80 rounded-lg border border-border bg-surface-dark flex items-center justify-center text-gray-500 overflow-hidden">
+            <div class="text-center px-4">
+                <i class="bi bi-geo-alt text-3xl text-accent"></i>
+                <p class="mt-2 text-sm">{{ _('Ładowanie mapy...') }}</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Promień (m)') }}</label>
+                <input type="number" id="radius_m" name="radius_m" value="5000" min="100" max="50000"
+                       class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Lat</label>
+                <input type="number" step="any" id="center_lat" name="center_lat" required
+                       class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none" placeholder="52.2297">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Lng</label>
+                <input type="number" step="any" id="center_lng" name="center_lng" required
+                       class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none" placeholder="21.0122">
+            </div>
+        </div>
+    </div>
+
+    <!-- Keywords -->
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <label class="block text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">{{ _('Słowa kluczowe') }} <span class="font-normal normal-case text-gray-500">{{ _('(jedno na linię)') }}</span></label>
+        <textarea name="keywords" rows="4" required
+                  class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm text-gray-200 input-focus transition outline-none"
+                  placeholder="{{ _('mechanik samochodowy') }}&#10;{{ _('wulkanizacja') }}&#10;{{ _('warsztat blacharsko-lakierniczy') }}"></textarea>
+    </div>
+
+    <!-- Options -->
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Max miejsc / słowo') }}</label>
+                <input type="number" name="max_places_per_keyword" min="1"
+                       class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none" placeholder="60">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Min. ocena') }}</label>
+                <input type="number" step="0.1" name="min_rating" min="0" max="5"
+                       class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none" placeholder="3.5">
+            </div>
+            <div class="flex items-end pb-1">
+                <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                    <input type="checkbox" name="only_open_now" class="w-4 h-4 rounded bg-surface-dark border-border text-accent focus:ring-accent">
+                    {{ _('Tylko otwarte') }}
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" id="btn-submit"
+            class="w-full bg-accent hover:bg-accent-dark text-white font-bold py-3 rounded-xl text-base btn-lift transition">
+        <i class="bi bi-rocket-takeoff mr-2"></i>{{ _('Wyszukaj firmy') }}
+    </button>
+</form>
+
+<!-- Loading overlay -->
+<div id="loading-overlay" class="fixed inset-0 bg-surface-dark/90 z-50 hidden items-center justify-center flex-col gap-4">
+    <div class="w-14 h-14 border-4 border-border border-t-accent rounded-full animate-spin"></div>
+    <p class="text-gray-400">{{ _('Pobieranie danych z Google Places...') }}</p>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('search-form').addEventListener('submit', function() {
+    document.getElementById('btn-submit').disabled = true;
+    document.getElementById('btn-submit').classList.add('opacity-50', 'cursor-not-allowed');
+    document.getElementById('loading-overlay').classList.remove('hidden');
+    document.getElementById('loading-overlay').classList.add('flex');
+});
+
+// Map
+const mapContainer = document.getElementById('map-container');
+const coordDisplay = document.getElementById('coord-display');
+const latInput = document.getElementById('center_lat');
+const lngInput = document.getElementById('center_lng');
+const radiusInput = document.getElementById('radius_m');
+let map, marker, circle;
+
+window.initMap = function() {
+    mapContainer.innerHTML = '';
+    let startPos = {lat: 52.2297, lng: 21.0122};
+    if (latInput.value && lngInput.value) {
+        startPos = {lat: parseFloat(latInput.value), lng: parseFloat(lngInput.value)};
+    } else {
+        latInput.value = startPos.lat;
+        lngInput.value = startPos.lng;
+    }
+
+    map = new google.maps.Map(mapContainer, {
+        center: startPos, zoom: 12, mapTypeId: 'roadmap',
+        streetViewControl: false, mapTypeControl: false,
+        styles: [
+            {elementType:"geometry",stylers:[{color:"#242f3e"}]},
+            {elementType:"labels.text.stroke",stylers:[{color:"#242f3e"}]},
+            {elementType:"labels.text.fill",stylers:[{color:"#746855"}]},
+            {featureType:"road",elementType:"geometry",stylers:[{color:"#38414e"}]},
+            {featureType:"water",elementType:"geometry",stylers:[{color:"#17263c"}]},
+        ]
+    });
+
+    marker = new google.maps.Marker({
+        position: startPos, map: map, draggable: true,
+        icon: {path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#6c5ce7", fillOpacity: 1, strokeWeight: 2, strokeColor: "#fff"}
+    });
+
+    circle = new google.maps.Circle({
+        strokeColor: "#6c5ce7", strokeOpacity: 0.8, strokeWeight: 2,
+        fillColor: "#6c5ce7", fillOpacity: 0.15,
+        map: map, center: startPos, radius: parseFloat(radiusInput.value) || 5000
+    });
+
+    function setPos(latLng) {
+        marker.setPosition(latLng); circle.setCenter(latLng);
+        latInput.value = latLng.lat().toFixed(6); lngInput.value = latLng.lng().toFixed(6);
+        coordDisplay.textContent = `${latLng.lat().toFixed(4)}, ${latLng.lng().toFixed(4)}`;
+    }
+
+    map.addListener('click', e => setPos(e.latLng));
+    marker.addListener('dragend', e => setPos(e.latLng));
+    radiusInput.addEventListener('input', function() {
+        const r = parseFloat(this.value);
+        if (!isNaN(r) && r > 0) circle.setRadius(r);
+    });
+
+    coordDisplay.textContent = `${startPos.lat.toFixed(4)}, ${startPos.lng.toFixed(4)}`;
+
+    // Autocomplete
+    const searchInput = document.getElementById('map-search');
+    const autocomplete = new google.maps.places.Autocomplete(searchInput);
+    autocomplete.bindTo('bounds', map);
+    searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+    autocomplete.addListener('place_changed', function() {
+        const place = autocomplete.getPlace();
+        if (!place.geometry?.location) return;
+        if (place.geometry.viewport) map.fitBounds(place.geometry.viewport);
+        else { map.setCenter(place.geometry.location); map.setZoom(14); }
+        setPos(place.geometry.location);
+    });
+};
+
+{% if api_key %}
+const s = document.createElement('script');
+s.src = `https://maps.googleapis.com/maps/api/js?key={{ api_key }}&libraries=places&callback=initMap`;
+s.async = true; s.defer = true;
+s.onerror = () => { mapContainer.innerHTML = '<div class="text-red-400 text-center p-4"><i class="bi bi-exclamation-triangle text-2xl"></i><p class="mt-2 text-sm">' + {{ _('Nie udało się wczytać mapy. Sprawdź klucz API.')|tojson }} + '</p></div>'; };
+{% set gcc_link %}<a href="https://console.cloud.google.com/apis/library" target="_blank" class="text-accent underline">Google Cloud Console</a>{% endset %}
+window.gm_authFailure = function() {
+    mapContainer.innerHTML = '<div class="text-center p-4"><i class="bi bi-exclamation-triangle text-3xl text-amber-400"></i><p class="mt-2 text-sm text-amber-300">' + {{ _('Klucz API nie ma uprawnień do Maps JavaScript API.')|tojson }} + '</p><p class="text-xs text-gray-500 mt-1">' + {{ _('Włącz <b>Maps JavaScript API</b> i <b>Places API</b> w %(link)s, upewnij się że billing jest aktywny.', link=gcc_link)|tojson }} + '</p></div>';
+};
+document.head.appendChild(s);
+{% else %}
+mapContainer.innerHTML = '<div class="text-center p-4"><i class="bi bi-key text-3xl text-amber-400"></i><p class="mt-2 text-sm text-gray-400">' + {{ _('Ustaw klucz API w <a href="/settings" class="text-accent">Ustawieniach</a>')|tojson }} + '</p></div>';
+{% endif %}
+</script>
+{% endblock %}

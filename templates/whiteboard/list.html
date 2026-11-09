@@ -1,0 +1,94 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Tablice') }} - PolCRM{% endblock %}
+{% block page_title %}{{ _('Tablice') }}{% endblock %}
+{% block page_subtitle %}{{ _('Wspólne rysunki i notatki - możecie pracować jednocześnie') }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('whiteboard_new') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Nowa tablica') }}</span>
+</a>
+{% endblock %}
+
+{% block content %}
+
+{# Filtr po firmie #}
+<form method="GET" class="card-sm" style="padding: 12px 14px; margin-bottom: 18px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <label style="font-size: 12px; color: var(--text-subtle); font-weight: 600;">{{ _('Filtruj po kliencie:') }}</label>
+    <select name="company_id" onchange="this.form.submit()"
+            style="padding: 7px 12px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px;">
+        <option value="">{{ _('Wszystkie tablice') }}</option>
+        {% for c in companies %}
+            <option value="{{ c.id }}" {% if company_filter == c.id %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+    </select>
+    {% if company_filter %}
+    <a href="{{ url_for('whiteboard_list') }}" class="btn btn-ghost" style="padding: 6px 12px; font-size: 12px;">
+        <i class="bi bi-x-lg"></i> {{ _('Wyczyść') }}
+    </a>
+    {% endif %}
+</form>
+
+{% if boards %}
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+    {% for b in boards %}
+    <div class="card-sm" style="padding: 16px; transition: transform 0.15s;"
+         onmouseover="this.style.transform='translateY(-2px)'"
+         onmouseout="this.style.transform='translateY(0)'">
+        <a href="{{ url_for('whiteboard_detail', id=b.id) }}" style="display: block; text-decoration: none; color: inherit;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: {{ b.bg_color }}; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 2px rgba(0,0,0,0.04);">
+                    <i class="bi bi-pencil-fill" style="color: {% if b.bg_color == '#0f0f1a' %}#fff{% else %}#333{% endif %}; font-size: 16px;"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 700; font-size: 15px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ b.name }}</div>
+                    <div style="font-size: 11.5px; color: var(--text-subtle); margin-top: 1px;">
+                        {{ ngettext('%(num)s element', '%(num)s elem.', b.strokes_count) }} · {{ b.updated_at.strftime('%d.%m.%Y') }}
+                    </div>
+                </div>
+            </div>
+            {% if b.company %}
+            <div style="font-size: 11.5px; color: var(--accent); margin-bottom: 6px;">
+                <i class="bi bi-building"></i> {{ b.company.name }}
+            </div>
+            {% endif %}
+            {% if b.description %}
+            <div style="font-size: 12.5px; color: var(--text-muted); line-height: 1.45; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                {{ b.description }}
+            </div>
+            {% endif %}
+        </a>
+        <div style="display: flex; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+            <a href="{{ url_for('whiteboard_detail', id=b.id) }}" class="btn btn-ghost" style="flex: 1; padding: 6px 10px; font-size: 12.5px; text-align: center; text-decoration: none;">
+                <i class="bi bi-pencil"></i> {{ _('Otwórz') }}
+            </a>
+            <form method="POST" action="{{ url_for('whiteboard_duplicate', id=b.id) }}" style="display: inline;" title="{{ _('Duplikuj tablicę') }}">
+                <button type="submit" class="btn btn-ghost" style="padding: 6px 10px; font-size: 12.5px;">
+                    <i class="bi bi-files"></i>
+                </button>
+            </form>
+            <form method="POST" action="{{ url_for('whiteboard_delete', id=b.id) }}" style="display: inline;"
+                  data-confirm="{{ _('Usunąć tablicę „%(name)s”? Tej operacji nie można cofnąć.', name=b.name) }}" onsubmit="return confirm(this.dataset.confirm);">
+                <button type="submit" class="btn btn-ghost" style="padding: 6px 10px; font-size: 12.5px; color: var(--danger);">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card-sm" style="padding: 50px; text-align: center; color: var(--text-subtle);">
+    <i class="bi bi-easel" style="font-size: 48px; opacity: 0.4; display: block; margin-bottom: 12px;"></i>
+    <div style="font-size: 15px; margin-bottom: 8px;">
+        {% if company_filter %}{{ _('Brak tablic dla tego klienta') }}{% else %}{{ _('Nie masz jeszcze żadnej tablicy') }}{% endif %}
+    </div>
+    <div style="font-size: 13px; margin-bottom: 20px;">
+        {{ _('Tablica to wspólna przestrzeń do rysowania, notowania i wklejania screenshotów. Pracujcie z partnerem jednocześnie.') }}
+    </div>
+    <a href="{{ url_for('whiteboard_new') }}{% if company_filter %}?company_id={{ company_filter }}{% endif %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> {{ _('Stwórz tablicę') }}
+    </a>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+{% block title %}{% if template %}{{ _('Edycja szablonu') }}{% else %}{{ _('Nowy szablon') }}{% endif %} - PolCRM{% endblock %}
+
+{% block page_title %}{% if template %}{{ _('Edycja szablonu') }}{% else %}{{ _('Nowy szablon email') }}{% endif %}{% endblock %}
+{% block page_subtitle %}{% if template %}{{ template.key }}{% else %}{{ _('Jinja2 placeholders dla personalizacji') }}{% endif %}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="max-w-4xl space-y-4">
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+            {% if not template %}
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Klucz (bez spacji) *') }}</label>
+                <input type="text" name="key" required class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none" placeholder="{{ _('np. welcome_v2') }}">
+            </div>
+            {% endif %}
+            <div class="{% if not template %}{% else %}md:col-span-2{% endif %}">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Nazwa') }}</label>
+                <input type="text" name="name" value="{{ template.name if template else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none" placeholder="{{ _('Przypomnienie o płatności') }}">
+            </div>
+        </div>
+        <div class="mb-4">
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Temat (Jinja2)') }}</label>
+            {% set example_subject = _('Przypomnienie {{ payment.payment_number }}') %}
+            <input type="text" name="subject_template" value="{{ template.subject_template if template else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm font-mono input-focus outline-none" placeholder="{{ example_subject }}">
+        </div>
+        <div class="mb-4">
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Treść HTML (Jinja2)') }}</label>
+            <textarea name="body_template" rows="16" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm font-mono input-focus outline-none">{{ template.body_template if template else '' }}</textarea>
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Dokumentacja placeholderów (opcj.)') }}</label>
+            <textarea name="placeholders_doc" rows="2" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-300 text-xs input-focus outline-none">{{ template.placeholders_doc if template else '{{ company.name }}, {{ agency.name }}, {{ payment.amount_gross }}' }}</textarea>
+            <p class="text-xs text-gray-600 mt-1">{{ _('Dostępne zmienne (kontekst):') }} <code>company.*</code>, <code>client.*</code>, <code>agency.*</code>, <code>payment.*</code>, <code>audit.*</code>.</p>
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 14px;">
+        <button class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+        <a href="/emails/templates" class="btn btn-ghost">{{ _('Anuluj') }}</a>
+    </div>
+</form>
+{% endblock %}

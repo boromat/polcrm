@@ -1,0 +1,27 @@
+{% extends "auth_base.html" %}
+{% block title %}{{ _('Pierwsze uruchomienie') }}{% endblock %}
+{% block content %}
+<h1 class="auth-title">{{ _('Pierwsze uruchomienie') }}</h1>
+<p class="auth-sub">{{ _('Załóż konto administratora. Ta strona działa tylko do momentu utworzenia pierwszego admina - potem resztę zespołu dodasz w Ustawienia → Zespół.') }}</p>
+{% if error %}<div class="auth-error" role="alert"><i class="bi bi-exclamation-circle"></i> {{ error }}</div>{% endif %}
+<form method="POST" action="{{ url_for('setup') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-field">
+        <label for="name">{{ _('Imię i nazwisko') }}</label>
+        <input type="text" id="name" name="name" value="{{ form.name }}" required autofocus autocomplete="name">
+    </div>
+    <div class="form-field">
+        <label for="email">E-mail (login)</label>
+        <input type="email" id="email" name="email" value="{{ form.email }}" required autocomplete="username">
+    </div>
+    <div class="form-field">
+        <label for="password">{{ _('Hasło (min. %(n)s znaków)', n=min_len) }}</label>
+        <input type="password" id="password" name="password" required minlength="{{ min_len }}" autocomplete="new-password">
+    </div>
+    <div class="form-field">
+        <label for="password2">{{ _('Powtórz hasło') }}</label>
+        <input type="password" id="password2" name="password2" required minlength="{{ min_len }}" autocomplete="new-password">
+    </div>
+    <button type="submit" class="btn btn-primary"><i class="bi bi-shield-check"></i>{{ _('Utwórz konto administratora') }}</button>
+</form>
+{% endblock %}

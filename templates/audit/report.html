@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ _('Raport audytu - %(name)s', name=company.name) }}</title>
+    <style>
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        @media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .no-print { display: none !important; }
+        }
+        .score-fill { transition: width 0.8s ease-out; }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}?v={{ static_version }}">
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Print / Back buttons -->
+    <div class="no-print fixed top-4 right-4 flex gap-2 z-10">
+        <a href="/audits/{{ audit.id }}/edit"
+           class="bg-white shadow rounded-lg px-4 py-2 text-sm text-gray-600 hover:text-accent no-underline">
+            <i class="bi bi-arrow-left mr-1"></i>{{ _('Wróć do edycji') }}
+        </a>
+        <a href="/audits/{{ audit.id }}/pdf"
+           class="bg-white shadow rounded-lg px-4 py-2 text-sm text-gray-600 hover:text-red-500 no-underline">
+            <i class="bi bi-file-pdf mr-1"></i>{{ _('Pobierz PDF') }}
+        </a>
+        <button onclick="window.print()"
+                class="bg-accent text-white shadow rounded-lg px-4 py-2 text-sm hover:bg-accent-dark">
+            <i class="bi bi-printer mr-1"></i>{{ _('Drukuj') }}
+        </button>
+    </div>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
+
+    <div class="max-w-3xl mx-auto py-10 px-6">
+
+        <!-- Header -->
+        <div class="text-center mb-8 pb-6 border-b-2 border-accent">
+            {% if settings and settings.agency_name %}
+            <div class="text-sm text-gray-500 uppercase tracking-widest mb-1">{{ settings.agency_name }}</div>
+            {% endif %}
+            <h1 class="text-3xl font-bold text-gray-900 mt-2">{{ _('Audyt marketingowy') }}</h1>
+            <h2 class="text-xl text-accent font-semibold mt-1">{{ company.name }}</h2>
+            <div class="text-sm text-gray-500 mt-2">
+                {{ company.address }}
+                {% if company.phone %} · {{ company.phone }}{% endif %}
+            </div>
+            <div class="text-xs text-gray-400 mt-1">
+                {% if company.industry %}{{ company.industry }} · {% endif %}
+                {{ _('Data audytu: %(date)s', date=audit.created_at.strftime('%d.%m.%Y')) }}
+            </div>
+        </div>
+
+        <!-- Overall Score -->
+        <div class="bg-white rounded-2xl shadow-sm border p-6 mb-6 text-center">
+            <div class="text-sm text-gray-500 uppercase tracking-wide mb-2">{{ _('Ocena ogólna') }}</div>
+            <div class="text-6xl font-bold {% if audit.score_overall and audit.score_overall >= 4 %}text-emerald-500{% elif audit.score_overall and audit.score_overall >= 3 %}text-amber-500{% elif audit.score_overall %}text-red-500{% else %}text-gray-300{% endif %}">
+                {{ audit.score_overall or '-' }}<span class="text-2xl text-gray-400">/5</span>
+            </div>
+        </div>
+
+        <!-- Scores breakdown -->
+        <div class="bg-white rounded-2xl shadow-sm border p-6 mb-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">{{ _('Scoring - 5 obszarów') }}</h3>
+            {% set score_items = [
+                (_('Widoczność online'), audit.score_visibility, _('Jak łatwo klienci znajdują firmę w internecie')),
+                (_('Oferta i komunikacja'), audit.score_offer, _('Jakość prezentacji oferty i danych kontaktowych')),
+                (_('Zaufanie i dowód społeczny'), audit.score_trust, _('Opinie, reputacja i wiarygodność online')),
+                (_('Konwersja'), audit.score_conversion, _('Skuteczność strony w zamianie odwiedzin na kontakt')),
+                (_('Analityka i mierzenie'), audit.score_analytics, _('Czy firma mierzy efekty swoich działań')),
+            ] %}
+            <div class="space-y-4">
+                {% for label, score, desc in score_items %}
+                <div>
+                    <div class="flex justify-between items-baseline mb-1">
+                        <div>
+                            <span class="font-medium text-gray-800">{{ label }}</span>
+                            <span class="text-xs text-gray-400 ml-2">{{ desc }}</span>
+                        </div>
+                        <span class="font-bold text-lg {% if score and score >= 4 %}text-emerald-500{% elif score and score >= 3 %}text-amber-500{% elif score %}text-red-500{% else %}text-gray-300{% endif %}">
+                            {{ score or '-' }}/5
+                        </span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-3">
+                        <div class="h-2.5 rounded-full score-fill {% if score and score >= 4 %}bg-emerald-400{% elif score and score >= 3 %}bg-amber-400{% elif score %}bg-red-400{% else %}bg-gray-200{% endif %}"
+                             style="width: {{ (score or 0) / 5 * 100 }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Problems / Opportunities / Actions -->
+        {% set problems = audit.top_problems or [] %}
+        {% set opps = audit.top_opportunities or [] %}
+        {% set recs = audit.recommended_actions or [] %}
+
+        {% if problems or opps or recs %}
+        <div class="grid md:grid-cols-3 gap-4 mb-6">
+            {% if problems %}
+            <div class="bg-red-50 border border-red-200 rounded-2xl p-5">
+                <h3 class="font-bold text-red-700 mb-3"><i class="bi bi-exclamation-triangle mr-1"></i>{{ _('Główne problemy') }}</h3>
+                <ol class="space-y-2 text-sm text-red-800">
+                    {% for p in problems %}
+                    <li class="flex gap-2"><span class="font-bold text-red-500">{{ loop.index }}.</span> {{ p }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+            {% endif %}
+
+            {% if opps %}
+            <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
+                <h3 class="font-bold text-emerald-700 mb-3"><i class="bi bi-lightbulb mr-1"></i>{{ _('Największe szanse') }}</h3>
+                <ol class="space-y-2 text-sm text-emerald-800">
+                    {% for o in opps %}
+                    <li class="flex gap-2"><span class="font-bold text-emerald-500">{{ loop.index }}.</span> {{ o }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+            {% endif %}
+
+            {% if recs %}
+            <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+                <h3 class="font-bold text-blue-700 mb-3"><i class="bi bi-rocket-takeoff mr-1"></i>{{ _('Rekomendacje') }}</h3>
+                <ol class="space-y-2 text-sm text-blue-800">
+                    {% for r in recs %}
+                    <li class="flex gap-2"><span class="font-bold text-blue-500">{{ loop.index }}.</span> {{ r }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="bg-gray-50 border border-gray-200 rounded-2xl p-6 mb-6 text-center">
+            <div class="text-gray-400 text-3xl mb-2"><i class="bi bi-clipboard2"></i></div>
+            <p class="text-gray-500 text-sm">{{ _('Sekcje problemów, szans i rekomendacji nie zostały jeszcze wypełnione.') }}</p>
+            <p class="text-gray-400 text-xs mt-1">{{ _('Uzupełnij je w formularzu audytu.') }}</p>
+        </div>
+        {% endif %}
+
+        <!-- PageSpeed -->
+        {% if audit.pagespeed_mobile or audit.pagespeed_desktop %}
+        <div class="bg-white rounded-2xl shadow-sm border p-6 mb-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">PageSpeed Insights</h3>
+            <div class="grid grid-cols-2 gap-6">
+                <div class="text-center">
+                    <div class="text-sm text-gray-500 mb-1">Mobile</div>
+                    <div class="text-4xl font-bold {% if audit.pagespeed_mobile and audit.pagespeed_mobile >= 90 %}text-emerald-500{% elif audit.pagespeed_mobile and audit.pagespeed_mobile >= 50 %}text-amber-500{% elif audit.pagespeed_mobile %}text-red-500{% else %}text-gray-300{% endif %}">
+                        {{ audit.pagespeed_mobile or '-' }}
+                    </div>
+                </div>
+                <div class="text-center">
+                    <div class="text-sm text-gray-500 mb-1">Desktop</div>
+                    <div class="text-4xl font-bold {% if audit.pagespeed_desktop and audit.pagespeed_desktop >= 90 %}text-emerald-500{% elif audit.pagespeed_desktop and audit.pagespeed_desktop >= 50 %}text-amber-500{% elif audit.pagespeed_desktop %}text-red-500{% else %}text-gray-300{% endif %}">
+                        {{ audit.pagespeed_desktop or '-' }}
+                    </div>
+                </div>
+            </div>
+            {% set ps = audit.pagespeed_data or {} %}
+            {% if ps.get('fcp') or ps.get('lcp') or ps.get('cls') %}
+            <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t">
+                <div class="text-center">
+                    <div class="text-xs text-gray-400">FCP</div>
+                    <div class="text-sm font-medium">{{ ps.get('fcp', '-') }}</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-xs text-gray-400">LCP</div>
+                    <div class="text-sm font-medium">{{ ps.get('lcp', '-') }}</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-xs text-gray-400">CLS</div>
+                    <div class="text-sm font-medium">{{ ps.get('cls', '-') }}</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Competitors comparison -->
+        {% if competitors %}
+        <div class="bg-white rounded-2xl shadow-sm border p-6 mb-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">{{ _('Porównanie z konkurencją') }}</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200">
+                            <th class="text-left py-2 text-xs text-gray-500 uppercase">{{ _('Firma') }}</th>
+                            <th class="text-center py-2 text-xs text-gray-500 uppercase">{{ _('Ocena') }}</th>
+                            <th class="text-center py-2 text-xs text-gray-500 uppercase">{{ _('Opinii') }}</th>
+                            <th class="text-center py-2 text-xs text-gray-500 uppercase">{{ _('Strona WWW') }}</th>
+                            <th class="text-center py-2 text-xs text-gray-500 uppercase">{{ _('Widoczność') }}</th>
+                            <th class="text-center py-2 text-xs text-gray-500 uppercase">{{ _('Zaufanie') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Audited company -->
+                        <tr class="border-b bg-accent/5 font-medium">
+                            <td class="py-2 text-accent">{{ _('%(name)s (Ty)', name=company.name) }}</td>
+                            <td class="py-2 text-center">{% if company.rating %}★ {{ company.rating }}{% else %}-{% endif %}</td>
+                            <td class="py-2 text-center">{{ company.user_ratings_total or '-' }}</td>
+                            <td class="py-2 text-center">{{ _('Tak') if company.website else _('Nie') }}</td>
+                            <td class="py-2 text-center font-bold text-accent">{{ audit.score_visibility or '-' }}</td>
+                            <td class="py-2 text-center font-bold text-accent">{{ audit.score_trust or '-' }}</td>
+                        </tr>
+                        {% for c in competitors %}
+                        <tr class="border-b">
+                            <td class="py-2">{{ c.name }}</td>
+                            <td class="py-2 text-center">{% if c.rating %}★ {{ c.rating }}{% else %}-{% endif %}</td>
+                            <td class="py-2 text-center">{{ c.user_ratings_total or '-' }}</td>
+                            <td class="py-2 text-center">{{ _('Tak') if c.website else _('Nie') }}</td>
+                            <td class="py-2 text-center">{{ c.score_visibility or '-' }}</td>
+                            <td class="py-2 text-center">{{ c.score_trust or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Plan 90 -->
+        {% set plan = audit.section_plan90 or {} %}
+        {% set actions = plan.get('actions', []) if plan is mapping else [] %}
+        {% if actions %}
+        <div class="bg-white rounded-2xl shadow-sm border p-6 mb-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">{{ _('Plan 90 dni') }}</h3>
+            <div class="space-y-3">
+                {% for action in actions %}
+                <div class="flex gap-3 items-start">
+                    <div class="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center flex-shrink-0 font-bold text-sm">{{ loop.index }}</div>
+                    <div class="text-gray-700 pt-1">{{ action }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Footer -->
+        <div class="text-center text-xs text-gray-400 mt-8 pt-6 border-t">
+            {% if settings and settings.agency_name %}
+            <div class="font-medium text-gray-500">{{ settings.agency_name }}</div>
+            {% endif %}
+            {% if settings and settings.agency_phone %}{{ settings.agency_phone }}{% endif %}
+            {% if settings and settings.agency_email %} · {{ settings.agency_email }}{% endif %}
+            <div class="mt-1">{{ _('Raport wygenerowany %(date)s', date=audit.created_at.strftime('%d.%m.%Y')) }} · PolCRM</div>
+        </div>
+    </div>
+</body>
+</html>

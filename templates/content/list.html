@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+{% block title %}Content - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Kalendarz publikacji') }}{% endblock %}
+{% block page_subtitle %}{{ _('Content per klient - blog, landing, social, email') }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/content/calendar" class="btn btn-ghost"><i class="bi bi-calendar3"></i><span class="hidden sm:inline">{{ _('Kalendarz') }}</span></a>
+<a href="/content/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Nowa publikacja') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'content' %}{% include '_produkcja_tabs.html' %}
+
+{% set slabels = {'idea': _('Pomysł'), 'writing': _('W pisaniu'), 'review': _('Do akceptacji'), 'approved': _('Zaakceptowany'), 'published': _('Opublikowany')} %}
+
+{# ═════ STATS BENTO ═════ #}
+{% set idea_count = posts|selectattr('status','equalto','idea')|list|length %}
+{% set writing_count = posts|selectattr('status','equalto','writing')|list|length %}
+{% set review_count = posts|selectattr('status','equalto','review')|list|length %}
+{% set approved_count = posts|selectattr('status','equalto','approved')|list|length %}
+{% set published_count = posts|selectattr('status','equalto','published')|list|length %}
+<div class="bento-top" style="grid-template-columns: repeat(5, 1fr);">
+    <div class="cell cell-overdue" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-lightbulb" style="color: var(--warning);"></i>{{ _('Pomysły') }}</div>
+        <div class="cell-value sm gradient-warning mono">{{ idea_count }}</div>
+    </div>
+    <div class="cell cell-clients" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-pencil" style="color: var(--info);"></i>{{ _('W pisaniu') }}</div>
+        <div class="cell-value sm gradient-info mono">{{ writing_count }}</div>
+    </div>
+    <div class="cell cell-audits" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-eye" style="color: var(--accent-light);"></i>{{ _('Do akceptacji') }}</div>
+        <div class="cell-value sm gradient-accent mono">{{ review_count }}</div>
+    </div>
+    <div class="cell cell-balance" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-check-circle" style="color: var(--success);"></i>{{ _('Zaakceptowane') }}</div>
+        <div class="cell-value sm gradient-positive mono">{{ approved_count }}</div>
+    </div>
+    <div class="cell cell-content-wip" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-send-check" style="color: var(--pink-light);"></i>{{ _('Opublikowane') }}</div>
+        <div class="cell-value sm gradient-pink mono">{{ published_count }}</div>
+    </div>
+</div>
+
+{# ═════ FILTERS ═════ #}
+<form method="GET" class="card-sm" style="padding: 12px 14px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+    <select name="status" class="input-focus" style="background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; font-size: 13px; color: var(--text); outline: none;">
+        <option value="">{{ _('Wszystkie statusy') }}</option>
+        {% for s in statuses %}<option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ slabels[s] }}</option>{% endfor %}
+    </select>
+    <select name="company_id" class="input-focus" style="background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px; font-size: 13px; color: var(--text); outline: none;">
+        <option value="">{{ _('Wszyscy klienci') }}</option>
+        {% for c in companies %}<option value="{{ c.id }}" {% if selected_company_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary"><i class="bi bi-funnel"></i>{{ _('Filtruj') }}</button>
+</form>
+
+{% if posts %}
+{% set scolors = {'idea':'badge-neutral','writing':'badge-info','review':'badge-warning','approved':'badge-success','published':'badge-accent'} %}
+<div class="card-sm" style="padding: 8px;">
+    {% for p in posts %}
+    <div class="panel-row" style="padding: 10px 12px; gap: 12px;">
+        <div style="flex: 1; min-width: 0;">
+            <a href="/content/{{ p.id }}/edit" style="color: var(--text); font-weight: 500; text-decoration: none;">{{ p.title }}</a>
+            <div class="meta" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 3px;">
+                <a href="/companies/{{ p.company.id }}" style="color: var(--accent-light); text-decoration: none; font-size: 11.5px;"><i class="bi bi-building"></i> {{ p.company.name }}</a>
+                <span style="color: var(--text-subtle);">·</span>
+                <span>{{ p.type_label }}</span>
+                {% if p.deadline %}
+                <span style="color: var(--text-subtle);">·</span>
+                <span class="mono" style="{% if p.deadline < today and p.status != 'published' %}color: var(--danger-light);{% endif %}"><i class="bi bi-clock"></i> {{ p.deadline.strftime('%d.%m.%Y') }}</span>
+                {% endif %}
+                {% if p.writer_name %}
+                <span style="color: var(--text-subtle);">·</span>
+                <span><i class="bi bi-pencil"></i> {{ p.writer_name }}</span>
+                {% endif %}
+                {% if p.created_by %}
+                <span style="color: var(--text-subtle);">·</span>
+                <span style="display: inline-flex; align-items: center; gap: 4px;">
+                    <span class="author-avatar-xs" style="background: linear-gradient(135deg, {{ p.created_by.avatar_color }}, {{ p.created_by.avatar_color }}cc);" title="{{ _('Dodał: %(name)s', name=p.created_by.name) }}">{{ p.created_by.initials or p.created_by.name[0] }}</span>
+                    {{ p.created_by.name }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        <form method="POST" action="/content/{{ p.id }}/status" class="inline">
+            <select name="status" onchange="this.form.submit()" class="input-focus" style="background: var(--surface-dark); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 11.5px; color: var(--text); outline: none;">
+                {% for s in statuses %}<option value="{{ s }}" {% if p.status == s %}selected{% endif %}>{{ slabels[s] }}</option>{% endfor %}
+            </select>
+        </form>
+        <span class="badge-stage {{ scolors.get(p.status, 'badge-neutral') }}">{{ p.status_label }}</span>
+        <form method="POST" action="/content/{{ p.id }}/delete" class="inline" onsubmit="return confirm({{ _('Usunąć publikację?')|tojson|forceescape }})">
+            <button class="btn-danger-sm" title="{{ _('Usuń') }}"><i class="bi bi-trash3"></i></button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="padding: 60px 24px;">
+    <i class="bi bi-file-text"></i>
+    <p>{{ _('Brak publikacji w kalendarzu.') }}</p>
+    <a href="/content/new" class="btn btn-primary" style="margin-top: 16px; display: inline-flex;"><i class="bi bi-plus-lg"></i>{{ _('Dodaj pierwszą') }}</a>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,333 @@
+{% extends "layout.html" %}
+{% block title %}{{ task.title }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ task.title }}{% endblock %}
+{% block page_subtitle %}{{ _('Zadanie #%(id)s', id=task.id) }}{% if task.parent_task %} · {{ _('subtask „%(title)s"', title=task.parent_task.title) }}{% endif %}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/tasks" class="btn btn-ghost"><i class="bi bi-arrow-left"></i><span class="hidden sm:inline">Board</span></a>
+{% if task.status != 'done' %}
+<form method="POST" action="/tasks/{{ task.id }}/status" class="inline">
+    <input type="hidden" name="status" value="done">
+    <button class="btn btn-primary"><i class="bi bi-check2"></i><span class="hidden sm:inline">{{ _('Zrobione') }}</span></button>
+</form>
+{% endif %}
+<form method="POST" action="/tasks/{{ task.id }}/delete" class="inline" onsubmit='return confirm({{ _("Usunąć zadanie (wraz z subtaskami)?")|tojson }})'>
+    <button class="btn-danger-sm" style="padding: 8px 12px; font-size: 13px;"><i class="bi bi-trash3"></i></button>
+</form>
+{% endblock %}
+
+{% block content %}
+
+{# Top meta: priorytet + deadline + klient + autor #}
+<div class="author-meta">
+    {% set pcolors = {'urgent':'#f87171','high':'#fbbf24','medium':'#a29bfe','low':'#94a3b8'} %}
+    <span>
+        <i class="bi bi-flag-fill" style="color: {{ pcolors[task.priority] }};"></i>
+        {{ task.priority_label }}
+    </span>
+    {% if task.deadline %}
+    <span>
+        <i class="bi bi-calendar-event"></i>
+        <span class="mono {% if task.is_overdue %}" style="color: var(--danger-light);{% endif %}">{{ task.deadline.strftime('%d.%m.%Y') }}</span>
+    </span>
+    {% endif %}
+    <span>
+        <i class="bi bi-circle-fill" style="font-size: 7px; color: var(--{{ 'success' if task.status=='done' else 'accent' }});"></i>
+        {{ task.status_label }}
+    </span>
+    {% if task.company %}
+    <span>
+        <i class="bi bi-building"></i>
+        <a href="/companies/{{ task.company.id }}" style="color: var(--accent-light); text-decoration: none;">{{ task.company.name }}</a>
+    </span>
+    {% endif %}
+    {% if task.created_by %}
+    <span style="margin-left: auto;">
+        {{ _('Utworzone przez') }}
+        {% with user=task.created_by %}{% include '_author.html' %}{% endwith %}
+        <span class="mono" style="color: var(--text-subtle);">{{ task.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+    </span>
+    {% endif %}
+    {% if task.updated_by and task.updated_at and (not task.created_at or (task.updated_at - task.created_at).total_seconds() > 60) %}
+    <span>
+        {{ _('Edytowane przez') }}
+        {% with user=task.updated_by %}{% include '_author.html' %}{% endwith %}
+        <span class="mono" style="color: var(--text-subtle);">{{ task.updated_at.strftime('%d.%m.%Y %H:%M') }}</span>
+    </span>
+    {% endif %}
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+
+    {# ═════ LEWA: edycja + subtaski + komentarze ═════ #}
+    <div>
+
+        {# Edit form #}
+        <form method="POST" action="/tasks/{{ task.id }}" class="card-sm" style="padding: 18px; margin-bottom: 18px;">
+            <div class="form-field" style="margin-bottom: 12px;">
+                <label>{{ _('Tytuł') }}</label>
+                <input type="text" name="title" value="{{ task.title }}" required class="form-input">
+            </div>
+
+            <div class="form-row form-grid-3" style="margin-bottom: 12px;">
+                <div class="form-field">
+                    <label>{{ _('Priorytet') }}</label>
+                    <select name="priority" class="form-input">
+                        {% set plabels = {'low': _('Niski'), 'medium': _('Średni'), 'high': _('Wysoki'), 'urgent': _('Pilny')} %}
+                        {% for p in priorities %}<option value="{{ p }}" {% if task.priority == p %}selected{% endif %}>{{ plabels[p] }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>Status</label>
+                    <select name="status" class="form-input">
+                        {% set slabels = {'todo': _('Do zrobienia'), 'in_progress': _('W trakcie'), 'blocked': _('Zablokowane'), 'done': _('Zrobione')} %}
+                        {% for s in statuses %}<option value="{{ s }}" {% if task.status == s %}selected{% endif %}>{{ slabels[s] }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>Deadline</label>
+                    <input type="date" name="deadline" value="{{ task.deadline.isoformat() if task.deadline else '' }}" class="form-input">
+                </div>
+            </div>
+
+            <div class="form-row form-grid-2" style="margin-bottom: 12px;">
+                <div class="form-field">
+                    <label>{{ _('Firma') }}</label>
+                    <select name="company_id" class="form-input">
+                        <option value="">-</option>
+                        {% for c in companies %}<option value="{{ c.id }}" {% if task.company_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>{{ _('Projekt') }}</label>
+                    <select name="project_id" class="form-input">
+                        <option value="">-</option>
+                        {% for p in projects %}<option value="{{ p.id }}" {% if task.project_id == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label>{{ _('Opis (markdown + @mentions)') }}</label>
+                <div class="md-editor" data-mentions="on">
+                    <div class="md-toolbar">
+                        <button type="button" onclick="mdInsert('**','**')" title="Bold"><i class="bi bi-type-bold"></i></button>
+                        <button type="button" onclick="mdInsert('*','*')" title="Italic"><i class="bi bi-type-italic"></i></button>
+                        <button type="button" onclick="mdInsert('\n## ','')" title="{{ _('Nagłówek') }}"><i class="bi bi-type-h2"></i></button>
+                        <span class="md-sep"></span>
+                        <button type="button" onclick="mdInsert('\n- ','')" title="{{ _('Lista') }}"><i class="bi bi-list-ul"></i></button>
+                        <button type="button" onclick="mdInsert('\n1. ','')" title="{{ _('Lista num.') }}"><i class="bi bi-list-ol"></i></button>
+                        <button type="button" onclick="mdInsert('\n- [ ] ','')" title="Checkbox"><i class="bi bi-check2-square"></i></button>
+                        <span class="md-sep"></span>
+                        <button type="button" onclick="mdInsert('`','`')" title="Code"><i class="bi bi-code"></i></button>
+                        <button type="button" onclick="mdInsert('[','](url)')" title="Link"><i class="bi bi-link-45deg"></i></button>
+                        <button type="button" onclick="mdInsert('\n> ','')" title="{{ _('Cytat') }}"><i class="bi bi-quote"></i></button>
+                        <span class="md-sep"></span>
+                        <button type="button" onclick="mdInsert('@','')" title="{{ _('Wzmianka') }}"><i class="bi bi-at"></i></button>
+                        <span class="md-sep"></span>
+                        <button type="button" onclick="mdTogglePreview(this)" title="{{ _('Podgląd') }}"><i class="bi bi-eye"></i></button>
+                    </div>
+                    <textarea id="md-description" name="description" class="md-textarea" rows="10" placeholder="{{ _('Opisz co trzeba zrobić... @Imię, żeby oznaczyć osobę') }}">{{ task.description }}</textarea>
+                    <div class="md-preview" id="md-preview-box" style="display: none;"></div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 14px;">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+                <a href="/tasks" class="btn btn-ghost">{{ _('Anuluj') }}</a>
+            </div>
+        </form>
+
+        {# Opis - rendered preview (always visible pod formem) #}
+        {% if description_html %}
+        <div class="card-sm" style="padding: 18px; margin-bottom: 18px;">
+            <div style="font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-subtle); font-weight: 600; margin-bottom: 10px;">{{ _('Aktualny opis') }}</div>
+            <div class="md-preview" style="border-top: 0; padding: 0; background: transparent;">{{ description_html|safe }}</div>
+        </div>
+        {% endif %}
+
+        {# ═════ SUBTASKI ═════ #}
+        <div class="card-sm" style="padding: 18px; margin-bottom: 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-subtle); font-weight: 600; margin: 0;">
+                    <i class="bi bi-diagram-3"></i> {{ _('Subtaski') }}
+                </h3>
+                {% set prog = task.progress_subtasks %}
+                {% if prog[1] %}
+                <span class="mono" style="font-size: 11.5px; color: var(--text-muted);">{{ prog[0] }}/{{ prog[1] }} · {{ prog[2] }}%</span>
+                {% endif %}
+            </div>
+
+            {% if task.subtasks %}
+            <div>
+                {% for s in task.subtasks %}
+                <div class="subtask-row {% if s.status == 'done' %}done{% endif %}">
+                    <form method="POST" action="/tasks/subtask/{{ s.id }}/toggle" class="inline">
+                        <input type="checkbox" class="subtask-check" {% if s.status == 'done' %}checked{% endif %} onchange="this.form.submit()">
+                    </form>
+                    <a href="/tasks/{{ s.id }}" class="subtask-title">{{ s.title }}</a>
+                    {% if s.deadline %}<span class="mono" style="font-size: 11px; color: {% if s.is_overdue %}var(--danger-light){% else %}var(--text-subtle){% endif %};">{{ s.deadline.strftime('%d.%m') }}</span>{% endif %}
+                    {% if s.created_by %}
+                    <span class="author-avatar-xs" style="background: linear-gradient(135deg, {{ s.created_by.avatar_color }}, {{ s.created_by.avatar_color }}cc);" title="{{ s.created_by.name }}">{{ s.created_by.initials or s.created_by.name[0] }}</span>
+                    {% endif %}
+                    <form method="POST" action="/tasks/subtask/{{ s.id }}/delete" class="inline" onsubmit='return confirm({{ _("Usunąć subtask?")|tojson }})'>
+                        <button class="kb-action" title="{{ _('Usuń') }}" style="color: var(--danger-light);"><i class="bi bi-trash3" style="font-size: 11px;"></i></button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {# Inline add form #}
+            <form method="POST" action="/tasks/{{ task.id }}/subtask" class="subtask-add" style="margin-top: 12px;">
+                <input type="text" name="title" class="form-input" placeholder="{{ _('+ Dodaj subtask i Enter') }}">
+                <select name="priority" class="form-input" style="max-width: 130px;">
+                    {% for p in priorities %}<option value="{{ p }}" {% if p == 'medium' %}selected{% endif %}>{{ plabels[p] }}</option>{% endfor %}
+                </select>
+                <button class="btn btn-primary"><i class="bi bi-plus-lg"></i></button>
+            </form>
+        </div>
+
+        {# ═════ PLIKI ═════ #}
+        <div class="card-sm" style="padding: 18px; margin-bottom: 18px;">
+            <h3 style="font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-subtle); font-weight: 600; margin: 0 0 14px;">
+                <i class="bi bi-paperclip"></i> {{ _('Pliki (%(n)s)', n=(task.files|length if task.files else 0)) }}
+            </h3>
+
+            {% if task.files %}
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px;">
+                {% for f in task.files %}
+                <div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; transition: all 0.15s;">
+                    <i class="bi {{ f.icon_class }}" style="font-size: 22px; color: var(--accent-light); flex-shrink: 0;"></i>
+                    <div style="flex: 1; min-width: 0;">
+                        <a href="/files/{{ f.id }}/download" style="color: var(--text); text-decoration: none; font-weight: 500; font-size: 13px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ f.filename }}</a>
+                        <div style="display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--text-subtle); margin-top: 2px;">
+                            <span class="mono">{{ f.size_human }}</span>
+                            <span>·</span>
+                            <span class="mono">{{ f.uploaded_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                            {% if f.uploaded_by %}
+                            <span>·</span>
+                            <span style="display: inline-flex; align-items: center; gap: 4px;">
+                                <span class="author-avatar-xs" style="background: linear-gradient(135deg, {{ f.uploaded_by.avatar_color }}, {{ f.uploaded_by.avatar_color }}cc);">{{ f.uploaded_by.initials or f.uploaded_by.name[0] }}</span>
+                                {{ f.uploaded_by.name }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <a href="/files/{{ f.id }}/download" class="btn-ghost" style="padding: 6px 10px; font-size: 11.5px; display: inline-flex;" title="{{ _('Pobierz') }}"><i class="bi bi-download"></i></a>
+                    <form method="POST" action="/files/{{ f.id }}/delete" class="inline" onsubmit='return confirm({{ _("Usunąć plik?")|tojson }})'>
+                        <button class="btn-danger-sm" title="{{ _('Usuń') }}"><i class="bi bi-trash3"></i></button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {# Drop-zone upload #}
+            <form method="POST" action="/tasks/{{ task.id }}/upload" enctype="multipart/form-data" id="task-upload-form">
+                <label class="drop-zone" id="task-drop-zone" for="task-file-input" style="display: block; cursor: pointer;">
+                    <i class="bi bi-cloud-upload" style="font-size: 28px; color: var(--accent-light); display: block; margin-bottom: 6px;"></i>
+                    <div style="font-size: 13px; color: var(--text);">{{ _('Kliknij aby wybrać plik lub przeciągnij tutaj') }}</div>
+                    <div style="font-size: 11px; color: var(--text-subtle); margin-top: 3px;">{{ _('Max 50 MB · dowolny typ') }}</div>
+                    <input type="file" name="file" id="task-file-input" style="display: none;" onchange="document.getElementById('task-upload-form').submit()">
+                </label>
+            </form>
+        </div>
+
+        {# ═════ KOMENTARZE ═════ #}
+        <div class="card-sm" style="padding: 18px;">
+            <h3 style="font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-subtle); font-weight: 600; margin: 0 0 14px;">
+                <i class="bi bi-chat-left-text"></i> {{ _('Komentarze (%(n)s)', n=comments|length) }}
+            </h3>
+
+            {% for c in comments %}
+            <div class="comment-item">
+                {% if c.user %}
+                <span class="author-avatar-sm" style="background: linear-gradient(135deg, {{ c.user.avatar_color }}, {{ c.user.avatar_color }}cc);" title="{{ c.user.name }}">{{ c.user.initials or c.user.name[0] }}</span>
+                {% else %}
+                <span class="author-avatar-sm" style="background: var(--text-subtle);">?</span>
+                {% endif %}
+                <div class="comment-body">
+                    <div class="comment-head">
+                        <strong>{{ c.user.name if c.user else _('Nieznany') }}</strong>
+                        <time>{{ c.created_at.strftime('%d.%m.%Y %H:%M') }}</time>
+                        {% if current_user and c.user and c.user.id == current_user.id %}
+                        <form method="POST" action="/comment/{{ c.id }}/delete" class="inline" onsubmit='return confirm({{ _("Usunąć komentarz?")|tojson }})' style="margin-left: auto;">
+                            <button class="kb-action" style="color: var(--danger-light);" title="{{ _('Usuń') }}"><i class="bi bi-trash3" style="font-size: 11px;"></i></button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    <div class="comment-content md-preview" style="padding: 0; border-top: 0; background: transparent;">{{ c.body | markdown_mention | safe }}</div>
+                </div>
+            </div>
+            {% else %}
+            <div class="panel-empty"><i class="bi bi-chat-left"></i>{{ _('Brak komentarzy. Bądź pierwszy.') }}</div>
+            {% endfor %}
+
+            {# Add comment form #}
+            <form method="POST" action="/tasks/{{ task.id }}/comment" style="margin-top: 14px;">
+                <div class="md-editor" data-mentions="on">
+                    <div class="md-toolbar">
+                        <button type="button" onclick="mdInsertInto('md-comment', '**','**')" title="Bold"><i class="bi bi-type-bold"></i></button>
+                        <button type="button" onclick="mdInsertInto('md-comment', '*','*')" title="Italic"><i class="bi bi-type-italic"></i></button>
+                        <button type="button" onclick="mdInsertInto('md-comment', '`','`')" title="Code"><i class="bi bi-code"></i></button>
+                        <button type="button" onclick="mdInsertInto('md-comment', '[','](url)')" title="Link"><i class="bi bi-link-45deg"></i></button>
+                        <span class="md-sep"></span>
+                        <button type="button" onclick="mdInsertInto('md-comment', '@','')" title="{{ _('Wzmianka') }}"><i class="bi bi-at"></i></button>
+                    </div>
+                    <textarea id="md-comment" name="body" class="md-textarea" rows="4" placeholder="{{ _('Napisz komentarz... użyj @Imię, żeby oznaczyć osobę') }}"></textarea>
+                </div>
+                <div style="margin-top: 10px; display: flex; gap: 10px;">
+                    <button class="btn btn-primary"><i class="bi bi-send"></i>{{ _('Dodaj komentarz') }}</button>
+                    <span style="color: var(--text-subtle); font-size: 11.5px; align-self: center;">Markdown + @mentions</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {# ═════ PRAWA: historia zmian ═════ #}
+    <div>
+        <div class="card-sm" style="padding: 18px;">
+            <h3 style="font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-subtle); font-weight: 600; margin: 0 0 14px;">
+                <i class="bi bi-clock-history"></i> {{ _('Historia zmian') }}
+            </h3>
+            {% with entries=audit_entries %}{% include '_timeline.html' %}{% endwith %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/md-editor.js') }}"></script>
+<script>
+(function () {
+    const dropZone = document.getElementById('task-drop-zone');
+    const fileInput = document.getElementById('task-file-input');
+    const form = document.getElementById('task-upload-form');
+    if (!dropZone || !fileInput || !form) return;
+
+    ['dragenter', 'dragover'].forEach(ev => {
+        dropZone.addEventListener(ev, e => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('dragover');
+        });
+    });
+    ['dragleave', 'drop'].forEach(ev => {
+        dropZone.addEventListener(ev, e => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('dragover');
+        });
+    });
+    dropZone.addEventListener('drop', e => {
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            form.submit();
+        }
+    });
+})();
+</script>
+{% endblock %}

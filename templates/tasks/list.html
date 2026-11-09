@@ -1,0 +1,271 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Zadania') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Zadania') }}{% endblock %}
+{% block page_subtitle %}{{ _('Board z priorytetem, deadlinem i powiązaniem z klientem') }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/tasks/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Nowe zadanie') }}</span></a>
+{% endblock %}
+
+{% block extra_head %}
+{% if view == 'board' or not view %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" defer integrity="sha384-HZZ/fukV+9G8gwTNjN7zQDG0Sp7MsZy5DDN6VfY3Be7V9dvQpEpR2jF2HlyFUUjU" crossorigin="anonymous"></script>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'tasks' %}{% include '_produkcja_tabs.html' %}
+
+{# Header: scope tabs + view switcher #}
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px;">
+    <div class="tabs-wrap" style="margin-bottom: 0; border-bottom: 0;">
+        <a href="/tasks{% if view != 'board' %}?view={{ view }}{% endif %}" class="tab-btn {% if not scope %}active{% endif %}">{{ _('Wszystkie') }}</a>
+        <a href="/tasks?scope=today{% if view != 'board' %}&view={{ view }}{% endif %}" class="tab-btn {% if scope == 'today' %}active{% endif %}">{{ _('Dziś') }}</a>
+        <a href="/tasks?scope=week{% if view != 'board' %}&view={{ view }}{% endif %}" class="tab-btn {% if scope == 'week' %}active{% endif %}">{{ _('Tydzień') }}</a>
+        <a href="/tasks?scope=overdue{% if view != 'board' %}&view={{ view }}{% endif %}" class="tab-btn {% if scope == 'overdue' %}active{% endif %}" style="{% if overdue_tasks_count %}color: var(--danger-light);{% endif %}">
+            {{ _('Przeterminowane') }}{% if overdue_tasks_count %} <span class="kb-count" style="background: var(--danger); border-color: transparent; margin-left: 4px; min-width: 24px;">{{ overdue_tasks_count }}</span>{% endif %}
+        </a>
+    </div>
+    <div class="view-switcher">
+        <a href="?{% if scope %}scope={{ scope }}&{% endif %}view=board" class="{% if view == 'board' %}active{% endif %}"><i class="bi bi-kanban"></i>Board</a>
+        <a href="?{% if scope %}scope={{ scope }}&{% endif %}view=list" class="{% if view == 'list' %}active{% endif %}"><i class="bi bi-list"></i>{{ _('Lista') }}</a>
+        <a href="?{% if scope %}scope={{ scope }}&{% endif %}view=calendar" class="{% if view == 'calendar' %}active{% endif %}"><i class="bi bi-calendar3"></i>{{ _('Kalendarz') }}</a>
+    </div>
+</div>
+
+{# Filters #}
+<form method="GET" class="card-sm" style="padding: 14px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+    <input type="hidden" name="scope" value="{{ scope }}">
+    {% set plabels = {'low': _('Niski'), 'medium': _('Średni'), 'high': _('Wysoki'), 'urgent': _('Pilny')} %}
+    <select name="priority" class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus outline-none">
+        <option value="">{{ _('Priorytet (wszystkie)') }}</option>
+        {% for p in priorities %}<option value="{{ p }}" {% if priority == p %}selected{% endif %}>{{ plabels[p] }}</option>{% endfor %}
+    </select>
+    {% set slabels = {'todo': _('Do zrobienia'), 'in_progress': _('W trakcie'), 'blocked': _('Zablokowane'), 'done': _('Zrobione')} %}
+    <select name="status" class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus outline-none">
+        <option value="">{{ _('Status (wszystkie)') }}</option>
+        {% for s in statuses %}<option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ slabels[s] }}</option>{% endfor %}
+    </select>
+    <select name="company_id" class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus outline-none">
+        <option value="">{{ _('Firma (wszystkie)') }}</option>
+        {% for c in companies %}<option value="{{ c.id }}" {% if selected_company_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary"><i class="bi bi-funnel"></i>{{ _('Filtruj') }}</button>
+</form>
+
+{# Filters active flag - jeśli jakikolwiek filter aktywny, fallback na flat list #}
+{% set filters_on = scope or priority or status or selected_company_id %}
+
+{# ═════ VIEW: CALENDAR ═════ #}
+{% if view == 'calendar' %}
+<div class="card-sm" style="padding: 16px;">
+    <div id="tasks-calendar"></div>
+</div>
+
+{# ═════ VIEW: LIST (flat) ═════ #}
+{% elif view == 'list' or (filters_on and view != 'board') %}
+{% if tasks %}
+<div class="card-sm" style="padding: 8px;">
+    {% for t in tasks %}
+    <div class="panel-row task-row priority-{{ t.priority }}" style="padding: 10px 12px; gap: 12px;">
+        <span class="kb-prio {{ t.priority }}" style="flex-shrink: 0;">{{ t.priority_label }}</span>
+        <a href="/tasks/{{ t.id }}" class="no-underline" style="flex: 1; min-width: 0; color: var(--text); {% if t.status == 'done' %}text-decoration: line-through; color: var(--text-muted);{% endif %}">{{ t.title }}</a>
+        {% if t.company %}<a href="/companies/{{ t.company.id }}" class="kb-client" style="text-decoration: none;"><i class="bi bi-building"></i>{{ t.company.name }}</a>{% endif %}
+        {% if t.deadline %}<span class="mono" style="font-size: 11.5px; color: {% if t.is_overdue %}var(--danger-light){% else %}var(--text-muted){% endif %};"><i class="bi bi-clock"></i> {{ t.deadline.strftime('%d.%m') }}</span>{% endif %}
+        <span style="font-size: 11.5px; color: var(--text-subtle); white-space: nowrap;">{{ t.status_label }}</span>
+        {% if t.created_by %}
+        <span class="author-avatar-xs" style="background: linear-gradient(135deg, {{ t.created_by.avatar_color }}, {{ t.created_by.avatar_color }}cc);" title="{{ _('Dodał: %(name)s', name=t.created_by.name) }}">{{ t.created_by.initials or t.created_by.name[0] }}</span>
+        {% endif %}
+        {% if t.status != 'done' %}
+        <form method="POST" action="/tasks/{{ t.id }}/status" class="inline">
+            <input type="hidden" name="status" value="done">
+            <button class="btn-success-sm" title="{{ _('Oznacz jako zrobione') }}"><i class="bi bi-check2"></i></button>
+        </form>
+        {% endif %}
+        <form method="POST" action="/tasks/{{ t.id }}/delete" class="inline" onsubmit='return confirm({{ _("Usunąć zadanie?")|tojson }})'>
+            <button class="btn-danger-sm" title="{{ _('Usuń') }}"><i class="bi bi-trash3"></i></button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="padding: 60px 24px;"><i class="bi bi-check2-square"></i><p>{{ _('Brak zadań w tym widoku.') }}</p></div>
+{% endif %}
+
+{% elif tasks and not filters_on %}
+{# ═════ VIEW: BOARD (kanban) ═════ #}
+<div class="kanban">
+
+    {# Overdue #}
+    <div class="kb-col kb-overdue" data-column="overdue">
+        <div class="kb-head">
+            <span class="kb-dot red"></span>
+            <span class="kb-title">{{ _('Przeterminowane') }}</span>
+            <span class="kb-count">{{ kb.overdue|length }}</span>
+        </div>
+        <div class="kb-items kb-dnd" data-column="overdue">
+            {% for t in kb.overdue %}{% include 'tasks/_kb_card.html' %}{% endfor %}
+            <div class="kb-empty kb-empty-placeholder" {% if kb.overdue %}style="display:none;"{% endif %}><i class="bi bi-check-circle"></i>{{ _('Zero zaległości') }}</div>
+        </div>
+    </div>
+
+    {# Today #}
+    <div class="kb-col kb-today" data-column="today">
+        <div class="kb-head">
+            <span class="kb-dot purple"></span>
+            <span class="kb-title">{{ _('Dziś / pilne') }}</span>
+            <span class="kb-count">{{ kb.today|length }}</span>
+        </div>
+        <div class="kb-items kb-dnd" data-column="today">
+            {% for t in kb.today %}{% include 'tasks/_kb_card.html' %}{% endfor %}
+            <div class="kb-empty kb-empty-placeholder" {% if kb.today %}style="display:none;"{% endif %}><i class="bi bi-cup-hot"></i>{{ _('Nic na dziś') }}</div>
+        </div>
+    </div>
+
+    {# Week #}
+    <div class="kb-col kb-week" data-column="week">
+        <div class="kb-head">
+            <span class="kb-dot amber"></span>
+            <span class="kb-title">{{ _('Ten tydzień') }}</span>
+            <span class="kb-count">{{ kb.week|length }}</span>
+        </div>
+        <div class="kb-items kb-dnd" data-column="week">
+            {% for t in kb.week %}{% include 'tasks/_kb_card.html' %}{% endfor %}
+            <div class="kb-empty kb-empty-placeholder" {% if kb.week %}style="display:none;"{% endif %}><i class="bi bi-calendar-check"></i>{{ _('Wolny tydzień') }}</div>
+        </div>
+    </div>
+
+    {# Later #}
+    <div class="kb-col kb-upcoming" data-column="later">
+        <div class="kb-head">
+            <span class="kb-dot emerald"></span>
+            <span class="kb-title">{{ _('Później / bez terminu') }}</span>
+            <span class="kb-count">{{ kb.later|length }}</span>
+        </div>
+        <div class="kb-items kb-dnd" data-column="later">
+            {% for t in kb.later %}{% include 'tasks/_kb_card.html' %}{% endfor %}
+            <div class="kb-empty kb-empty-placeholder" {% if kb.later %}style="display:none;"{% endif %}><i class="bi bi-calendar"></i>{{ _('Brak zaplanowanych') }}</div>
+        </div>
+    </div>
+
+</div>
+
+{# Done section (collapsible) #}
+{% if kb.done %}
+<details class="card-sm" style="padding: 14px; margin-top: 4px;">
+    <summary style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+        <span style="display: flex; align-items: center; gap: 10px;">
+            <span style="width: 9px; height: 9px; border-radius: 50%; background: var(--text-subtle);"></span>
+            <span style="color: var(--text-muted); font-weight: 700; text-transform: uppercase; font-size: 11.5px; letter-spacing: 0.08em;">{{ _('Zrobione') }}</span>
+            <span class="kb-count">{{ kb.done|length }}</span>
+        </span>
+        <i class="bi bi-chevron-down section-arrow" style="color: var(--text-subtle);"></i>
+    </summary>
+    <div class="kb-items" style="margin-top: 12px;">
+        {% for t in kb.done %}{% include 'tasks/_kb_card.html' %}{% endfor %}
+    </div>
+</details>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <i class="bi bi-check2-square"></i>
+    <p>{{ _('Nie masz jeszcze żadnych zadań.') }}</p>
+    <span class="empty-hint">{{ _('Zacznij od dodania pierwszego zadania - deadline, priorytet, klient.') }}</span>
+    <a href="/tasks/new" class="btn btn-primary" style="margin-top: 16px; display: inline-flex;"><i class="bi bi-plus-lg"></i>{{ _('Dodaj pierwsze zadanie') }}</a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+{% if view == 'calendar' %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js" integrity="sha384-5JIwZN3kuxX2zKsavvNmbZ3zhZZMUtu/eQiK3BbXukpSXp0Cd2ZP4OAYKx7mrPgI" crossorigin="anonymous"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cal = new FullCalendar.Calendar(document.getElementById('tasks-calendar'), {
+        initialView: 'dayGridMonth',
+        locale: {{ lang|tojson }},
+        firstDay: 1,
+        height: 'auto',
+        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listMonth' },
+        buttonText: { today: {{ _('Dziś')|tojson }}, month: {{ _('Miesiąc')|tojson }}, list: {{ _('Lista')|tojson }} },
+        events: {{ calendar_events|tojson }},
+        eventClick: function(info) { info.jsEvent.preventDefault(); if (info.event.url) window.location.href = info.event.url; },
+    });
+    cal.render();
+});
+</script>
+{% endif %}
+{% if view == 'board' or not view %}
+<script>
+(function () {
+    // Zablokuj nawigację kliknięciem po drag-ie
+    let suppressClickUntil = 0;
+    document.addEventListener('click', (e) => {
+        if (Date.now() < suppressClickUntil) {
+            const card = e.target.closest('.kb-card');
+            if (card) { e.preventDefault(); e.stopPropagation(); }
+        }
+    }, true);
+
+    function initSortable() {
+        if (!window.Sortable) { setTimeout(initSortable, 50); return; }
+        const LABELS = {
+            overdue: {{ _('Przeterminowane')|tojson }},
+            today: {{ _('Dziś')|tojson }},
+            week: {{ _('Ten tydzień')|tojson }},
+            later: {{ _('Później')|tojson }},
+        };
+        document.querySelectorAll('.kb-dnd').forEach(col => {
+            new Sortable(col, {
+                group: 'tasks-kb',
+                animation: 160,
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                filter: 'form, button, .kb-empty',
+                preventOnFilter: false,
+                onStart() { suppressClickUntil = 0; document.body.classList.add('kb-dragging'); },
+                onEnd(evt) {
+                    suppressClickUntil = Date.now() + 300;
+                    document.body.classList.remove('kb-dragging');
+                    const card = evt.item;
+                    const taskId = card.dataset.taskId;
+                    const toCol = evt.to.dataset.column;
+                    const fromCol = evt.from.dataset.column;
+                    if (toCol === fromCol) return;
+
+                    fetch('/api/tasks/move', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ task_id: parseInt(taskId), column: toCol }),
+                    }).then(async r => {
+                        if (!r.ok) {
+                            evt.from.appendChild(card);
+                            window.toast?.error({{ _('Nie udało się zaktualizować zadania.')|tojson }});
+                            return;
+                        }
+                        window.toast?.success({{ _('Zadanie przeniesione do:')|tojson }} + ' ' + (LABELS[toCol] || toCol));
+                        // Odśwież liczniki + placeholder empty
+                        document.querySelectorAll('.kb-col').forEach(c => {
+                            const items = c.querySelectorAll('.kb-card');
+                            const cnt = c.querySelector('.kb-count');
+                            if (cnt) cnt.textContent = items.length;
+                            const empty = c.querySelector('.kb-empty-placeholder');
+                            if (empty) empty.style.display = items.length ? 'none' : '';
+                        });
+                    }).catch(() => {
+                        evt.from.appendChild(card);
+                        window.toast?.error({{ _('Błąd sieci - zadanie nie zostało przeniesione.')|tojson }});
+                    });
+                },
+            });
+        });
+    }
+    document.addEventListener('DOMContentLoaded', initSortable);
+})();
+</script>
+{% endif %}
+{% endblock %}

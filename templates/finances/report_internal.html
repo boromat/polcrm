@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Raport wewnętrzny') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Raport wewnętrzny') }}{% endblock %}
+{% block page_subtitle %}{{ _('Per klient - %(month)s %(year)s', month=balance.month_label, year=balance.year) }}{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'report' %}{% include 'finances/_tabs.html' %}
+
+{# Filter period #}
+<form method="GET" class="card-sm" style="padding: 12px 14px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 12px; align-items: end;">
+    <div>
+        <label style="display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-weight: 600;">{{ _('Rok') }}</label>
+        <input type="number" name="year" value="{{ year }}" class="input-focus" style="width: 90px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13px; color: var(--text); outline: none;">
+    </div>
+    <div>
+        <label style="display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-weight: 600;">{{ _('Miesiąc') }}</label>
+        <input type="number" min="1" max="12" name="month" value="{{ month }}" class="input-focus" style="width: 90px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13px; color: var(--text); outline: none;">
+    </div>
+    <label style="display: flex; align-items: center; gap: 6px; color: var(--text); font-size: 13px; padding-bottom: 6px;">
+        <input type="checkbox" name="allocate_overhead" value="1" {% if allocate %}checked{% endif %} style="accent-color: var(--accent);">
+        {{ _('Alokuj overhead proporcjonalnie') }}
+    </label>
+    <button class="btn btn-primary"><i class="bi bi-calculator"></i>{{ _('Przelicz') }}</button>
+</form>
+
+{# Top stats bento #}
+<div class="bento-top" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 18px;">
+    <div class="cell cell-balance" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-arrow-up-right-circle" style="color: var(--success);"></i>{{ _('Przychód') }}</div>
+        <div class="cell-value sm gradient-positive mono">{{ '{:,.0f}'.format(balance.revenue_total).replace(',', ' ') }}</div>
+        <div class="cell-sub">{{ _('zł w okresie') }}</div>
+    </div>
+    <div class="cell cell-overdue" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-arrow-down-right-circle" style="color: var(--danger);"></i>{{ _('Koszty bezpośrednie') }}</div>
+        <div class="cell-value sm gradient-negative mono">{{ '{:,.0f}'.format(balance.expense_total).replace(',', ' ') }}</div>
+        <div class="cell-sub">zł</div>
+    </div>
+    <div class="cell cell-content-wip" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-arrow-repeat" style="color: var(--warning);"></i>{{ _('Subskrypcje') }}</div>
+        <div class="cell-value sm gradient-warning mono">{{ '{:,.0f}'.format(balance.subscription_allocation).replace(',', ' ') }}</div>
+        <div class="cell-sub">{{ _('alokacja') }}</div>
+    </div>
+    <div class="cell {% if balance.balance >= 0 %}cell-balance{% else %}cell-balance negative{% endif %}" style="grid-column: span 1;">
+        <div class="cell-label"><i class="bi bi-bank" style="color: {% if balance.balance >= 0 %}var(--success){% else %}var(--danger){% endif %};"></i>{{ _('Bilans netto') }}</div>
+        <div class="cell-value sm {% if balance.balance >= 0 %}gradient-positive{% else %}gradient-negative{% endif %} mono">{{ '{:,.0f}'.format(balance.balance).replace(',', ' ') }}</div>
+        <div class="cell-sub">zł</div>
+    </div>
+</div>
+
+<div class="section-label">{{ _('Per klient') }}</div>
+{% if balance.per_client %}
+<div class="card-sm" style="padding: 0; overflow: hidden;">
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{{ _('Klient') }}</th>
+                    <th class="col-num">{{ _('Przychód') }}</th>
+                    <th class="col-num">{{ _('Koszty bezp.') }}</th>
+                    <th class="col-num">Overhead</th>
+                    <th class="col-num">{{ _('Marża') }}</th>
+                    <th class="col-num">{{ _('Marża') }} %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in balance.per_client %}
+                <tr>
+                    <td><a href="/companies/{{ row.company.id }}" style="color: var(--accent-light); text-decoration: none; font-weight: 500;">{{ row.company.name }}</a></td>
+                    <td class="col-num" style="color: var(--success-light);">{{ '{:,.2f}'.format(row.revenue).replace(',', ' ') }}</td>
+                    <td class="col-num" style="color: var(--danger-light);">{{ '{:,.2f}'.format(row.direct_expenses).replace(',', ' ') }}</td>
+                    <td class="col-num" style="color: var(--warning-light);">{{ '{:,.2f}'.format(row.overhead_share).replace(',', ' ') }}</td>
+                    <td class="col-num" style="color: {% if row.margin >= 0 %}var(--success-light){% else %}var(--danger-light){% endif %}; font-weight: 700;">{{ '{:,.2f}'.format(row.margin).replace(',', ' ') }}</td>
+                    <td class="col-num" style="color: {% if row.margin_pct >= 0 %}var(--success-light){% else %}var(--danger-light){% endif %};">{{ row.margin_pct }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state" style="padding: 60px 24px;">
+    <i class="bi bi-graph-up"></i>
+    <p>{{ _('Brak przychodów / kosztów w tym okresie.') }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

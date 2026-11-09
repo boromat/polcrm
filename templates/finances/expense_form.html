@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+{% block title %}{% if expense %}{{ _('Edycja kosztu') }}{% else %}{{ _('Nowy koszt') }}{% endif %} - PolCRM{% endblock %}
+
+{% block page_title %}{% if expense %}{{ _('Edycja kosztu') }}{% else %}{{ _('Nowy koszt') }}{% endif %}{% endblock %}
+{% block page_subtitle %}{{ _('4 kategorie: narzędzia SEO, podwykonawcy, marketing, biuro') }}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="max-w-3xl space-y-4">
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="grid md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Kategoria *') }}</label>
+                <select name="category" required class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    {% set cat_labels = {'seo_tools':_('Narzędzia SEO'),'subcontractor':_('Podwykonawca'),'marketing':_('Marketing własny'),'office_transport':_('Biuro i transport')} %}
+                    {% for c in categories %}<option value="{{ c }}" {% if expense and expense.category == c %}selected{% endif %}>{{ cat_labels[c] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Podkategoria (tag)') }}</label>
+                <input type="text" name="subcategory" value="{{ expense.subcategory if expense else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none" placeholder="{{ _('np. Ahrefs / Copywriter / Paliwo') }}">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Tytuł *') }}</label>
+                <input type="text" name="title" required value="{{ expense.title if expense else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Opis') }}</label>
+                <textarea name="description" rows="2" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">{{ expense.description if expense else '' }}</textarea>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Dostawca') }}</label>
+                <input type="text" name="vendor" value="{{ expense.vendor if expense else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Data płatności') }}</label>
+                <input type="date" name="payment_date" value="{{ expense.payment_date.isoformat() if expense and expense.payment_date else today_date.isoformat() }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Kwota netto') }}</label>
+                <input type="number" step="0.01" name="amount_net" value="{{ expense.amount_net if expense else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">VAT (%)</label>
+                <input type="number" step="0.01" name="vat_rate" value="{{ expense.vat_rate if expense else 23 }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Powiązana subskrypcja (opcj.)') }}</label>
+                <select name="subscription_id" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    <option value="">-</option>
+                    {% for s in subscriptions %}<option value="{{ s.id }}" {% if expense and expense.subscription_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Alokuj do klienta (opcj.)') }}</label>
+                <select name="client_id" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    <option value="">-</option>
+                    {% for c in companies %}<option value="{{ c.id }}" {% if expense and expense.client_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 14px;">
+        <button class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+        <a href="/finances/expenses" class="btn btn-ghost">{{ _('Anuluj') }}</a>
+    </div>
+</form>
+{% endblock %}

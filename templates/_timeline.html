@@ -1,0 +1,37 @@
+{# Timeline zmian - wymaga `entries` (list of AuditLog) w kontekście #}
+{% if entries %}
+<div class="timeline-wrap">
+    {% for e in entries %}
+    <div class="timeline-entry">
+        <div class="timeline-dot" style="{% if e.user %}background: {{ e.user.avatar_color }};{% endif %}">
+            {% if e.user %}{{ e.user.initials or e.user.name[0] }}{% else %}·{% endif %}
+        </div>
+        <div class="timeline-body">
+            <div class="timeline-head">
+                <strong>{{ e.user.name if e.user else 'System' }}</strong>
+                {% set action_labels = {
+                    'create': _('utworzył(a)'),
+                    'update': _('zmienił(a)'),
+                    'delete': _('usunął(-ęła)'),
+                    'status_change': _('zmienił(a) status'),
+                    'comment': _('skomentował(a)'),
+                } %}
+                <span class="timeline-action">{{ action_labels.get(e.action, e.action) }}</span>
+                {% if e.field %}<span class="timeline-field">{{ e.field_label }}</span>{% endif %}
+                <span class="timeline-time">{{ e.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+            </div>
+            {% if e.old_value or e.new_value %}
+            <div class="timeline-diff">
+                {% if e.old_value %}<span class="timeline-old">{{ e.value_label(e.old_value) }}</span>{% endif %}
+                {% if e.old_value and e.new_value %}<span class="timeline-arrow">→</span>{% endif %}
+                {% if e.new_value %}<span class="timeline-new">{{ e.value_label(e.new_value) }}</span>{% endif %}
+            </div>
+            {% endif %}
+            {% if e.note %}<div class="timeline-note">{{ e.note }}</div>{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="panel-empty"><i class="bi bi-clock-history"></i>{{ _('Brak historii zmian') }}</div>
+{% endif %}

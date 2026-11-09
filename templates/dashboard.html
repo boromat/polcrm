@@ -1,0 +1,573 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Dashboard') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Dashboard') }}{% endblock %}
+{% block page_subtitle %}{{ today_date | pl_date }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/finances/payments/new" class="btn btn-ghost"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Płatność') }}</span></a>
+<a href="/tasks/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Nowe zadanie') }}</span></a>
+{% endblock %}
+
+{% block content %}
+{# ══════════════════════════════════════════════════════════════
+   DASHBOARD · Command Center
+   ═══════════════════════════════════════════════════════════ #}
+
+{%- set user_name    = current_user.name if current_user else '' -%}
+{%- set overdue_n    = tasks_overdue|length -%}
+{%- set today_n      = tasks_today|length -%}
+{%- set week_n       = tasks_week|length -%}
+{%- set vs_prev      = ((completed_this_week / completed_last_week - 1) * 100) if completed_last_week else 0 -%}
+
+<div class="cc" data-dashboard="command">
+
+  {# ── HERO STRIP ─────────────────────────────────────────────── #}
+  <div class="cc-hero">
+
+    {# 1 · Motivation + streak + weekly progress #}
+    <div class="cc-tile cc-hero-main">
+      <div class="cc-hero-badges">
+        <span class="cc-pill cc-pill-amber">
+          <i class="bi bi-fire"></i>{{ ngettext('%(num)s DZIEŃ STREAK', '%(num)s DNI STREAK', streak_days) }}
+        </span>
+        <span class="cc-live">
+          <span class="cc-live-dot"></span>LIVE
+        </span>
+      </div>
+      <div class="cc-hero-title">{{ _('Dzień dobry, %(name)s', name=user_name.split(' ')[0]) }} <span class="wave">👋</span></div>
+      <div class="cc-hero-sub">
+        {% if overdue_n %}<strong class="cc-text-danger">{{ overdue_n }}</strong> {{ _('po terminie') }} · {% endif %}
+        <strong>{{ week_n }}</strong> {{ _('w tym tyg') }} ·
+        <span class="cc-text-success">{{ _('%(n)s zamkniętych', n=completed_this_week) }}</span>
+      </div>
+      <div class="cc-spacer"></div>
+      <div class="cc-progress-row">
+        <span class="cc-text-mid">{{ _('Zadania tygodnia') }}</span>
+        <span class="mono tnum">{{ completed_this_week }} / {{ weekly_goal }}</span>
+      </div>
+      <div class="cc-progress"><div class="cc-progress-bar" style="width: {{ ((completed_this_week / weekly_goal) * 100) if weekly_goal else 0 }}%"></div></div>
+      <div class="cc-hero-actions">
+        <a href="/tasks" class="cc-btn cc-btn-primary"><i class="bi bi-lightning-charge-fill"></i>{{ _('Start dnia') }}</a>
+        <a href="/tasks?scope=week" class="cc-btn cc-btn-ghost">{{ _('Zobacz tydzień →') }}</a>
+      </div>
+    </div>
+
+    {# 2 · PO TERMINIE #}
+    <a href="/tasks?scope=overdue" class="cc-tile cc-hero-kpi cc-kpi-danger">
+      <div class="cc-kpi-head">
+        <span class="cc-kpi-label">{{ _('PO TERMINIE') }}</span>
+        <i class="bi bi-exclamation-triangle-fill cc-text-danger"></i>
+      </div>
+      <div class="cc-kpi-value cc-text-danger mono tnum">{{ overdue_n }}</div>
+      <div class="cc-kpi-sub">{% if overdue_n %}{{ _('do nadrobienia teraz') }}{% else %}{{ _('wszystko na czas 🎉') }}{% endif %}</div>
+      <div class="cc-spark" data-series="{{ spark_overdue|tojson }}" data-color="#fb7185"></div>
+    </a>
+
+    {# 3 · DZIŚ #}
+    <a href="/tasks?scope=today" class="cc-tile cc-hero-kpi">
+      <div class="cc-kpi-head">
+        <span class="cc-kpi-label">{{ _('DZIŚ') }}</span>
+        <i class="bi bi-clock cc-text-mid"></i>
+      </div>
+      <div class="cc-kpi-value {% if today_n %}cc-text-hi{% else %}cc-text-mid{% endif %} mono tnum">{{ today_n }}</div>
+      <div class="cc-kpi-sub">
+        {% if today_n == 0 %}{{ _('pusto - zaplanuj z zaległych') }}{% else %}{{ _('do wykonania') }}{% endif %}
+      </div>
+      {% if today_n == 0 %}
+      <div class="cc-empty-hint"><i class="bi bi-plus-lg"></i>{{ _('DODAJ PIERWSZE') }}</div>
+      {% else %}
+      <div class="cc-dot-row">
+        {% for t in range(today_n if today_n <= 12 else 12) %}<span class="cc-dot-chip mono tnum">{{ t + 1 }}</span>{% endfor %}
+      </div>
+      {% endif %}
+    </a>
+
+    {# 4 · TEN TYDZIEŃ #}
+    <a href="/tasks?scope=week" class="cc-tile cc-hero-kpi">
+      <div class="cc-kpi-head">
+        <span class="cc-kpi-label">{{ _('TEN TYDZIEŃ') }}</span>
+        <i class="bi bi-graph-up-arrow cc-text-success"></i>
+      </div>
+      <div class="cc-kpi-value cc-text-hi mono tnum">{{ week_n }}</div>
+      <div class="cc-kpi-sub">
+        {% if completed_last_week %}
+          <span class="{% if vs_prev >= 0 %}cc-text-success{% else %}cc-text-danger{% endif %}">
+            {{ '+' if vs_prev >= 0 else '' }}{{ '%d'|format(vs_prev) }}%
+          </span> {{ _('vs poprzedni') }}
+        {% else %}
+          {{ _('nowa baza - zaczynamy') }}
+        {% endif %}
+      </div>
+      <div class="cc-spark" data-series="{{ spark_week_done|tojson }}" data-color="#34d399"></div>
+    </a>
+  </div>
+
+  {# ── 3-COLUMN MAIN ─────────────────────────────────────────── #}
+  <div class="cc-main">
+
+    {# ═══ LEFT column ═══ #}
+    <div class="cc-col cc-col-left">
+
+      {# Przeterminowane - lista #}
+      <div class="cc-card cc-card-accent-danger">
+        <div class="cc-card-head">
+          <i class="bi bi-exclamation-triangle cc-text-danger"></i>
+          <span class="cc-card-title">{{ _('Przeterminowane') }} · {{ overdue_n }}</span>
+          <a href="/tasks?scope=overdue" class="cc-card-more">{{ _('Zaplanuj wszystko →') }}</a>
+        </div>
+        <div class="cc-card-body cc-task-rows">
+          {% for t in tasks_overdue %}
+          <a href="/tasks/{{ t.id }}" class="cc-task-row" data-priority="{{ t.priority }}">
+            <span class="cc-task-check" aria-hidden="true"></span>
+            <div class="cc-task-body">
+              <div class="cc-task-title">{{ t.title }}</div>
+              {% if t.company %}<div class="cc-task-sub">{{ t.company.name }}</div>{% endif %}
+            </div>
+            {% if t.created_by %}
+              <span class="cc-avatar cc-avatar-xs" style="background: linear-gradient(135deg, {{ t.created_by.avatar_color }}, {{ t.created_by.avatar_color }}aa);">{{ t.created_by.initials or t.created_by.name[0] }}</span>
+            {% else %}
+              <span class="cc-avatar cc-avatar-xs cc-avatar-ghost">·</span>
+            {% endif %}
+            <span class="cc-task-date mono tnum">{{ t.deadline.strftime('%d.%m') }}</span>
+          </a>
+          {% else %}
+          <div class="cc-empty"><i class="bi bi-check2-circle"></i>{{ _('Zero zaległości - świetnie!') }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Puls zespołu #}
+      <div class="cc-card">
+        <div class="cc-card-head">
+          <i class="bi bi-people cc-text-mid"></i>
+          <span class="cc-card-title">{{ _('Puls zespołu') }}</span>
+          <span class="cc-card-time mono" id="cc-pulse-now">{{ _('TERAZ') }}</span>
+        </div>
+        <div class="cc-card-body cc-pulse">
+          {% for p in pulse_users %}
+          {% set u = p.user %}
+          <div class="cc-pulse-row">
+            <span class="cc-avatar cc-avatar-md {% if p.online %}cc-avatar-ring{% endif %}" style="background: linear-gradient(135deg, {{ u.avatar_color }}, {{ u.avatar_color }}aa);">{{ u.initials or u.name[0] }}</span>
+            <div class="cc-pulse-body">
+              <div class="cc-pulse-name">
+                <span>{{ u.name.split(' ')[0] }}</span>
+                {% if p.online %}
+                  <span class="cc-status cc-status-on mono">● ONLINE</span>
+                {% else %}
+                  <span class="cc-status cc-status-off mono">○ OFFLINE</span>
+                {% endif %}
+              </div>
+              <div class="cc-pulse-now">
+                {% if p.online %}
+                  <span class="cc-now-ind" style="color: {{ u.avatar_color }};">▶ {{ _('aktywny · %(n)s zad.', n=p.active) }}</span>
+                {% else %}
+                  {% if p.last_seen %}{{ _('ostatnio: %(when)s', when=p.last_seen.strftime('%d.%m %H:%M')) }}{% else %}{{ _('nieaktywny') }}{% endif %}
+                {% endif %}
+              </div>
+              <div class="cc-loadbar"><div class="cc-loadbar-fill" style="width: {{ p.load_pct }}%; background: linear-gradient(90deg, {{ u.avatar_color }}, {{ u.avatar_color }}88);"></div></div>
+            </div>
+            <div class="cc-pulse-stat">
+              <div class="cc-pulse-num mono tnum">{{ p.active }}</div>
+              <div class="cc-pulse-tag mono">{{ _('AKTYWNE') }}</div>
+              {% if p.overdue %}<div class="cc-pulse-tag mono cc-text-danger">{{ p.overdue }} {{ _('PO TERMINIE') }}</div>{% endif %}
+            </div>
+          </div>
+          {% else %}
+          <div class="cc-empty"><i class="bi bi-person"></i>{{ _('Dodaj członka zespołu') }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Heatmapa aktywności #}
+      <div class="cc-card cc-card-grow">
+        <div class="cc-card-head">
+          <i class="bi bi-grid-3x3-gap cc-text-mid"></i>
+          <span class="cc-card-title">{{ _('Heatmapa aktywności · 7 dni') }}</span>
+          <span class="cc-card-meta mono">{{ _('godziny') }}</span>
+        </div>
+        <div class="cc-card-body">
+          <div class="cc-heatmap">
+            <div class="cc-heatmap-hours mono">
+              <span>00</span><span>06</span><span>12</span><span>18</span>
+            </div>
+            {% set dayNames = [_('Pn'), _('Wt'), _('Śr'), _('Cz'), _('Pt'), _('Sb'), _('Nd')] %}
+            {% for row in heatmap %}
+              {# heatmap[i] = data dla dnia (today - 6 + i); mapujemy do nazwy tygodnia #}
+              {% set dow = (today_date.weekday() - (6 - loop.index0)) % 7 %}
+              <div class="cc-heatmap-label mono">{{ dayNames[dow] }}</div>
+              <div class="cc-heatmap-row">
+                {% for v in row %}
+                  {% set intensity = (v / heatmap_max) if heatmap_max else 0 %}
+                  <div class="cc-heat-cell {% if intensity > 0.7 %}cc-heat-hot{% endif %}" style="--_i: {{ '%.2f'|format(0.08 + intensity * 0.85) }};" title="{{ _('%(n)s akcji', n=v) }}"></div>
+                {% endfor %}
+              </div>
+            {% endfor %}
+          </div>
+          <div class="cc-heatmap-legend mono">
+            <span>{{ _('MNIEJ') }}</span>
+            <span class="cc-legend-dots">
+              <span style="background: rgba(168,85,247,0.13);"></span>
+              <span style="background: rgba(168,85,247,0.30);"></span>
+              <span style="background: rgba(168,85,247,0.47);"></span>
+              <span style="background: rgba(168,85,247,0.65);"></span>
+              <span style="background: rgba(168,85,247,0.82);"></span>
+            </span>
+            <span>{{ _('WIĘCEJ') }}</span>
+          </div>
+          <div class="cc-heatmap-stats">
+            <div>
+              <div class="cc-stat-label mono">PEAK</div>
+              <div class="cc-stat-value cc-text-accent tnum">{{ heatmap_peak }}</div>
+              <div class="cc-stat-sub mono">{{ _('godziny') }}</div>
+            </div>
+            <div>
+              <div class="cc-stat-label mono">{{ _('ŚREDNIO') }}</div>
+              <div class="cc-stat-value tnum">{{ '%.0f'|format(avg_daily_activity) }}</div>
+              <div class="cc-stat-sub mono">{{ _('akcji/dzień') }}</div>
+            </div>
+            <div>
+              <div class="cc-stat-label mono">{{ _('VS POPRZ.') }}</div>
+              {% if completed_last_week %}
+              <div class="cc-stat-value {% if vs_prev >= 0 %}cc-text-success{% else %}cc-text-danger{% endif %} tnum">{{ '+' if vs_prev >= 0 else '' }}{{ '%d'|format(vs_prev) }}%</div>
+              <div class="cc-stat-sub mono">{{ _('tydzień') }}</div>
+              {% else %}
+              <div class="cc-stat-value tnum cc-text-lo">-</div>
+              <div class="cc-stat-sub mono">{{ _('start zbierania') }}</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ═══ MIDDLE column ═══ #}
+    <div class="cc-col cc-col-mid">
+
+      {# Ten tydzień - lista #}
+      <div class="cc-card">
+        <div class="cc-card-head">
+          <i class="bi bi-calendar3 cc-text-mid"></i>
+          <span class="cc-card-title">{{ _('Ten tydzień') }} · {{ week_n }}</span>
+          <a href="/tasks?scope=week" class="cc-mini-btn">{{ _('Wszystkie') }}</a>
+        </div>
+        <div class="cc-card-body cc-week-rows">
+          {% for t in tasks_week %}
+          {% set is_today_ = t.deadline == today_date %}
+          {% set is_tomorrow_ = t.deadline and (t.deadline - today_date).days == 1 %}
+          <a href="/tasks/{{ t.id }}" class="cc-week-row">
+            <div class="cc-week-date">
+              <div class="cc-week-num mono tnum {% if is_today_ %}cc-text-accent{% endif %}">{{ t.deadline.strftime('%d') if t.deadline else '-' }}</div>
+              <div class="cc-week-mon mono">
+                {% if is_today_ %}{{ _('DZIŚ') }}{% elif is_tomorrow_ %}{{ _('JUTRO') }}{% elif t.deadline %}{{ t.deadline.strftime('%m')|upper }}{% else %}-{% endif %}
+              </div>
+            </div>
+            <div class="cc-week-body">
+              <div class="cc-week-title">{{ t.title }}</div>
+              <div class="cc-week-meta">
+                <span class="cc-prio cc-prio-{{ t.priority }}">{{ t.priority_label|upper }}</span>
+                {% if t.company %}<span class="cc-text-lo">{{ t.company.name }}</span>{% endif %}
+              </div>
+            </div>
+            {% if t.created_by %}
+              <span class="cc-avatar cc-avatar-xs" style="background: linear-gradient(135deg, {{ t.created_by.avatar_color }}, {{ t.created_by.avatar_color }}aa);">{{ t.created_by.initials or t.created_by.name[0] }}</span>
+            {% endif %}
+            <i class="bi bi-chevron-right cc-text-lo"></i>
+          </a>
+          {% else %}
+          <div class="cc-empty"><i class="bi bi-calendar-check"></i>{{ _('Wolny tydzień - plan czysty') }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Timeline dnia #}
+      <a href="/calendar" class="cc-card cc-card-link" data-cc-timeline>
+        <div class="cc-card-head">
+          <i class="bi bi-clock cc-text-mid"></i>
+          {%- set tl_people = pulse_users[:4] -%}
+          <span class="cc-card-title">{{ _('Timeline dnia') }} · {% if pulse_users|length > 4 %}{{ _('Ty + 3 osoby z %(n)s', n=pulse_users|length) }}{% else %}{% for p in tl_people %}{{ p.user.name.split(' ')[0] }}{% if not loop.last %} × {% endif %}{% endfor %}{% endif %}</span>
+          <span class="cc-card-time mono" id="cc-tl-now-label"></span>
+          <span class="cc-card-expand mono">{{ _('PEŁNY KALENDARZ') }} <i class="bi bi-arrow-right"></i></span>
+        </div>
+        <div class="cc-card-body cc-timeline-body">
+          {%- set today_visits = upcoming_visits | selectattr('scheduled_at') | list -%}
+          {%- set today_visits = upcoming_visits|list -%}
+          {# filter today visits in Python-like way #}
+          {%- set tl_events = [] -%}
+          {%- for v in upcoming_visits -%}
+            {%- if v.scheduled_at and v.scheduled_at.date() == today_date -%}
+              {%- set _discard = tl_events.append(('visit', v.scheduled_at.hour + v.scheduled_at.minute/60.0, 1, v.company.name, '#ec4899', v.created_by_user_id if v.created_by_user_id else None)) -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- for t in tasks_today -%}
+            {%- set _discard = tl_events.append(('task', 9 + loop.index0 * 2, 1.5, t.title, None, t.created_by_user_id)) -%}
+          {%- endfor -%}
+
+          <div class="cc-timeline" style="grid-template-columns: 44px repeat({{ [tl_people|length, 2]|max }}, minmax(0, 1fr));">
+            <div class="cc-tl-axis mono">
+              {% for h in [8,10,12,14,16,18] %}<div class="cc-tl-hour" data-h="{{ h }}">{{ '%02d'|format(h) }}:00</div>{% endfor %}
+            </div>
+            {% for p in tl_people %}
+            {%- set p_events = tl_events | selectattr(5, 'equalto', p.user.id) | list -%}
+            <div class="cc-tl-col">
+              <div class="cc-tl-colhead">
+                <span class="cc-avatar cc-avatar-xs" style="background: linear-gradient(135deg, {{ p.user.avatar_color }}, {{ p.user.avatar_color }}aa);">{{ p.user.initials or p.user.name[0] }}</span>
+                <span>{{ p.user.name.split(' ')[0] }}</span>
+                <span class="cc-tl-status mono {% if p.online %}cc-text-success{% else %}cc-text-lo{% endif %}">{% if p.online %}●{% else %}○{% endif %}</span>
+              </div>
+              <div class="cc-tl-grid">
+                {% for h in range(8, 19) %}<div class="cc-tl-line" style="top: {{ (h - 8) * 22 }}px"></div>{% endfor %}
+                {% for ev in p_events %}
+                  {% set hh = ev[1] %}
+                  {% set dur = ev[2] %}
+                  {% set color = ev[4] or p.user.avatar_color %}
+                  {% if hh >= 8 and hh < 19 %}
+                  <div class="cc-tl-event{% if ev[0] == 'visit' %} cc-tl-event-visit{% endif %}" style="top: {{ ((hh - 8) * 22 + 1)|int }}px; height: {{ (dur * 22 - 4)|int }}px; background: linear-gradient(135deg, {{ color }}33, {{ color }}15); border-left: 2px solid {{ color }};">
+                    {% if ev[0] == 'visit' %}<i class="bi bi-calendar-event"></i> {% endif %}{{ ev[3] }}
+                  </div>
+                  {% endif %}
+                {% endfor %}
+                {% if not p_events %}
+                <div class="cc-tl-blank mono">{{ _('brak zaplanowanych slotów') }}</div>
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+            {% if pulse_users|length < 2 %}
+            <div class="cc-tl-col cc-tl-col-empty">
+              <div class="cc-tl-colhead cc-text-lo">{{ _('- tylko jedna osoba -') }}</div>
+              <div class="cc-tl-grid">
+                {% for h in range(8, 19) %}<div class="cc-tl-line" style="top: {{ (h - 8) * 22 }}px"></div>{% endfor %}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </a>
+
+      {# Live feed #}
+      <div class="cc-card cc-card-grow">
+        <div class="cc-card-head">
+          <i class="bi bi-chat-dots cc-text-mid"></i>
+          <span class="cc-card-title">{{ _('Live feed · ostatnie akcje') }}</span>
+          <span class="cc-live"><span class="cc-live-dot cc-live-dot-green"></span>LIVE</span>
+        </div>
+        <div class="cc-card-body cc-feed">
+          {%- set tbl_labels = {
+            'tasks': _('zadanie'), 'notes': _('notatka'), 'payments': _('płatność'),
+            'expenses': _('koszt'), 'companies': _('firmę'), 'visits': _('wizytę'),
+            'content_posts': 'content', 'contracts': _('umowę'),
+            'projects': _('projekt'), 'audits': _('audyt'),
+          } -%}
+          {%- set action_labels = {
+            'create': _('dodał(a)'), 'update': _('zmienił(a)'), 'delete': _('usunął(-ęła)'),
+            'status_change': _('zmienił(a) status'), 'comment': _('skomentował(a)'),
+          } -%}
+          {% for a in recent_activity[:6] %}
+          {% set u = a.user %}
+          {% set color = u.avatar_color if u else '#6c5ce7' %}
+          <div class="cc-feed-row">
+            <span class="cc-avatar cc-avatar-xs" style="background: linear-gradient(135deg, {{ color }}, {{ color }}aa);">{{ (u.initials or u.name[0]) if u else '?' }}</span>
+            <div class="cc-feed-body">
+              <div class="cc-feed-line">
+                <span class="cc-text-hi">{{ u.name.split(' ')[0] if u else 'System' }}</span>
+                <span class="cc-text-lo">{{ action_labels.get(a.action, a.action) }}</span>
+                <span style="color: {{ color }};">{{ tbl_labels.get(a.table_name, a.table_name) }}</span>
+              </div>
+              {% if a.note %}<div class="cc-feed-meta mono">{{ a.note }}</div>{% endif %}
+            </div>
+            <div class="cc-feed-time mono">{{ a.created_at.strftime('%d.%m · %H:%M') }}</div>
+          </div>
+          {% else %}
+          <div class="cc-empty"><i class="bi bi-inbox"></i>{{ _('Brak aktywności w systemie') }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {# ═══ RIGHT column ═══ #}
+    <div class="cc-col cc-col-right">
+
+      {# Nadchodzące wizyty #}
+      <div class="cc-card">
+        <div class="cc-card-head">
+          <i class="bi bi-calendar-event cc-text-mid"></i>
+          <span class="cc-card-title">{{ _('Nadchodzące wizyty') }}</span>
+          <a href="/calendar" class="cc-card-more">→</a>
+        </div>
+        <div class="cc-card-body cc-visits">
+          {% for v in upcoming_visits %}
+          <a href="/visits/{{ v.id }}" class="cc-visit">
+            <div class="cc-visit-top">
+              <span class="cc-prio cc-prio-medium">{{ v.type_label|upper }}</span>
+              <span class="cc-visit-date mono">{{ v.scheduled_at.strftime('%d.%m · %H:%M') }}</span>
+            </div>
+            <div class="cc-visit-title">{{ v.company.name }}</div>
+          </a>
+          {% else %}
+          <div class="cc-empty"><i class="bi bi-calendar-x"></i>{{ _('Brak zaplanowanych wizyt') }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Pipeline #}
+      <a href="/pipeline" class="cc-card cc-card-link">
+        <div class="cc-card-head">
+          <i class="bi bi-kanban cc-text-mid"></i>
+          <span class="cc-card-title">{{ _('Pipeline sprzedażowy') }}</span>
+          <span class="cc-card-expand mono">{{ _('WIDOK') }} <i class="bi bi-arrow-right"></i></span>
+        </div>
+        <div class="cc-card-body cc-pipeline">
+          {% set pipe_colors = {'lead':'#a78bfa','audit':'#c084fc','contact':'#f472b6','visit':'#ec4899','offer':'#fbbf24','client':'#34d399'} %}
+          {% set pipe_labels = {'lead': _('Lead'), 'audit': _('Audyt'), 'contact': _('Kontakt'), 'visit': _('Wizyta'), 'offer': _('Oferta'), 'client': _('Klient')} %}
+          {% set pipe_max = (pipeline_counts.values()|max) if pipeline_counts else 1 %}
+          {% for stage in stages %}
+          {% set cnt = pipeline_counts.get(stage, 0) %}
+          <div class="cc-pipe-row">
+            <div class="cc-pipe-label">
+              <span class="cc-pipe-dot" style="background: {{ pipe_colors[stage] }}; box-shadow: 0 0 6px {{ pipe_colors[stage] }}88;"></span>
+              {{ pipe_labels[stage] }}
+            </div>
+            <div class="cc-pipe-bar"><div class="cc-pipe-fill" style="width: {{ (cnt / pipe_max * 100) if pipe_max else 0 }}%; background: linear-gradient(90deg, {{ pipe_colors[stage] }}cc, {{ pipe_colors[stage] }});"></div></div>
+            <span class="mono tnum cc-pipe-num">{{ cnt }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </a>
+
+      {# Finanse · skrót #}
+      <a href="/finances" class="cc-card cc-card-link">
+        <div class="cc-card-head">
+          <i class="bi bi-bank cc-text-mid"></i>
+          <span class="cc-card-title">{{ _('Finanse · skrót') }}</span>
+          <span class="cc-card-expand mono">{{ _('OTWÓRZ →') }}</span>
+        </div>
+        <div class="cc-card-body cc-finance">
+          <div class="cc-finance-grid">
+            <div>
+              <div class="cc-stat-label mono">{{ _('BILANS') }}</div>
+              <div class="cc-stat-value tnum {% if balance.balance < 0 %}cc-text-danger{% else %}cc-text-success{% endif %}">
+                {{ '{:+,.0f}'.format(balance.balance).replace(',', ' ') }}<span class="cc-unit">zł</span>
+              </div>
+              <div class="cc-spark" data-series="{{ finance_trend|map(attribute='balance')|list|tojson }}" data-color="{{ '#fb7185' if balance.balance < 0 else '#34d399' }}" data-height="22"></div>
+            </div>
+            <div>
+              <div class="cc-stat-label mono">MRR</div>
+              <div class="cc-stat-value cc-text-success tnum">
+                {{ '{:,.0f}'.format(mrr_total).replace(',', ' ') }}<span class="cc-unit">zł</span>
+              </div>
+              <div class="cc-spark" data-series="{{ finance_trend|map(attribute='income')|list|tojson }}" data-color="#34d399" data-height="22"></div>
+            </div>
+          </div>
+          {% if overdue.count %}
+          <div class="cc-finance-warn">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span>{{ _('%(n)s zaległa faktura', n=overdue.count) if overdue.count == 1 else _('%(n)s zaległa faktur', n=overdue.count) }}</span>
+            <span class="mono tnum">{{ '{:,.0f}'.format(overdue.total_gross).replace(',', ' ') }} zł</span>
+          </div>
+          {% else %}
+          <div class="cc-finance-ok">
+            <i class="bi bi-check2-circle"></i>
+            <span>{{ _('Wszystko opłacone na czas') }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </a>
+
+      {# Top firmy · zdrowie #}
+      <div class="cc-card cc-card-grow">
+        <div class="cc-card-head">
+          <i class="bi bi-buildings cc-text-mid"></i>
+          <span class="cc-card-title">{{ _('Top firmy · zdrowie') }}</span>
+          <a href="/companies" class="cc-card-more">→</a>
+        </div>
+        <div class="cc-card-body cc-firms">
+          {% for f in firms_health %}
+          <a href="/companies/{{ f.company.id }}" class="cc-firm">
+            <span class="cc-firm-avatar" style="--_a: {{ '%.2f'|format(0.22 + f.health * 0.3) }}; --_b: {{ '%.2f'|format(0.12 + f.health * 0.3) }};">{{ f.company.name[0] }}</span>
+            <div class="cc-firm-body">
+              <div class="cc-firm-name">{{ f.company.name }}</div>
+              <div class="cc-health-bar"><div class="cc-health-fill" style="width: {{ f.health * 100 }}%; background: {% if f.health > 0.65 %}#34d399{% elif f.health > 0.4 %}#fbbf24{% else %}#fb7185{% endif %};"></div></div>
+            </div>
+            <span class="cc-firm-meta mono" title="{{ _('%(open)s otwartych · %(overdue)s po terminie', open=f.tasks, overdue=f.overdue) }}">{% if f.overdue %}<span class="cc-text-danger">{{ f.overdue }}!</span>{% else %}{{ f.tasks }}{% endif %}</span>
+          </a>
+          {% else %}
+          <div class="cc-empty"><i class="bi bi-building"></i>{{ _('Brak firm w portfolio') }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Mini-sparkline renderer - inline, bez zewnętrznych zależności #}
+<script>
+(function () {
+  function sparkSVG(values, color, h) {
+    if (!values || values.length < 2) return '';
+    const w = 100, pad = 1;
+    const max = Math.max.apply(null, values);
+    const min = Math.min.apply(null, values);
+    const range = (max - min) || 1;
+    const pts = values.map((v, i) => {
+      const x = (i / (values.length - 1)) * w;
+      const y = h - ((v - min) / range) * (h - pad * 2) - pad;
+      return [x, y];
+    });
+    const d = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const area = d + ' L' + w + ',' + h + ' L0,' + h + ' Z';
+    const safeColor = color.replace('#', '');
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" style="display:block;width:100%;height:' + h + 'px;overflow:visible;">'
+      + '<defs><linearGradient id="sg' + safeColor + '" x1="0" x2="0" y1="0" y2="1">'
+      + '<stop offset="0%" stop-color="' + color + '" stop-opacity="0.38"/>'
+      + '<stop offset="100%" stop-color="' + color + '" stop-opacity="0"/>'
+      + '</linearGradient></defs>'
+      + '<path d="' + area + '" fill="url(#sg' + safeColor + ')"/>'
+      + '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'
+      + '<circle cx="' + pts[pts.length - 1][0].toFixed(1) + '" cy="' + pts[pts.length - 1][1].toFixed(1) + '" r="2" fill="' + color + '"/>'
+      + '</svg>';
+  }
+  document.querySelectorAll('.cc-spark').forEach(function (el) {
+    try {
+      const data = JSON.parse(el.dataset.series || '[]');
+      const color = el.dataset.color || '#a855f7';
+      const h = parseInt(el.dataset.height || '30', 10);
+      el.innerHTML = sparkSVG(data, color, h);
+    } catch (e) { /* noop */ }
+  });
+
+  // Oznacz bieżącą godzinę w timeline (linia "teraz")
+  const _stamp = (function () {
+    const d = new Date();
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  })();
+  const nowLabel = document.getElementById('cc-tl-now-label');
+  if (nowLabel) nowLabel.textContent = {{ _('TERAZ')|tojson }} + ' ' + _stamp;
+  const pulseLabel = document.getElementById('cc-pulse-now');
+  if (pulseLabel) pulseLabel.textContent = {{ _('TERAZ')|tojson }} + ' · ' + _stamp;
+  const tl = document.querySelector('[data-cc-timeline] .cc-timeline');
+  if (tl) {
+    const h = new Date().getHours() + new Date().getMinutes() / 60;
+    if (h >= 8 && h <= 19) {
+      const top = (h - 8) * 22;
+      const mark = document.createElement('div');
+      mark.className = 'cc-tl-now';
+      mark.style.top = top + 'px';
+      tl.querySelectorAll('.cc-tl-col:not(.cc-tl-col-empty) .cc-tl-grid').forEach(function (g) {
+        const n = mark.cloneNode(true);
+        g.appendChild(n);
+      });
+    }
+  }
+
+  // Data-cc-link support (card-level navigation that respects inner <a>)
+  document.querySelectorAll('[data-cc-link]').forEach(function (el) {
+    el.addEventListener('click', function (e) {
+      if (e.target.closest('a, button, input, form')) return;
+      window.location = el.dataset.ccLink;
+    });
+  });
+})();
+</script>
+
+{% endblock %}

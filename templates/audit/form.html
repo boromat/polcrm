@@ -1,0 +1,518 @@
+{% extends "layout.html" %}
+{% block title %}{% if audit %}{{ _('Edytuj audyt') }}{% else %}{{ _('Nowy audyt') }}{% endif %} - PolCRM{% endblock %}
+
+{% block page_title %}{% if audit %}{{ _('Edytuj audyt') }}{% else %}{{ _('Nowy audyt') }}{% endif %}{% endblock %}
+{% block page_subtitle %}{{ company.name }}{% endblock %}
+{% block topbar_actions %}
+<a href="/companies/{{ company.id }}" class="btn btn-ghost"><i class="bi bi-arrow-left"></i><span class="hidden sm:inline">{{ _('Do firmy') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+{% if not audit %}
+<!-- New audit - confirm creation -->
+<div class="bg-surface border border-border rounded-xl p-6 max-w-2xl">
+    <h2 class="text-lg font-semibold text-white mb-3">{{ _('Utwórz nowy audyt') }}</h2>
+    <p class="text-gray-400 text-sm mb-4">
+        {{ _('System automatycznie pobierze dane z Google Places i PageSpeed Insights, obliczy scoring 1-5 w 5 obszarach i wstępnie wypełni sekcje audytu. Możesz potem ręcznie uzupełnić checklisty i notatki.') }}
+    </p>
+    <div class="bg-surface-dark border border-border rounded-lg p-4 mb-4">
+        <div class="grid grid-cols-2 gap-3 text-sm">
+            <div><span class="text-gray-500">{{ _('Firma:') }}</span> <span class="text-gray-200">{{ company.name }}</span></div>
+            <div><span class="text-gray-500">{{ _('Branża:') }}</span> <span class="text-gray-200">{{ company.industry or '-' }}</span></div>
+            <div><span class="text-gray-500">{{ _('Strona www:') }}</span> <span class="text-gray-200">{{ company.website or _('Brak') }}</span></div>
+            <div><span class="text-gray-500">Rating:</span> <span class="text-gray-200">{% if company.rating %}<span class="text-amber-400">★</span> {{ company.rating }}{% else %}-{% endif %}</span></div>
+        </div>
+    </div>
+    <form method="POST">
+        <button type="submit" class="bg-accent hover:bg-accent-dark text-white font-bold py-3 px-6 rounded-xl text-sm btn-lift transition">
+            <i class="bi bi-rocket-takeoff mr-2"></i>{{ _('Uruchom auto-scoring i utwórz audyt') }}
+        </button>
+    </form>
+</div>
+
+{% else %}
+<!-- Edit existing audit -->
+
+<!-- Scores overview -->
+<div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+    {% set score_items = [
+        (_('Widoczność'), audit.score_visibility, 'bi-eye'),
+        (_('Oferta'), audit.score_offer, 'bi-megaphone'),
+        (_('Zaufanie'), audit.score_trust, 'bi-shield-check'),
+        (_('Konwersja'), audit.score_conversion, 'bi-funnel'),
+        (_('Analityka'), audit.score_analytics, 'bi-graph-up'),
+        (_('Ogółem'), audit.score_overall, 'bi-star'),
+    ] %}
+    {% for label, score, icon in score_items %}
+    <div class="bg-surface border border-border rounded-xl p-3 text-center card-sm">
+        <i class="bi {{ icon }} text-lg {% if score and score >= 4 %}text-emerald-400{% elif score and score >= 3 %}text-amber-400{% elif score %}text-red-400{% else %}text-gray-600{% endif %}"></i>
+        <div class="text-2xl font-bold {% if score and score >= 4 %}text-emerald-400{% elif score and score >= 3 %}text-amber-400{% elif score %}text-red-400{% else %}text-gray-600{% endif %} mt-1">
+            {{ score if score else '-' }}
+        </div>
+        <div class="text-xs text-gray-500 uppercase">{{ label }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+<form method="POST" class="space-y-4">
+
+    <!-- Section 1: Context -->
+    <details class="bg-surface border border-border rounded-xl overflow-hidden card-sm" open>
+        <summary class="px-5 py-3 cursor-pointer hover:bg-surface-light transition flex items-center gap-2">
+            <i class="bi bi-1-circle text-accent"></i>
+            <span class="font-semibold text-white">{{ _('Kontekst biznesowy') }}</span>
+        </summary>
+        <div class="px-5 pb-5 pt-2 border-t border-border/50">
+            {% set ctx = audit.section_context or {} %}
+            {% set ctx_auto = ctx.get('auto_data', {}) if ctx is mapping else {} %}
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                {% for key, val in ctx_auto.items() %}
+                <div class="bg-surface-dark rounded-lg p-2 text-sm">
+                    <span class="text-gray-500 text-xs uppercase">{{ key }}</span>
+                    <div class="text-gray-300">{{ val if val else '-' }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Notatki (kontekst)') }}</label>
+            <textarea name="context_notes" rows="3"
+                      class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm text-gray-200 input-focus transition outline-none">{{ ctx.get('notes', '') if ctx is mapping else '' }}</textarea>
+        </div>
+    </details>
+
+    <!-- Section 2: Website -->
+    <details class="bg-surface border border-border rounded-xl overflow-hidden card-sm">
+        <summary class="px-5 py-3 cursor-pointer hover:bg-surface-light transition flex items-center gap-2">
+            <i class="bi bi-2-circle text-accent"></i>
+            <span class="font-semibold text-white">{{ _('Audyt strony WWW') }}</span>
+            {% if audit.pagespeed_mobile %}
+            <span class="ml-auto text-xs text-gray-500">PageSpeed Mobile: <span class="text-accent font-bold">{{ audit.pagespeed_mobile }}</span></span>
+            {% endif %}
+        </summary>
+        <div class="px-5 pb-5 pt-2 border-t border-border/50">
+            {% set ws = audit.section_website or {} %}
+            {% set ws_auto = ws.get('auto_data', {}) if ws is mapping else {} %}
+
+            {% if ws_auto.get('info') %}
+            <div class="bg-amber-900/20 border border-amber-700/50 rounded-lg p-3 mb-3 text-sm text-amber-300">
+                <i class="bi bi-exclamation-triangle mr-1"></i>{{ ws_auto.info }}
+            </div>
+            {% else %}
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                {% for key, val in ws_auto.items() %}
+                <div class="bg-surface-dark rounded-lg p-2 text-sm">
+                    <span class="text-gray-500 text-xs uppercase">{{ key }}</span>
+                    <div class="text-gray-300">{{ val if val else '-' }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% set ws_cl = ws.get('checklist', {}) if ws is mapping else {} %}
+            {% if ws_cl %}
+            {% set ws_labels = {
+                'mobile_responsive': _('Responsywność mobile'),
+                'clear_offer': _('Jasna oferta na stronie'),
+                'visible_cta': _('Widoczne CTA (przycisk akcji)'),
+                'contact_form': _('Formularz kontaktowy'),
+                'trust_elements': _('Elementy zaufania (opinie, certyfikaty)'),
+                'fast_loading': _('Szybkość ładowania &lt; 3s'),
+            } %}
+            <div class="space-y-2 mb-3">
+                {% for key, val in ws_cl.items() %}
+                <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                    <input type="checkbox" name="ws_{{ key }}" {% if val %}checked{% endif %}
+                           class="w-4 h-4 rounded bg-surface-dark border-border text-accent focus:ring-accent">
+                    {{ ws_labels.get(key, key) }}
+                </label>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Notatki (strona www)') }}</label>
+            <textarea name="ws_notes" rows="2"
+                      class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm text-gray-200 input-focus transition outline-none">{{ ws.get('notes', '') if ws is mapping else '' }}</textarea>
+        </div>
+    </details>
+
+    <!-- Section 3: SEO -->
+    <details class="bg-surface border border-border rounded-xl overflow-hidden card-sm">
+        <summary class="px-5 py-3 cursor-pointer hover:bg-surface-light transition flex items-center gap-2">
+            <i class="bi bi-3-circle text-accent"></i>
+            <span class="font-semibold text-white">{{ _('Audyt lokalnego SEO') }}</span>
+        </summary>
+        <div class="px-5 pb-5 pt-2 border-t border-border/50">
+            {% set seo = audit.section_seo or {} %}
+            {% set seo_cl = seo.get('checklist', {}) if seo is mapping else {} %}
+            {% set seo_labels = {
+                'keywords_in_title': _('Frazy "usługa+miasto" w tytule strony'),
+                'keywords_in_headings': _('Frazy w nagłówkach H1/H2'),
+                'keywords_in_content': _('Frazy w treści strony'),
+                'subpages_per_service': _('Podstrony per usługa'),
+                'subpages_per_location': _('Podstrony per lokalizacja'),
+                'internal_linking': _('Linkowanie wewnętrzne'),
+                'meta_with_location': _('Meta description z lokalizacją'),
+                'schema_local_business': 'Schema.org LocalBusiness',
+                'https_active': _('HTTPS aktywne'),
+                'mobile_friendly': _('Strona mobile-friendly'),
+            } %}
+            <div class="space-y-2 mb-3">
+                {% for key, val in seo_cl.items() %}
+                <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                    <input type="checkbox" name="seo_{{ key }}" {% if val %}checked{% endif %}
+                           class="w-4 h-4 rounded bg-surface-dark border-border text-accent focus:ring-accent">
+                    {{ seo_labels.get(key, key) }}
+                </label>
+                {% endfor %}
+            </div>
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Notatki (SEO)') }}</label>
+            <textarea name="seo_notes" rows="2"
+                      class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm text-gray-200 input-focus transition outline-none">{{ seo.get('notes', '') if seo is mapping else '' }}</textarea>
+        </div>
+    </details>
+
+    <!-- Section 4: GBP -->
+    <details class="bg-surface border border-border rounded-xl overflow-hidden card-sm">
+        <summary class="px-5 py-3 cursor-pointer hover:bg-surface-light transition flex items-center gap-2">
+            <i class="bi bi-4-circle text-accent"></i>
+            <span class="font-semibold text-white">Google Business Profile</span>
+        </summary>
+        <div class="px-5 pb-5 pt-2 border-t border-border/50">
+            {% set gbp = audit.section_gbp or {} %}
+            {% set gbp_auto = gbp.get('auto_data', {}) if gbp is mapping else {} %}
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                {% for key, val in gbp_auto.items() %}
+                <div class="bg-surface-dark rounded-lg p-2 text-sm">
+                    <span class="text-gray-500 text-xs uppercase">{{ key }}</span>
+                    <div class="text-gray-300">{{ val if val else '-' }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% set gbp_cl = gbp.get('checklist', {}) if gbp is mapping else {} %}
+            {% set gbp_labels = {
+                'complete_data': _('Pełne dane (nazwa, adres, telefon, godziny)'),
+                'correct_categories': _('Prawidłowe kategorie'),
+                'current_hours': _('Aktualne godziny otwarcia'),
+                'photos_added': _('Zdjęcia dodane'),
+                'posts_published': _('Wpisy / posty publikowane'),
+                'reviews_responded': _('Odpowiedzi na opinie'),
+                'qa_responded': _('Odpowiedzi na pytania (Q&A)'),
+                'nap_consistent': _('Spójność NAP (nazwa, adres, telefon)'),
+            } %}
+            <div class="space-y-2 mb-3">
+                {% for key, val in gbp_cl.items() %}
+                <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                    <input type="checkbox" name="gbp_{{ key }}" {% if val %}checked{% endif %}
+                           class="w-4 h-4 rounded bg-surface-dark border-border text-accent focus:ring-accent">
+                    {{ gbp_labels.get(key, key) }}
+                </label>
+                {% endfor %}
+            </div>
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Notatki (GBP)') }}</label>
+            <textarea name="gbp_notes" rows="2"
+                      class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm text-gray-200 input-focus transition outline-none">{{ gbp.get('notes', '') if gbp is mapping else '' }}</textarea>
+        </div>
+    </details>
+
+    <!-- Section 5: Directories -->
+    <details class="bg-surface border border-border rounded-xl overflow-hidden card-sm">
+        <summary class="px-5 py-3 cursor-pointer hover:bg-surface-light transition flex items-center gap-2">
+            <i class="bi bi-5-circle text-accent"></i>
+            <span class="font-semibold text-white">{{ _('Katalogi i cytowania lokalne') }}</span>
+        </summary>
+        <div class="px-5 pb-5 pt-2 border-t border-border/50">
+            {% set dirs = audit.section_directories or {} %}
+            {% set dirs_cl = dirs.get('checklist', {}) if dirs is mapping else {} %}
+            {% set dir_labels = {
+                'panorama_firm': _('Obecność w Panorama Firm'),
+                'pkt_pl': _('Obecność w PKT.pl'),
+                'yelp': _('Obecność w Yelp'),
+                'industry_directories': _('Obecność w katalogach branżowych'),
+                'nap_directories_consistent': _('Spójność NAP między katalogami'),
+                'nap_google_consistent': _('Spójność NAP z wizytówką Google'),
+            } %}
+            <div class="space-y-2 mb-3">
+                {% for key, val in dirs_cl.items() %}
+                <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                    <input type="checkbox" name="dir_{{ key }}" {% if val %}checked{% endif %}
+                           class="w-4 h-4 rounded bg-surface-dark border-border text-accent focus:ring-accent">
+                    {{ dir_labels.get(key, key) }}
+                </label>
+                {% endfor %}
+            </div>
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Notatki (katalogi)') }}</label>
+            <textarea name="dir_notes" rows="2"
+                      class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm text-gray-200 input-focus transition outline-none">{{ dirs.get('notes', '') if dirs is mapping else '' }}</textarea>
+        </div>
+    </details>
+
+    <!-- Section 6: Competition -->
+    <details class="bg-surface border border-border rounded-xl overflow-hidden card-sm">
+        <summary class="px-5 py-3 cursor-pointer hover:bg-surface-light transition flex items-center gap-2">
+            <i class="bi bi-6-circle text-accent"></i>
+            <span class="font-semibold text-white">{{ _('Konkurencja lokalna') }}</span>
+            <span class="ml-auto text-xs text-gray-500">{{ _('%(count)s konkurentów', count=competitors|length if competitors else 0) }}</span>
+        </summary>
+        <div class="px-5 pb-5 pt-2 border-t border-border/50">
+            <!-- Competitor search -->
+            <div class="bg-surface-dark border border-border rounded-lg p-3 mb-4">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Szukaj konkurenta') }}</label>
+                <div class="flex gap-2">
+                    <input type="text" id="comp-keyword"
+                           class="flex-1 bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none"
+                           placeholder="{{ _('np. mechanik, fryzjer, dentysta...') }}">
+                    <button type="button" id="btn-search-comp"
+                            class="bg-accent hover:bg-accent-dark text-white px-4 py-1.5 rounded-lg text-sm font-medium transition">
+                        <i class="bi bi-search mr-1"></i>{{ _('Szukaj') }}
+                    </button>
+                </div>
+                <div id="comp-results" class="mt-2 space-y-1 hidden"></div>
+            </div>
+
+            <!-- Added competitors table -->
+            <div id="competitors-list">
+                {% if competitors %}
+                <table class="w-full text-sm mb-3">
+                    <thead>
+                        <tr class="border-b border-border/50">
+                            <th class="text-left py-2 text-xs text-gray-500 uppercase">{{ _('Nazwa') }}</th>
+                            <th class="text-left py-2 text-xs text-gray-500 uppercase">{{ _('Ocena') }}</th>
+                            <th class="text-left py-2 text-xs text-gray-500 uppercase">{{ _('Opinii') }}</th>
+                            <th class="text-left py-2 text-xs text-gray-500 uppercase">{{ _('WWW') }}</th>
+                            <th class="text-left py-2 text-xs text-gray-500 uppercase">{{ _('Widoczność') }}</th>
+                            <th class="text-left py-2 text-xs text-gray-500 uppercase">{{ _('Zaufanie') }}</th>
+                            <th class="py-2 w-8"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="comp-tbody">
+                        {% for c in competitors %}
+                        <tr class="border-b border-border/30" id="comp-row-{{ c.id }}">
+                            <td class="py-2 text-gray-200">{{ c.name }}</td>
+                            <td class="py-2 text-gray-400">{% if c.rating %}<span class="text-amber-400">★</span> {{ c.rating }}{% else %}-{% endif %}</td>
+                            <td class="py-2 text-gray-400">{{ c.user_ratings_total or '-' }}</td>
+                            <td class="py-2 text-gray-400 text-xs">{{ _('Tak') if c.website else _('Nie') }}</td>
+                            <td class="py-2"><span class="text-accent font-bold">{{ c.score_visibility or '-' }}</span>/5</td>
+                            <td class="py-2"><span class="text-accent font-bold">{{ c.score_trust or '-' }}</span>/5</td>
+                            <td class="py-2">
+                                <button type="button" onclick="deleteCompetitor({{ c.id }})" class="text-red-400 hover:text-red-300">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-gray-500 text-sm">{{ _('Brak dodanych konkurentów. Użyj wyszukiwarki powyżej.') }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </details>
+
+    <!-- Section 7: Plan 90 -->
+    <details class="bg-surface border border-border rounded-xl overflow-hidden card-sm">
+        <summary class="px-5 py-3 cursor-pointer hover:bg-surface-light transition flex items-center gap-2">
+            <i class="bi bi-7-circle text-accent"></i>
+            <span class="font-semibold text-white">{{ _('Plan 90 dni') }}</span>
+        </summary>
+        <div class="px-5 pb-5 pt-2 border-t border-border/50">
+            {% set plan = audit.section_plan90 or {} %}
+            {% set actions = plan.get('actions', []) if plan is mapping else [] %}
+
+            <!-- Suggestions based on lowest scores -->
+            {% set suggestions = [] %}
+            {% if audit.score_visibility and audit.score_visibility <= 2 %}
+                {% set _discard = suggestions.append(_('Poprawa widoczności: optymalizacja wizytówki Google + katalogi lokalne')) %}
+            {% endif %}
+            {% if audit.score_trust and audit.score_trust <= 2 %}
+                {% set _discard = suggestions.append(_('Budowa zaufania: kampania pozyskiwania opinii od klientów')) %}
+            {% endif %}
+            {% if audit.score_conversion and audit.score_conversion <= 2 %}
+                {% set _discard = suggestions.append(_('Poprawa konwersji: stworzenie lub przebudowa strony www')) %}
+            {% endif %}
+            {% if audit.score_offer and audit.score_offer <= 2 %}
+                {% set _discard = suggestions.append(_('Lepsza komunikacja: uzupełnienie danych kontaktowych i oferty')) %}
+            {% endif %}
+            {% if audit.score_analytics and audit.score_analytics <= 2 %}
+                {% set _discard = suggestions.append(_('Wdrożenie analityki: GA4 + śledzenie konwersji')) %}
+            {% endif %}
+
+            {% if suggestions %}
+            <div class="bg-accent/10 border border-accent/30 rounded-lg p-3 mb-3">
+                <div class="text-xs text-accent uppercase font-semibold mb-1">{{ _('Sugestie (na podstawie scoringu)') }}</div>
+                {% for s in suggestions[:3] %}
+                <div class="text-sm text-gray-300">{{ loop.index }}. {{ s }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="space-y-3">
+                {% for i in range(3) %}
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">{{ _('Działanie %(n)s', n=i + 1) }}</label>
+                    <input type="text" name="action_{{ i + 1 }}" value="{{ actions[i] if i < actions|length else '' }}"
+                           class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none"
+                           placeholder="{{ _('Opisz rekomendowane działanie...') }}">
+                </div>
+                {% endfor %}
+            </div>
+            <label class="block text-xs text-gray-500 mb-1 mt-3">{{ _('Notatki (plan)') }}</label>
+            <textarea name="plan_notes" rows="2"
+                      class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm text-gray-200 input-focus transition outline-none">{{ plan.get('notes', '') if plan is mapping else '' }}</textarea>
+        </div>
+    </details>
+
+    <!-- Report fields -->
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <h2 class="font-semibold text-white mb-4"><i class="bi bi-file-earmark-richtext mr-2 text-accent"></i>{{ _('Podsumowanie raportu') }}</h2>
+
+        <div class="grid md:grid-cols-3 gap-4 mb-4">
+            <div>
+                <label class="block text-xs text-gray-500 uppercase font-semibold mb-2">{{ _('3 Główne problemy') }}</label>
+                {% set problems = audit.top_problems or [] %}
+                {% for i in range(3) %}
+                <input type="text" name="problem_{{ i + 1 }}" value="{{ problems[i] if i < problems|length else '' }}"
+                       class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none mb-2"
+                       placeholder="{{ _('Problem %(n)s...', n=i + 1) }}">
+                {% endfor %}
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 uppercase font-semibold mb-2">{{ _('3 Największe szanse') }}</label>
+                {% set opps = audit.top_opportunities or [] %}
+                {% for i in range(3) %}
+                <input type="text" name="opportunity_{{ i + 1 }}" value="{{ opps[i] if i < opps|length else '' }}"
+                       class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none mb-2"
+                       placeholder="{{ _('Szansa %(n)s...', n=i + 1) }}">
+                {% endfor %}
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 uppercase font-semibold mb-2">{{ _('3 Rekomendacje') }}</label>
+                {% set recs = audit.recommended_actions or [] %}
+                {% for i in range(3) %}
+                <input type="text" name="recommendation_{{ i + 1 }}" value="{{ recs[i] if i < recs|length else '' }}"
+                       class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none mb-2"
+                       placeholder="{{ _('Rekomendacja %(n)s...', n=i + 1) }}">
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Status + actions -->
+    <div class="flex flex-wrap gap-3 items-center">
+        <select name="status"
+                class="bg-surface border border-border rounded-lg px-4 py-2 text-sm text-gray-200 input-focus transition outline-none">
+            <option value="draft" {% if audit.status == 'draft' %}selected{% endif %}>{{ _('Szkic') }}</option>
+            <option value="completed" {% if audit.status == 'completed' %}selected{% endif %}>{{ _('Ukończony') }}</option>
+        </select>
+        <button type="submit" class="bg-accent hover:bg-accent-dark text-white font-bold py-2 px-6 rounded-lg text-sm btn-lift transition">
+            <i class="bi bi-floppy mr-1"></i>{{ _('Zapisz audyt') }}
+        </button>
+        <a href="/audits/{{ audit.id }}/report" class="bg-surface border border-border text-gray-400 hover:text-white hover:border-gray-500 px-4 py-2 rounded-lg text-sm no-underline transition">
+            <i class="bi bi-file-earmark-richtext mr-1"></i>{{ _('Raport HTML') }}
+        </a>
+        <a href="/audits/{{ audit.id }}/pdf" class="bg-surface border border-border text-gray-400 hover:text-white hover:border-gray-500 px-4 py-2 rounded-lg text-sm no-underline transition">
+            <i class="bi bi-file-earmark-pdf mr-1"></i>{{ _('Pobierz PDF') }}
+        </a>
+    </div>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% if audit %}
+<script>
+const auditId = {{ audit.id }};
+const compLat = {{ company.lat or 52.2297 }};
+const compLng = {{ company.lng or 21.0122 }};
+const I18N = {
+    searching: {{ _('Szukam...')|tojson }},
+    noResults: {{ _('Brak wyników')|tojson }},
+    add: {{ _('Dodaj')|tojson }},
+    searchError: {{ _('Błąd wyszukiwania')|tojson }},
+    confirmDelete: {{ _('Usunąć konkurenta?')|tojson }},
+};
+
+// Search competitor
+document.getElementById('btn-search-comp')?.addEventListener('click', function() {
+    const kw = document.getElementById('comp-keyword').value.trim();
+    if (!kw) return;
+    const resultsDiv = document.getElementById('comp-results');
+    resultsDiv.innerHTML = '<div class="text-gray-500 text-sm">' + I18N.searching + '</div>';
+    resultsDiv.classList.remove('hidden');
+
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g,
+        (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+    fetch('/api/search_competitor', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({keyword: kw, lat: compLat, lng: compLng})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            resultsDiv.innerHTML = `<div class="text-red-400 text-sm">${esc(data.error)}</div>`;
+            return;
+        }
+        if (!data.results || data.results.length === 0) {
+            resultsDiv.innerHTML = '<div class="text-gray-500 text-sm">' + I18N.noResults + '</div>';
+            return;
+        }
+        // Dane z Google Places traktujemy jak dane z zewnątrz: escapowanie w HTML,
+        // a obiekt dla addCompetitor() bierzemy z tablicy po indeksie, nie z atrybutu onclick.
+        resultsDiv.innerHTML = data.results.map((r, i) => `
+            <div class="flex items-center justify-between bg-surface rounded-lg p-2 text-sm">
+                <div>
+                    <span class="text-gray-200">${esc(r.name)}</span>
+                    <span class="text-gray-500 text-xs ml-2">${esc(r.address || '')}</span>
+                    ${r.rating ? `<span class="text-amber-400 ml-2">★ ${esc(r.rating)}</span>` : ''}
+                    ${r.user_ratings_total ? `<span class="text-gray-500 text-xs ml-1">(${esc(r.user_ratings_total)})</span>` : ''}
+                </div>
+                <button type="button" data-index="${i}"
+                        class="text-accent hover:text-accent-light text-xs font-medium ml-2">
+                    <i class="bi bi-plus-circle mr-1"></i>${I18N.add}
+                </button>
+            </div>
+        `).join('');
+        resultsDiv.querySelectorAll('button[data-index]').forEach((btn) => {
+            btn.addEventListener('click', () => addCompetitor(data.results[Number(btn.dataset.index)]));
+        });
+    })
+    .catch(() => {
+        resultsDiv.innerHTML = '<div class="text-red-400 text-sm">' + I18N.searchError + '</div>';
+    });
+});
+
+function addCompetitor(data) {
+    fetch('/api/add_competitor', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            audit_id: auditId,
+            place_id: data.place_id,
+            name: data.name,
+            address: data.address,
+            rating: data.rating,
+            user_ratings_total: data.user_ratings_total,
+        })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.ok) {
+            location.reload();
+        }
+    });
+}
+
+function deleteCompetitor(id) {
+    if (!confirm(I18N.confirmDelete)) return;
+    fetch(`/api/delete_competitor/${id}`, {method: 'POST'})
+    .then(r => r.json())
+    .then(res => {
+        if (res.ok) {
+            const row = document.getElementById(`comp-row-${id}`);
+            if (row) row.remove();
+        }
+    });
+}
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Notatki') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Notatki') }}{% endblock %}
+{% block page_subtitle %}{{ _('Osobiste, per klient, per projekt') }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/notes/new?scope={{ scope or 'personal' }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Nowa notatka') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'notes' %}{% include '_notatnik_tabs.html' %}
+
+{% set slabels = {'company':_('Firmowe'),'project':_('Projektowe'),'personal':_('Osobiste')} %}
+
+{# Scope tabs #}
+<div class="tabs-wrap">
+    <a href="/notes" class="tab-btn {% if not scope %}active{% endif %}">{{ _('Wszystkie') }}</a>
+    {% for s in scopes %}
+    <a href="/notes?scope={{ s }}" class="tab-btn {% if scope == s %}active{% endif %}">{{ slabels[s] }}</a>
+    {% endfor %}
+</div>
+
+{% if notes %}
+<div class="bento-bottom" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
+    {% for n in notes %}
+    <div class="cell cell-notes" style="grid-column: span 1;">
+        <div style="display: flex; align-items: start; justify-content: space-between; gap: 10px; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                {% if n.pinned %}<i class="bi bi-pin-fill" style="color: var(--warning-light); font-size: 11px;"></i>{% endif %}
+                <span class="badge-stage {% if n.scope == 'personal' %}badge-info{% elif n.scope == 'project' %}badge-accent{% else %}badge-neutral{% endif %}">{{ slabels.get(n.scope, n.scope) }}</span>
+                <span style="font-size: 11px; color: var(--text-subtle);">{{ n.type_label }}</span>
+            </div>
+            <div style="display: flex; gap: 4px;">
+                <a href="/notes/{{ n.id }}/edit" class="kb-action" title="{{ _('Edytuj') }}"><i class="bi bi-pencil"></i></a>
+                <form method="POST" action="/notes/{{ n.id }}/delete" class="inline" onsubmit="return confirm({{ _('Usunąć notatkę?')|tojson|forceescape }})">
+                    <button class="kb-action" title="{{ _('Usuń') }}" style="color: var(--danger-light);"><i class="bi bi-trash3"></i></button>
+                </form>
+            </div>
+        </div>
+        {% if n.title %}<div style="font-size: 14px; font-weight: 600; color: white; margin-bottom: 6px;">{{ n.title }}</div>{% endif %}
+        <div style="color: var(--text); white-space: pre-line; font-size: 12.5px; line-height: 1.5;">{{ n.content }}</div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-subtle); margin-top: 10px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.08);">
+            {% if n.company %}<a href="/companies/{{ n.company.id }}" style="color: var(--accent-light); text-decoration: none;">{{ n.company.name }}</a>{% endif %}
+            {% if n.created_by %}
+            <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 5px;">
+                <span class="author-avatar-xs" style="background: linear-gradient(135deg, {{ n.created_by.avatar_color }}, {{ n.created_by.avatar_color }}cc);" title="{{ n.created_by.name }}">{{ n.created_by.initials or n.created_by.name[0] }}</span>
+                <span class="mono">{{ n.created_at.strftime('%d.%m %H:%M') }}</span>
+            </span>
+            {% else %}
+            <span class="mono" style="margin-left: auto;">{{ n.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="padding: 60px 24px;">
+    <i class="bi bi-journal"></i>
+    <p>{{ _('Brak notatek.') }}</p>
+    <a href="/notes/new?scope={{ scope or 'personal' }}" class="btn btn-primary" style="margin-top: 16px; display: inline-flex;"><i class="bi bi-plus-lg"></i>{{ _('Dodaj pierwszą') }}</a>
+</div>
+{% endif %}
+
+{% endblock %}

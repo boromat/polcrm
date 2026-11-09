@@ -1,0 +1,191 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Wyniki') }} - PolCRM{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+    <div class="bg-surface border border-border rounded-xl p-4 card-hover text-center">
+        <div class="text-2xl font-bold text-accent">{{ total_found }}</div>
+        <div class="text-xs text-gray-500 uppercase">{{ _('Znalezionych') }}</div>
+    </div>
+    <div class="bg-surface border border-border rounded-xl p-4 card-hover text-center">
+        <div class="text-2xl font-bold text-emerald-400">{{ places|length }}</div>
+        <div class="text-xs text-gray-500 uppercase">{{ _('Bez WWW') }}</div>
+    </div>
+    <div class="bg-surface border border-border rounded-xl p-4 card-hover text-center">
+        <div class="text-2xl font-bold text-amber-400">{{ keywords|length }}</div>
+        <div class="text-xs text-gray-500 uppercase">{{ _('Słów kluczowych') }}</div>
+    </div>
+    <div class="bg-surface border border-border rounded-xl p-4 card-hover text-center">
+        <div class="text-2xl font-bold text-blue-400" id="added-count">0</div>
+        <div class="text-xs text-gray-500 uppercase">{{ _('Dodanych do huba') }}</div>
+    </div>
+</div>
+
+<!-- Keywords -->
+<div class="mb-3 flex flex-wrap gap-1">
+    {% for kw in keywords %}
+    <span class="bg-accent/20 text-accent text-xs px-2 py-0.5 rounded-full">{{ kw }}</span>
+    {% endfor %}
+</div>
+
+<!-- Actions -->
+<div class="flex gap-2 mb-4">
+    <a href="/search" class="bg-surface border border-border text-gray-400 hover:text-white px-4 py-2 rounded-lg text-sm no-underline transition">
+        <i class="bi bi-arrow-left mr-1"></i>{{ _('Nowe wyszukiwanie') }}
+    </a>
+    <button id="btn-add-all" onclick="addAllToHub()"
+            class="bg-accent hover:bg-accent-dark text-white px-4 py-2 rounded-lg text-sm font-medium btn-lift transition">
+        <i class="bi bi-plus-circle mr-1"></i>{{ _('Dodaj wszystkie do huba') }}
+    </button>
+</div>
+
+{% if places|length == 0 %}
+<div class="bg-surface border border-border rounded-xl p-8 text-center">
+    <i class="bi bi-emoji-neutral text-4xl text-gray-600"></i>
+    <p class="text-gray-500 mt-3">{{ _('Nie znaleziono firm bez strony spełniających kryteria.') }}</p>
+</div>
+{% else %}
+
+<!-- Filter -->
+<div class="bg-surface border border-border rounded-xl p-3 mb-4">
+    <div class="flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-[200px]">
+            <input type="text" id="filter-search"
+                   class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none"
+                   placeholder="{{ _('Szukaj: nazwa, adres, telefon...') }}">
+        </div>
+        <div>
+            <select id="filter-keyword"
+                    class="bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none">
+                <option value="">{{ _('Wszystkie słowa') }}</option>
+                {% for kw in keywords %}<option value="{{ kw }}">{{ kw }}</option>{% endfor %}
+            </select>
+        </div>
+        <span class="text-xs text-gray-500" id="visible-count">{{ _('%(visible)s z %(total)s', visible=places|length, total=places|length) }}</span>
+    </div>
+</div>
+
+<!-- Results table -->
+<div class="bg-surface border border-border rounded-xl overflow-hidden card-sm">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="results-table">
+            <thead>
+                <tr class="border-b-2 border-accent/30">
+                    <th class="text-left px-3 py-2.5 text-xs text-gray-500 uppercase w-10">Hub</th>
+                    <th class="text-left px-3 py-2.5 text-xs text-gray-500 uppercase">{{ _('Nazwa') }}</th>
+                    <th class="text-left px-3 py-2.5 text-xs text-gray-500 uppercase">{{ _('Adres') }}</th>
+                    <th class="text-left px-3 py-2.5 text-xs text-gray-500 uppercase">{{ _('Telefon') }}</th>
+                    <th class="text-left px-3 py-2.5 text-xs text-gray-500 uppercase">{{ _('Ocena') }}</th>
+                    <th class="text-left px-3 py-2.5 text-xs text-gray-500 uppercase">{{ _('Opinii') }}</th>
+                    <th class="text-left px-3 py-2.5 text-xs text-gray-500 uppercase">{{ _('Typ') }}</th>
+                    <th class="text-left px-3 py-2.5 text-xs text-gray-500 uppercase">{{ _('Źródło') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in places %}
+                <tr class="border-b border-border/50 hover:bg-surface-light transition"
+                    data-search="{{ (p.name ~ ' ' ~ p.address ~ ' ' ~ p.phone ~ ' ' ~ p.primary_type)|lower }}"
+                    data-keyword="{{ p.source_keyword }}"
+                    data-place='{{ p|tojson }}'>
+                    <td class="px-3 py-2.5">
+                        {% if p.place_id in existing_pids %}
+                        <span class="text-emerald-400 text-xs font-medium"><i class="bi bi-check-circle-fill"></i></span>
+                        {% else %}
+                        <button onclick="addToHub(this, {{ p|tojson|e }})"
+                                class="add-btn text-accent hover:text-accent-light text-lg transition" title="{{ _('Dodaj do huba') }}">
+                            <i class="bi bi-plus-circle"></i>
+                        </button>
+                        {% endif %}
+                    </td>
+                    <td class="px-3 py-2.5">
+                        {% if p.google_maps_url %}
+                        <a href="{{ p.google_maps_url }}" target="_blank" class="text-gray-200 hover:text-accent no-underline">{{ p.name }}</a>
+                        {% else %}{{ p.name }}{% endif %}
+                    </td>
+                    <td class="px-3 py-2.5 text-gray-400 text-xs max-w-xs truncate">{{ p.address or '-' }}</td>
+                    <td class="px-3 py-2.5 text-gray-400">{{ p.phone or '-' }}</td>
+                    <td class="px-3 py-2.5">
+                        {% if p.rating %}<span class="text-amber-400">★</span> {{ p.rating }}{% else %}-{% endif %}
+                    </td>
+                    <td class="px-3 py-2.5 text-gray-400">{{ p.user_ratings_total or '-' }}</td>
+                    <td class="px-3 py-2.5 text-gray-500 text-xs">{{ p.primary_type or '-' }}</td>
+                    <td class="px-3 py-2.5 text-gray-500 text-xs">{{ p.source_keyword }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let addedCount = {{ existing_pids|length }};
+const addedCountEl = document.getElementById('added-count');
+if (addedCountEl) addedCountEl.textContent = addedCount;
+
+function addToHub(btn, data) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise ajax-spinner"></i>';
+
+    fetch('/api/add_to_hub', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.ok) {
+            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+            btn.classList.remove('text-accent', 'hover:text-accent-light');
+            btn.classList.add('text-emerald-400');
+            btn.onclick = null;
+            addedCount++;
+            if (addedCountEl) addedCountEl.textContent = addedCount;
+        } else {
+            btn.innerHTML = '<i class="bi bi-x-circle"></i>';
+            btn.classList.add('text-red-400');
+        }
+    })
+    .catch(() => {
+        btn.innerHTML = '<i class="bi bi-x-circle"></i>';
+        btn.classList.add('text-red-400');
+    });
+}
+
+function addAllToHub() {
+    document.querySelectorAll('.add-btn:not([disabled])').forEach(btn => {
+        const row = btn.closest('tr');
+        const data = JSON.parse(row.dataset.place);
+        addToHub(btn, data);
+    });
+}
+
+// Client-side filter
+const searchInput = document.getElementById('filter-search');
+const kwSelect = document.getElementById('filter-keyword');
+const visibleCount = document.getElementById('visible-count');
+const rows = document.querySelectorAll('#results-table tbody tr');
+const totalRows = rows.length;
+const visibleTpl = {{ _('%(visible)s z %(total)s', visible='{visible}', total='{total}')|tojson }};
+
+function applyFilters() {
+    const q = (searchInput?.value || '').toLowerCase();
+    const kw = kwSelect?.value || '';
+    let visible = 0;
+    rows.forEach(row => {
+        let show = true;
+        if (q && !(row.dataset.search || '').includes(q)) show = false;
+        if (show && kw && row.dataset.keyword !== kw) show = false;
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    if (visibleCount) visibleCount.textContent = visibleTpl.replace('{visible}', visible).replace('{total}', totalRows);
+}
+
+searchInput?.addEventListener('input', applyFilters);
+kwSelect?.addEventListener('change', applyFilters);
+</script>
+{% endblock %}

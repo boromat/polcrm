@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Historia maili') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Historia maili') }}{% endblock %}
+{% block page_subtitle %}{{ _('Ostatnie 200 wpisów') }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/emails/templates" class="btn btn-ghost"><i class="bi bi-envelope-paper"></i><span class="hidden sm:inline">{{ _('Szablony') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'log' %}{% include '_szablony_tabs.html' %}
+
+{% if logs %}
+<div class="card-sm" style="padding: 0; overflow: hidden;">
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{{ _('Data') }}</th>
+                    <th>Status</th>
+                    <th>{{ _('Do') }}</th>
+                    <th>{{ _('Firma') }}</th>
+                    <th>{{ _('Szablon') }}</th>
+                    <th>{{ _('Temat') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in logs %}
+                <tr>
+                    <td class="mono" style="font-size: 11.5px; color: var(--text-muted); white-space: nowrap;">{{ l.sent_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                    <td><span class="badge-stage {% if l.status == 'sent' %}badge-success{% elif l.status == 'failed' %}badge-danger{% else %}badge-info{% endif %}">{{ l.status }}</span></td>
+                    <td class="col-muted" style="font-size: 12px;">{{ l.to_address }}</td>
+                    <td>{% if l.company %}<a href="/companies/{{ l.company.id }}" style="color: var(--accent-light); text-decoration: none;">{{ l.company.name }}</a>{% else %}<span class="col-muted">-</span>{% endif %}</td>
+                    <td class="col-muted" style="font-size: 11.5px;">{{ l.template_key or '-' }}</td>
+                    <td>
+                        <div style="color: var(--text);">{{ l.subject_rendered }}</div>
+                        {% if l.error_message %}<div style="font-size: 11px; color: var(--danger-light); margin-top: 2px;">{{ l.error_message }}</div>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state" style="padding: 60px 24px;">
+    <i class="bi bi-envelope"></i>
+    <p>{{ _('Brak wysłanych maili.') }}</p>
+</div>
+{% endif %}
+
+{% endblock %}

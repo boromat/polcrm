@@ -1,0 +1,151 @@
+{% extends "layout.html" %}
+{% block title %}Pipeline - PolCRM{% endblock %}
+
+{% block page_title %}Pipeline{% endblock %}
+{% block page_subtitle %}{{ _('Przeciągaj karty między kolumnami') }}{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js" integrity="sha384-HZZ/fukV+9G8gwTNjN7zQDG0Sp7MsZy5DDN6VfY3Be7V9dvQpEpR2jF2HlyFUUjU" crossorigin="anonymous"></script>
+<style>
+    .pipeline-grid {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(200px, 1fr));
+        gap: 14px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+    }
+    .pipeline-column-wrap {
+        display: flex;
+        flex-direction: column;
+        min-height: calc(100vh - 180px);
+    }
+    .pipeline-card-v7 {
+        display: block;
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 12px 13px;
+        cursor: grab;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+        color: inherit;
+    }
+    .pipeline-card-v7:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--accent);
+        transform: translateX(2px);
+        box-shadow: 0 4px 16px rgba(108, 92, 231, 0.2);
+    }
+    .pipeline-card-v7:active {
+        cursor: grabbing;
+    }
+    @media (max-width: 1200px) {
+        .pipeline-grid { grid-template-columns: repeat(3, minmax(260px, 1fr)); }
+    }
+    @media (max-width: 720px) {
+        .pipeline-grid { grid-template-columns: repeat(1, minmax(260px, 1fr)); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'pipeline' %}{% include '_company_tabs.html' %}
+
+{% set stage_colors = {'lead':'#94a3b8','audit':'#a78bfa','contact':'#60a5fa','visit':'#fbbf24','offer':'#fb923c','client':'#34d399'} %}
+{% set stage_rgba = {
+    'lead':'rgba(148,163,184,0.14)',
+    'audit':'rgba(167,139,250,0.14)',
+    'contact':'rgba(96,165,250,0.14)',
+    'visit':'rgba(251,191,36,0.12)',
+    'offer':'rgba(251,146,60,0.14)',
+    'client':'rgba(52,211,153,0.14)'
+} %}
+
+<div class="pipeline-grid">
+    {% for stage in stages %}
+    <div class="pipeline-column-wrap">
+        <div class="kb-col" style="background: linear-gradient(180deg, {{ stage_rgba[stage] }}, rgba(0,0,0,0.02)), var(--bg-alt); border-color: {{ stage_colors[stage] }}44; padding: 12px; flex: 1;">
+            <div class="kb-col-edge" style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, {{ stage_colors[stage] }}, {{ stage_colors[stage] }}aa);"></div>
+
+            <div class="kb-head">
+                <span class="kb-dot" style="background: {{ stage_colors[stage] }}; color: {{ stage_colors[stage] }}80;"></span>
+                <span class="kb-title">{{ labels[stage] }}</span>
+                <span class="kb-count">{{ columns[stage]|length }}</span>
+            </div>
+
+            <div class="pipeline-column kb-items" data-stage="{{ stage }}">
+                {% for c in columns[stage] %}
+                <a href="/companies/{{ c.id }}" class="pipeline-card-v7" data-id="{{ c.id }}">
+                    <div style="font-weight: 600; color: white; font-size: 13px; margin-bottom: 5px;">{{ c.name }}</div>
+                    {% if c.industry %}
+                    <div style="font-size: 11px; color: var(--text-subtle); margin-bottom: 6px;">{{ c.industry }}</div>
+                    {% endif %}
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
+                        {% if c.latest_audit and c.latest_audit.score_overall %}
+                        <span class="mono" style="color: var(--accent-light); font-weight: 700; font-size: 11px;"><i class="bi bi-clipboard2-data"></i> {{ c.latest_audit.score_overall }}/5</span>
+                        {% else %}<span></span>{% endif %}
+                        {% if c.rating %}
+                        <span class="mono" style="color: var(--warning-light); font-size: 11px;">★ {{ c.rating }}</span>
+                        {% endif %}
+                    </div>
+                    {% if c.next_action %}
+                    <div style="margin-top: 8px; padding-top: 7px; border-top: 1px dashed rgba(255,255,255,0.08);">
+                        <div style="font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ c.next_action }}</div>
+                        {% if c.next_action_date %}
+                        <div class="mono" style="font-size: 10.5px; color: {% if c.next_action_date <= today %}var(--danger-light){% else %}var(--text-subtle){% endif %}; margin-top: 2px;">
+                            <i class="bi bi-clock"></i> {{ c.next_action_date.strftime('%d.%m.%Y') }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </a>
+                {% endfor %}
+                {% if columns[stage]|length == 0 %}
+                <div class="pipeline-empty">
+                    <i class="bi bi-arrow-down-circle" style="font-size: 18px;"></i>
+                    <p style="margin-top: 4px;">{{ _('Przeciągnij tutaj') }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.querySelectorAll('.pipeline-column').forEach(col => {
+    new Sortable(col, {
+        group: 'pipeline',
+        animation: 150,
+        ghostClass: 'opacity-30',
+        dragClass: 'rotate-2',
+        onEnd: function(evt) {
+            const cardEl = evt.item;
+            const companyId = cardEl.dataset.id;
+            const newStage = evt.to.dataset.stage;
+
+            fetch('/api/pipeline/move', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({company_id: parseInt(companyId), stage: newStage})
+            }).then(r => {
+                if (!r.ok) { evt.from.appendChild(cardEl); }
+                // Update column counts
+                document.querySelectorAll('.pipeline-column').forEach(c => {
+                    const count = c.querySelectorAll('.pipeline-card-v7').length;
+                    const colWrap = c.closest('.kb-col');
+                    if (colWrap) {
+                        const countEl = colWrap.querySelector('.kb-count');
+                        if (countEl) countEl.textContent = count;
+                    }
+                });
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

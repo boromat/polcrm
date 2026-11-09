@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block title %}{% if task %}{{ _('Edycja zadania') }}{% else %}{{ _('Nowe zadanie') }}{% endif %} - PolCRM{% endblock %}
+
+{% block page_title %}{% if task %}{{ _('Edycja zadania') }}{% else %}{{ _('Nowe zadanie') }}{% endif %}{% endblock %}
+{% block page_subtitle %}{{ _('Priorytet, deadline, powiązanie z klientem') }}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="max-w-2xl space-y-4">
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Tytuł *') }}</label>
+                <input type="text" name="title" required value="{{ task.title if task else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Opis') }}</label>
+                <textarea name="description" rows="4" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">{{ task.description if task else '' }}</textarea>
+            </div>
+            <div class="grid md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">{{ _('Priorytet') }}</label>
+                    <select name="priority" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                        {% set plabels = {'low': _('Niski'), 'medium': _('Średni'), 'high': _('Wysoki'), 'urgent': _('Pilny')} %}
+                        {% for p in priorities %}<option value="{{ p }}" {% if task and task.priority == p %}selected{% elif not task and p == 'medium' %}selected{% endif %}>{{ plabels[p] }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Status</label>
+                    <select name="status" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                        {% set slabels = {'todo': _('Do zrobienia'), 'in_progress': _('W trakcie'), 'blocked': _('Zablokowane'), 'done': _('Zrobione')} %}
+                        {% for s in statuses %}<option value="{{ s }}" {% if task and task.status == s %}selected{% endif %}>{{ slabels[s] }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Deadline</label>
+                    <input type="date" name="deadline" value="{{ task.deadline.isoformat() if task and task.deadline else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                </div>
+            </div>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">{{ _('Firma (opcj.)') }}</label>
+                    <select name="company_id" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                        <option value="">-</option>
+                        {% for c in companies %}<option value="{{ c.id }}" {% if (task and task.company_id == c.id) or (preset_company_id == c.id) %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">{{ _('Projekt (opcj.)') }}</label>
+                    <select name="project_id" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                        <option value="">-</option>
+                        {% for p in projects %}<option value="{{ p.id }}" {% if (task and task.project_id == p.id) or (preset_project_id == p.id) %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 14px;">
+        <button class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+        <a href="/tasks" class="btn btn-ghost">{{ _('Anuluj') }}</a>
+    </div>
+</form>
+{% endblock %}

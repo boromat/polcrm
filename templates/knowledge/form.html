@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% block title %}{% if article %}{{ _('Edycja artykułu') }}{% else %}{{ _('Nowy artykuł') }}{% endif %} - PolCRM{% endblock %}
+
+{% block page_title %}{% if article %}{{ _('Edycja artykułu') }}{% else %}{{ _('Nowy artykuł') }}{% endif %}{% endblock %}
+{% block page_subtitle %}{{ _('Markdown - procedury, checklisty, scenariusze') }}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="max-w-4xl space-y-4">
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Tytuł *') }}</label>
+                <input type="text" name="title" required value="{{ article.title if article else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Kategoria') }}</label>
+                <input type="text" name="category" value="{{ article.category if article else 'Ogólne' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none" placeholder="{{ _('Onboarding / Sprzedaż / Procedury audytu / Raportowanie') }}">
+            </div>
+        </div>
+        <div class="mb-4">
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Tagi (po przecinku)') }}</label>
+            <input type="text" name="tags" value="{{ article.tags|join(', ') if article and article.tags else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none" placeholder="{{ _('checklist, audyt, rozmowa') }}">
+        </div>
+        <div class="mb-4">
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Treść (Markdown)') }}</label>
+            <textarea name="body" rows="24" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm font-mono input-focus outline-none">{{ article.body if article else '' }}</textarea>
+            <p class="text-xs text-gray-600 mt-1">{{ _('Wspierane: nagłówki (#, ##), listy, tabele, kod w backtickach, cytaty (&gt;), linki.') }}</p>
+        </div>
+        <label class="flex items-center gap-2 text-sm text-gray-300">
+            <input type="checkbox" name="pinned" class="accent-accent" {% if article and article.pinned %}checked{% endif %}>
+            {{ _('Przypięty (wyświetlany na górze listy)') }}
+        </label>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 14px;">
+        <button class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+        <a href="/knowledge" class="btn btn-ghost">{{ _('Anuluj') }}</a>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Edycja szablonu umowy') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Edycja szablonu: %(name)s', name=template.name) }}{% endblock %}
+{% block page_subtitle %}{{ template.key }}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="max-w-4xl space-y-4">
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="mb-4">
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Nazwa') }}</label>
+            <input type="text" name="name" value="{{ template.name }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+        </div>
+        <div class="mb-4">
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Treść umowy (Jinja2)') }}</label>
+            <textarea name="body_template" rows="24" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm font-mono input-focus outline-none">{{ template.body_template }}</textarea>
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Dokumentacja placeholderów') }}</label>
+            <textarea name="placeholders_doc" rows="2" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-300 text-xs input-focus outline-none">{{ template.placeholders_doc }}</textarea>
+            <p class="text-xs text-gray-600 mt-1">{{ _('Dostępne: <code>today</code>, <code>agency.*</code>, <code>client.*</code>, oraz pola z formularza (<code>monthly_fee_net</code>, <code>domain</code>, <code>extra_clauses</code>, itp.).') }}</p>
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 14px;">
+        <button class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+        <a href="/contracts/templates" class="btn btn-ghost">{{ _('Anuluj') }}</a>
+    </div>
+</form>
+{% endblock %}

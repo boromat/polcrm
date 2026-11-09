@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block title %}{% if subscription %}{{ _('Edycja subskrypcji') }}{% else %}{{ _('Nowa subskrypcja') }}{% endif %} - PolCRM{% endblock %}
+
+{% block page_title %}{% if subscription %}{{ _('Edycja subskrypcji') }}{% else %}{{ _('Nowa subskrypcja') }}{% endif %}{% endblock %}
+{% block page_subtitle %}{{ _('Cykliczny koszt narzędzia - np. Ahrefs, Senuto') }}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="max-w-2xl space-y-4">
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="grid md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Nazwa *') }}</label>
+                <input type="text" name="name" required value="{{ subscription.name if subscription else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none" placeholder="{{ _('np. Ahrefs Standard') }}">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Dostawca') }}</label>
+                <input type="text" name="vendor" value="{{ subscription.vendor if subscription else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Kwota netto (w wybranym cyklu)') }}</label>
+                <input type="number" step="0.01" name="amount_net" value="{{ subscription.amount_net if subscription else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">VAT (%)</label>
+                <input type="number" step="0.01" name="vat_rate" value="{{ subscription.vat_rate if subscription else 23 }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Cykl rozliczeniowy') }}</label>
+                <select name="billing_cycle" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    {% set cy = {'monthly':_('Miesięcznie'),'quarterly':_('Kwartalnie'),'yearly':_('Rocznie')} %}
+                    {% for c in cycles %}<option value="{{ c }}" {% if subscription and subscription.billing_cycle == c %}selected{% endif %}>{{ cy[c] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Kategoria') }}</label>
+                <select name="category" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    {% set cat_labels = {'seo_tools':_('Narzędzia SEO'),'subcontractor':_('Podwykonawca'),'marketing':_('Marketing własny'),'office_transport':_('Biuro i transport')} %}
+                    {% for c in categories %}<option value="{{ c }}" {% if subscription and subscription.category == c %}selected{% endif %}>{{ cat_labels[c] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Data odnowienia') }}</label>
+                <input type="date" name="renewal_date" value="{{ subscription.renewal_date.isoformat() if subscription and subscription.renewal_date else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div class="flex items-end">
+                <label class="flex items-center gap-2 text-sm text-gray-300">
+                    <input type="checkbox" name="is_active" class="accent-accent" {% if not subscription or subscription.is_active %}checked{% endif %}>
+                    {{ _('Aktywna') }}
+                </label>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Uwagi') }}</label>
+                <textarea name="notes" rows="2" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">{{ subscription.notes if subscription else '' }}</textarea>
+            </div>
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 14px;">
+        <button class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+        <a href="/finances/subscriptions" class="btn btn-ghost">{{ _('Anuluj') }}</a>
+    </div>
+</form>
+{% endblock %}

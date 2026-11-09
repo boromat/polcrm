@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+{% block title %}{% if note %}{{ _('Edycja notatki') }}{% else %}{{ _('Nowa notatka') }}{% endif %} - PolCRM{% endblock %}
+
+{% block page_title %}{% if note %}{{ _('Edycja notatki') }}{% else %}{{ _('Nowa notatka') }}{% endif %}{% endblock %}
+{% block page_subtitle %}{{ _('Osobista, per klient lub per projekt') }}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="max-w-2xl space-y-4">
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        {% if not note %}
+        <div class="mb-4">
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Typ notatki (scope)') }}</label>
+            <div class="flex gap-2" id="scope-tabs">
+                {% set slabels = {'personal':_('Osobista'),'company':_('Per klient'),'project':_('Per projekt')} %}
+                {% for s in ['personal','company','project'] %}
+                <label class="flex items-center gap-2 px-3 py-2 rounded-lg border border-border cursor-pointer hover:border-accent transition">
+                    <input type="radio" name="scope" value="{{ s }}" {% if preset_scope == s %}checked{% endif %} class="accent-accent">
+                    <span class="text-sm text-gray-300">{{ slabels[s] }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Firma (dla scope=company)') }}</label>
+                <select name="company_id" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    <option value="">-</option>
+                    {% for c in companies %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Projekt (dla scope=project)') }}</label>
+                <select name="project_id" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    <option value="">-</option>
+                    {% for p in projects %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        {% endif %}
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Tytuł (opcj.)') }}</label>
+                <input type="text" name="title" value="{{ note.title if note else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Rodzaj') }}</label>
+                <select name="note_type" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    {% set tlabels = {'general':_('Notatka'),'call':_('Telefon'),'meeting':_('Spotkanie'),'follow_up':_('Follow-up'),'idea':_('Pomysł'),'todo':_('Do zrobienia')} %}
+                    {% for t in ['general','call','meeting','follow_up','idea','todo'] %}<option value="{{ t }}" {% if note and note.note_type == t %}selected{% endif %}>{{ tlabels[t] }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="mb-4">
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Treść *') }}</label>
+            <textarea name="content" required rows="10" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">{{ note.content if note else '' }}</textarea>
+        </div>
+        <label class="flex items-center gap-2 text-sm text-gray-300">
+            <input type="checkbox" name="pinned" class="accent-accent" {% if note and note.pinned %}checked{% endif %}>
+            {{ _('Przypnij') }}
+        </label>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 14px;">
+        <button class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+        <a href="/notes" class="btn btn-ghost">{{ _('Anuluj') }}</a>
+    </div>
+</form>
+{% endblock %}

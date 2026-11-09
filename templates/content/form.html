@@ -1,0 +1,65 @@
+{% extends "layout.html" %}
+{% block title %}{% if post %}{{ _('Edycja publikacji') }}{% else %}{{ _('Nowa publikacja') }}{% endif %} - PolCRM{% endblock %}
+
+{% block page_title %}{% if post %}{{ _('Edycja publikacji') }}{% else %}{{ _('Nowa publikacja') }}{% endif %}{% endblock %}
+{% block page_subtitle %}Blog, landing, guest post, social, email{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="max-w-2xl space-y-4">
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="grid md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Klient *') }}</label>
+                <select name="company_id" required class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    <option value="">-</option>
+                    {% for c in companies %}<option value="{{ c.id }}" {% if (post and post.company_id == c.id) or (preset_company_id == c.id) %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Typ') }}</label>
+                <select name="content_type" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    {% set tlabels = {'blog':'Blog','landing':'Landing','guest_post':'Guest post','social':'Social','email':'Email'} %}
+                    {% for t in types %}<option value="{{ t }}" {% if post and post.content_type == t %}selected{% endif %}>{{ tlabels[t] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Tytuł *') }}</label>
+                <input type="text" name="title" required value="{{ post.title if post else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Słowa kluczowe (po przecinku)') }}</label>
+                <input type="text" name="keywords" value="{{ post.keywords|join(', ') if post and post.keywords else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none" placeholder="{{ _('stomatolog warszawa, dentysta praga') }}">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Status</label>
+                <select name="status" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                    {% set slabels = {'idea': _('Pomysł'), 'writing': _('W pisaniu'), 'review': _('Do akceptacji'), 'approved': _('Zaakceptowany'), 'published': _('Opublikowany')} %}
+                    {% for s in statuses %}<option value="{{ s }}" {% if post and post.status == s %}selected{% endif %}>{{ slabels[s] }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Deadline</label>
+                <input type="date" name="deadline" value="{{ post.deadline.isoformat() if post and post.deadline else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Copywriter (opcj.)') }}</label>
+                <input type="text" name="writer_name" value="{{ post.writer_name if post else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('URL po publikacji') }}</label>
+                <input type="text" name="url" value="{{ post.url if post else '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">Brief</label>
+                <textarea name="brief" rows="4" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">{{ post.brief if post else '' }}</textarea>
+            </div>
+        </div>
+    </div>
+    <div style="display: flex; gap: 10px; margin-top: 14px;">
+        <button class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+        <a href="/content" class="btn btn-ghost">{{ _('Anuluj') }}</a>
+    </div>
+</form>
+{% endblock %}

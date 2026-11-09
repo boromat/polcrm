@@ -1,0 +1,1569 @@
+{% extends "layout.html" %}
+{% block title %}{{ board.name }} - {{ _('Tablica') }}{% endblock %}
+{% block page_title %}{{ board.name }}{% endblock %}
+{% block page_subtitle %}{% if board.company %}{{ board.company.name }} · {% endif %}{{ _('Rysujcie jednocześnie - sync 0.5s') }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('whiteboard_list') }}" class="btn btn-ghost">
+    <i class="bi bi-arrow-left"></i><span class="hidden sm:inline">{{ _('Tablice') }}</span>
+</a>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .wb-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+        padding: 10px 14px; background: var(--surface); border: 1px solid var(--border);
+        border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.15); }
+    .wb-sep { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+    .wb-tool { background: transparent; border: 1px solid transparent; color: var(--text-muted);
+        padding: 7px 10px; border-radius: 8px; cursor: pointer; font-size: 14px;
+        display: inline-flex; align-items: center; gap: 6px; transition: all 0.1s; }
+    .wb-tool:hover { background: var(--surface-dark); color: var(--text); }
+    .wb-tool.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .wb-color { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; }
+    .wb-color.active { border-color: var(--accent); transform: scale(1.1); }
+    .wb-width-slider { width: 90px; }
+    .wb-status { margin-left: auto; font-size: 12px; color: var(--text-subtle);
+        display: flex; align-items: center; gap: 6px; }
+    .wb-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    #wb-fullscreen-target { display: flex; flex-direction: column; gap: 0; }
+    .wb-scroll { position: relative; overflow: auto; height: calc(100vh - 220px);
+        min-height: 500px; background: var(--surface-dark); border: 1px solid var(--border);
+        border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+    .wb-canvas-wrap { position: relative; background: {{ board.bg_color }}; margin: 0 auto; }
+    .wb-canvas-wrap canvas { display: block; width: 100%; height: auto; cursor: crosshair; touch-action: none; }
+    .wb-canvas-wrap canvas.tool-eraser { cursor: cell; }
+    .wb-canvas-wrap canvas.tool-text,
+    .wb-canvas-wrap canvas.tool-sticky { cursor: text; }
+    .wb-canvas-wrap canvas.tool-select { cursor: default; }
+    .wb-canvas-wrap canvas.panning { cursor: grabbing; }
+
+    .wb-grid-overlay { position: absolute; inset: 0; pointer-events: none;
+        background-image:
+            linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px);
+        background-size: 40px 40px; display: none; }
+    .wb-grid-overlay.visible { display: block; }
+
+    .wb-text-editor { position: absolute; display: flex; flex-direction: column;
+        min-width: 140px; z-index: 20; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.25)); }
+    .wb-text-drag { display: flex; align-items: center; justify-content: space-between;
+        gap: 8px; padding: 4px 10px; background: var(--accent); color: white;
+        border-radius: 6px 6px 0 0; font-size: 11px; font-weight: 600; cursor: move;
+        user-select: none; touch-action: none; }
+    .wb-text-drag .wb-text-hint { opacity: 0.75; font-weight: 400; font-size: 10.5px; }
+    .wb-text-body { position: relative; background: rgba(255,255,255,0.97);
+        border: 2px solid var(--accent); border-top: 0; border-radius: 0 0 6px 6px; }
+    .wb-text-body textarea { display: block; width: 100%; box-sizing: border-box;
+        background: transparent; color: #111; border: 0; padding: 6px 10px;
+        font-family: 'Inter', system-ui, sans-serif; outline: none; resize: none;
+        overflow: hidden; line-height: 1.25; }
+    .wb-text-resize { position: absolute; right: -8px; bottom: -8px; width: 18px; height: 18px;
+        background: var(--accent); border: 2px solid white; border-radius: 50%;
+        cursor: nwse-resize; touch-action: none; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+
+    .wb-authors { margin-top: 8px; font-size: 12px; color: var(--text-subtle); }
+    .wb-zoom-chip { display: inline-flex; align-items: center; justify-content: center;
+        min-width: 52px; padding: 6px 8px; border-radius: 6px; background: var(--surface-dark);
+        font-family: var(--mono-font, monospace); font-size: 12px; color: var(--text); }
+
+    #wb-fullscreen-target:fullscreen { background: var(--bg, #0a0a14);
+        padding: 12px; height: 100vh; box-sizing: border-box; }
+    #wb-fullscreen-target:fullscreen .wb-scroll { height: calc(100vh - 80px); min-height: 0; }
+
+    /* Minimapa */
+    .wb-minimap { position: fixed; right: 30px; bottom: 30px; width: 240px; height: 150px;
+        background: rgba(255,255,255,0.92); border: 1px solid var(--border); border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.3); overflow: hidden; z-index: 60;
+        display: none; cursor: pointer; }
+    .wb-minimap.visible { display: block; }
+    .wb-minimap canvas { display: block; width: 100%; height: 100%; }
+    .wb-minimap-viewport { position: absolute; border: 2px solid #6c5ce7; background: rgba(108,92,231,0.18); pointer-events: none; }
+
+    /* Tooltip autora */
+    .wb-author-tooltip { position: fixed; padding: 4px 10px; border-radius: 6px;
+        background: rgba(0,0,0,0.85); color: white; font-size: 11px; font-weight: 600;
+        z-index: 100; pointer-events: none; display: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .wb-author-tooltip.visible { display: block; }
+    .wb-author-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+    /* Live cursor remote user */
+    .wb-remote-cursor { position: absolute; pointer-events: none; z-index: 30;
+        transform: translate(-2px, -2px); transition: left 0.15s ease, top 0.15s ease; }
+    .wb-remote-cursor svg { display: block; }
+    .wb-remote-cursor .wb-remote-label { margin-top: 2px; padding: 2px 6px; border-radius: 4px;
+        color: white; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+
+    /* Marquee (rectangle multi-select) */
+    .wb-marquee { position: absolute; border: 1px dashed #6c5ce7; background: rgba(108,92,231,0.1);
+        pointer-events: none; z-index: 25; display: none; }
+    .wb-marquee.active { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div id="wb-fullscreen-target">
+
+    <div class="wb-toolbar" id="wb-toolbar">
+        {# Tools #}
+        <button class="wb-tool" data-tool="select" title="{{ _('Wybierz / przesuwaj (S)') }}"><i class="bi bi-cursor-fill"></i></button>
+        <button class="wb-tool active" data-tool="pen" title="{{ _('Pióro (P)') }}"><i class="bi bi-pen-fill"></i></button>
+        <button class="wb-tool" data-tool="highlighter" title="{{ _('Zakreślacz (H)') }}">✎</button>
+        <button class="wb-tool" data-tool="eraser" title="{{ _('Gumka (E)') }}"><i class="bi bi-eraser-fill"></i></button>
+        <button class="wb-tool" data-tool="text" title="{{ _('Tekst (T)') }}"><i class="bi bi-fonts"></i></button>
+        <button class="wb-tool" data-tool="sticky" title="Sticky note (N)"><i class="bi bi-sticky-fill"></i></button>
+
+        <span class="wb-sep"></span>
+
+        {# Shapes #}
+        <button class="wb-tool" data-tool="rect" title="{{ _('Prostokąt (R)') }}"><i class="bi bi-square"></i></button>
+        <button class="wb-tool" data-tool="ellipse" title="{{ _('Koło (O)') }}"><i class="bi bi-circle"></i></button>
+        <button class="wb-tool" data-tool="line" title="{{ _('Linia (L)') }}"><i class="bi bi-slash-lg"></i></button>
+        <button class="wb-tool" data-tool="arrow" title="{{ _('Strzałka (A)') }}"><i class="bi bi-arrow-right"></i></button>
+
+        <span class="wb-sep"></span>
+
+        {# Colors #}
+        <button class="wb-color active" data-color="#111111" style="background: #111111;"></button>
+        <button class="wb-color" data-color="#ef4444" style="background: #ef4444;"></button>
+        <button class="wb-color" data-color="#10b981" style="background: #10b981;"></button>
+        <button class="wb-color" data-color="#3b82f6" style="background: #3b82f6;"></button>
+        <button class="wb-color" data-color="#f59e0b" style="background: #f59e0b;"></button>
+        <button class="wb-color" data-color="#8b5cf6" style="background: #8b5cf6;"></button>
+        <label class="wb-tool" style="padding: 4px 8px;" title="{{ _('Własny kolor') }}">
+            <i class="bi bi-palette"></i>
+            <input type="color" id="wb-color-picker" style="width: 22px; height: 20px; border: none; background: transparent; cursor: pointer; padding: 0;">
+        </label>
+
+        <span class="wb-sep"></span>
+
+        <span style="font-size: 12px; color: var(--text-subtle);">{{ _('Grubość:') }}</span>
+        <input type="range" min="1" max="30" value="3" class="wb-width-slider" id="wb-width">
+        <span id="wb-width-val" class="mono" style="font-size: 12px; min-width: 24px; color: var(--text-muted);">3px</span>
+
+        <span class="wb-sep"></span>
+
+        {# Zoom #}
+        <button class="wb-tool" id="wb-zoom-out" title="{{ _('Oddal (Ctrl+-)') }}"><i class="bi bi-zoom-out"></i></button>
+        <span class="wb-zoom-chip" id="wb-zoom-val" title="{{ _('Kliknij = reset, dwuklik = fit') }}" style="cursor: pointer;">100%</span>
+        <button class="wb-tool" id="wb-zoom-in" title="{{ _('Przybliż (Ctrl++)') }}"><i class="bi bi-zoom-in"></i></button>
+        <button class="wb-tool" id="wb-fit" title="{{ _('Dopasuj do zawartości') }}"><i class="bi bi-arrows-angle-expand"></i></button>
+
+        <span class="wb-sep"></span>
+
+        {# View toggles #}
+        <button class="wb-tool" id="wb-grid-toggle" title="{{ _('Siatka (G)') }}"><i class="bi bi-grid-3x3"></i></button>
+        <button class="wb-tool" id="wb-minimap-toggle" title="{{ _('Minimapa (M)') }}"><i class="bi bi-map"></i></button>
+
+        <span class="wb-sep"></span>
+
+        {# Actions #}
+        <button class="wb-tool" id="wb-undo" title="{{ _('Cofnij (Ctrl+Z)') }}"><i class="bi bi-arrow-counterclockwise"></i></button>
+        <button class="wb-tool" id="wb-export-png" title="{{ _('Eksport PNG') }}"><i class="bi bi-image"></i></button>
+        <button class="wb-tool" id="wb-export-pdf" title="{{ _('Eksport PDF') }}"><i class="bi bi-file-earmark-pdf"></i></button>
+        <button class="wb-tool" id="wb-fullscreen" title="{{ _('Pełny ekran (F)') }}"><i class="bi bi-arrows-fullscreen"></i></button>
+        <button class="wb-tool" id="wb-clear" title="{{ _('Wyczyść') }}" style="color: var(--danger);"><i class="bi bi-trash"></i></button>
+
+        <div class="wb-status" id="wb-status">
+            <span class="wb-status-dot"></span>
+            <span id="wb-status-text">{{ _('Zapisane') }}</span>
+        </div>
+    </div>
+
+    <div class="wb-scroll" id="wb-scroll">
+        <div class="wb-canvas-wrap" id="wb-canvas-wrap" style="width: 100%; aspect-ratio: {{ board.canvas_width }} / {{ board.canvas_height }};">
+            <canvas id="wb-canvas" width="{{ board.canvas_width }}" height="{{ board.canvas_height }}"></canvas>
+            <div class="wb-grid-overlay" id="wb-grid"></div>
+            <div class="wb-marquee" id="wb-marquee"></div>
+        </div>
+    </div>
+
+    <div class="wb-minimap" id="wb-minimap">
+        <canvas id="wb-minimap-canvas" width="240" height="150"></canvas>
+        <div class="wb-minimap-viewport" id="wb-minimap-viewport"></div>
+    </div>
+</div>
+
+<div class="wb-author-tooltip" id="wb-author-tooltip">
+    <span class="wb-author-dot" id="wb-author-dot"></span><span id="wb-author-name"></span>
+</div>
+
+<div class="wb-authors">
+    <i class="bi bi-people"></i>
+    <span id="wb-authors-text">{{ _('Rysujecie razem - sync co 0.5s · Hover kreskę aby zobaczyć autora') }}</span>
+    <span style="margin-left: 14px; color: var(--text-subtle); font-size: 11px;">
+        {{ _('P/H/E/T/N/R/O/L/A/S · Shift = prosto · Ctrl+Z · Ctrl+V (obraz) · Delete · F = pełny ekran') }}
+    </span>
+</div>
+
+<script>
+const wbEsc = (v) => String(v ?? '').replace(/[&<>"']/g,
+    (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+(function () {
+    const BOARD_ID = {{ board.id }};
+    const BG_COLOR = "{{ board.bg_color }}";
+    const CANVAS_W = {{ board.canvas_width }};
+    const CANVAS_H = {{ board.canvas_height }};
+    const POLL_MS = 500;
+    const CURSOR_MS = 400;
+    const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const IMG_URL_BASE = "/tablica/{{ board.id }}/img/";
+
+    const fsTarget = document.getElementById('wb-fullscreen-target');
+    const scrollWrap = document.getElementById('wb-scroll');
+    const canvasWrap = document.getElementById('wb-canvas-wrap');
+    const canvas = document.getElementById('wb-canvas');
+    const ctx = canvas.getContext('2d');
+    const gridOverlay = document.getElementById('wb-grid');
+    const marqueeEl = document.getElementById('wb-marquee');
+    const minimapEl = document.getElementById('wb-minimap');
+    const minimapCanvas = document.getElementById('wb-minimap-canvas');
+    const minimapCtx = minimapCanvas.getContext('2d');
+    const minimapViewport = document.getElementById('wb-minimap-viewport');
+    const tooltip = document.getElementById('wb-author-tooltip');
+
+    // ═════ STATE ═════
+    let currentTool = 'pen';
+    let currentColor = '#111111';
+    let currentWidth = 3;
+
+    let isDrawing = false;
+    let currentPoints = [];
+    let drawStart = null;      // dla ksztaltow: punkt startowy
+    let shiftDown = false;
+
+    let allStrokes = [];
+    let strokesById = {};      // id → stroke, do szybkiego lookup
+    let latestId = 0;
+    let latestDelId = 0;
+
+    let selectedIds = new Set(); // multi-select
+    let isDragging = false;      // drag istniejacych obiektow
+    let dragStart = null;
+    let isResizing = false;
+    let resizeStart = null;
+
+    let isMarqueeSelecting = false;
+    let marqueeStart = null;
+
+    let myPendingText = null;
+
+    let zoom = 1.0;
+    const MIN_ZOOM = 0.1, MAX_ZOOM = 5.0;
+
+    let gridVisible = false;
+    let minimapVisible = true;
+    minimapEl.classList.add('visible');
+
+    const remoteImages = {};   // cache: image_path → HTMLImageElement
+
+    // ═════ RENDERING ═════
+    function clearCanvas() {
+        ctx.fillStyle = BG_COLOR;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawStroke(s) {
+        ctx.save();
+        const pts = s.points || [];
+
+        if (s.tool === 'text') {
+            if (!pts.length) { ctx.restore(); return; }
+            const [x, y] = pts[0];
+            ctx.fillStyle = s.color;
+            ctx.globalAlpha = s.opacity || 1;
+            ctx.font = `${s.font_size || 18}px 'Inter', system-ui, sans-serif`;
+            ctx.textBaseline = 'top';
+            (s.text || '').split('\n').forEach((line, i) => {
+                ctx.fillText(line, x, y + i * (s.font_size || 18) * 1.25);
+            });
+        }
+        else if (s.tool === 'sticky') {
+            if (!pts.length) { ctx.restore(); return; }
+            const [x, y] = pts[0];
+            const w = s.width_box || 200, h = s.height_box || 150;
+            // Tlo karteczki (color jest tlem)
+            ctx.fillStyle = s.color || '#fef3c7';
+            ctx.shadowColor = 'rgba(0,0,0,0.15)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetY = 4;
+            roundRect(ctx, x, y, w, h, 6);
+            ctx.fill();
+            ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+            // Tekst
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = `${s.font_size || 16}px 'Inter', system-ui, sans-serif`;
+            ctx.textBaseline = 'top';
+            wrapText(ctx, s.text || '', x + 10, y + 10, w - 20, (s.font_size || 16) * 1.3);
+        }
+        else if (s.tool === 'image') {
+            if (!pts.length || !s.image_path) { ctx.restore(); return; }
+            const [x, y] = pts[0];
+            const w = s.width_box || 400, h = s.height_box || 300;
+            let img = remoteImages[s.image_path];
+            if (!img) {
+                img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => redrawAll();
+                img.src = IMG_URL_BASE + s.image_path.split('/').pop();
+                remoteImages[s.image_path] = img;
+            }
+            if (img.complete && img.naturalWidth) {
+                ctx.drawImage(img, x, y, w, h);
+            } else {
+                // placeholder
+                ctx.fillStyle = 'rgba(0,0,0,0.1)';
+                ctx.fillRect(x, y, w, h);
+                ctx.fillStyle = '#999';
+                ctx.font = '14px sans-serif';
+                ctx.textBaseline = 'middle';
+                ctx.textAlign = 'center';
+                ctx.fillText({{ _('Ładowanie...')|tojson }}, x + w/2, y + h/2);
+                ctx.textAlign = 'start';
+            }
+        }
+        else if (s.tool === 'rect' || s.tool === 'ellipse') {
+            if (pts.length < 2) { ctx.restore(); return; }
+            const [[x1,y1],[x2,y2]] = pts;
+            const x = Math.min(x1, x2), y = Math.min(y1, y2);
+            const w = Math.abs(x2-x1), h = Math.abs(y2-y1);
+            ctx.lineWidth = s.width;
+            ctx.strokeStyle = s.color;
+            ctx.globalAlpha = s.opacity || 1;
+            if (s.fill_color) {
+                ctx.fillStyle = s.fill_color;
+                if (s.tool === 'rect') ctx.fillRect(x, y, w, h);
+                else { ctx.beginPath(); ctx.ellipse(x+w/2, y+h/2, w/2, h/2, 0, 0, Math.PI*2); ctx.fill(); }
+            }
+            if (s.tool === 'rect') ctx.strokeRect(x, y, w, h);
+            else { ctx.beginPath(); ctx.ellipse(x+w/2, y+h/2, w/2, h/2, 0, 0, Math.PI*2); ctx.stroke(); }
+        }
+        else if (s.tool === 'line' || s.tool === 'arrow') {
+            if (pts.length < 2) { ctx.restore(); return; }
+            const [[x1,y1],[x2,y2]] = pts;
+            ctx.strokeStyle = s.color;
+            ctx.lineWidth = s.width;
+            ctx.lineCap = 'round';
+            ctx.globalAlpha = s.opacity || 1;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+            ctx.stroke();
+            if (s.tool === 'arrow') {
+                const angle = Math.atan2(y2-y1, x2-x1);
+                const ah = Math.max(12, s.width * 4);
+                ctx.fillStyle = s.color;
+                ctx.beginPath();
+                ctx.moveTo(x2, y2);
+                ctx.lineTo(x2 - ah*Math.cos(angle-Math.PI/6), y2 - ah*Math.sin(angle-Math.PI/6));
+                ctx.lineTo(x2 - ah*Math.cos(angle+Math.PI/6), y2 - ah*Math.sin(angle+Math.PI/6));
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+        else {
+            // pen / highlighter / eraser
+            if (!pts.length) { ctx.restore(); return; }
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = s.width;
+            ctx.globalAlpha = s.opacity || 1;
+            if (s.tool === 'eraser') { ctx.strokeStyle = BG_COLOR; ctx.globalAlpha = 1; }
+            else if (s.tool === 'highlighter') { ctx.strokeStyle = s.color; ctx.globalAlpha = 0.35; }
+            else ctx.strokeStyle = s.color;
+
+            ctx.beginPath();
+            ctx.moveTo(pts[0][0], pts[0][1]);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+            if (pts.length === 1) {
+                ctx.arc(pts[0][0], pts[0][1], s.width/2, 0, Math.PI*2);
+                ctx.fillStyle = ctx.strokeStyle; ctx.fill();
+            } else ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    function roundRect(ctx, x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x+r, y);
+        ctx.arcTo(x+w, y, x+w, y+h, r);
+        ctx.arcTo(x+w, y+h, x, y+h, r);
+        ctx.arcTo(x, y+h, x, y, r);
+        ctx.arcTo(x, y, x+w, y, r);
+        ctx.closePath();
+    }
+
+    function wrapText(ctx, text, x, y, maxW, lineH) {
+        text.split('\n').forEach((para, pi) => {
+            const words = para.split(' ');
+            let line = '';
+            words.forEach(w => {
+                const test = line ? line + ' ' + w : w;
+                if (ctx.measureText(test).width > maxW && line) {
+                    ctx.fillText(line, x, y);
+                    y += lineH;
+                    line = w;
+                } else line = test;
+            });
+            if (line) { ctx.fillText(line, x, y); y += lineH; }
+        });
+    }
+
+    function strokeBounds(s) {
+        const pts = s.points || [];
+        if (s.tool === 'text') {
+            if (!pts.length) return null;
+            ctx.save();
+            ctx.font = `${s.font_size || 18}px 'Inter', system-ui, sans-serif`;
+            let maxW = 0;
+            (s.text || '').split('\n').forEach(l => { maxW = Math.max(maxW, ctx.measureText(l).width); });
+            ctx.restore();
+            const [x, y] = pts[0];
+            const h = (s.text || '').split('\n').length * (s.font_size || 18) * 1.25;
+            return { x: x-4, y: y-4, w: maxW+8, h: h+8 };
+        }
+        if (s.tool === 'sticky' || s.tool === 'image') {
+            if (!pts.length) return null;
+            const [x, y] = pts[0];
+            return { x: x-2, y: y-2, w: (s.width_box||200)+4, h: (s.height_box||150)+4 };
+        }
+        if (s.tool === 'rect' || s.tool === 'ellipse' || s.tool === 'line' || s.tool === 'arrow') {
+            if (pts.length < 2) return null;
+            const [[x1,y1],[x2,y2]] = pts;
+            const pad = Math.max(6, s.width);
+            return { x: Math.min(x1,x2)-pad, y: Math.min(y1,y2)-pad,
+                     w: Math.abs(x2-x1)+2*pad, h: Math.abs(y2-y1)+2*pad };
+        }
+        // pen / highlighter / eraser
+        if (!pts.length) return null;
+        let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+        pts.forEach(([px,py]) => {
+            if (px<minX) minX=px; if (py<minY) minY=py;
+            if (px>maxX) maxX=px; if (py>maxY) maxY=py;
+        });
+        const pad = Math.max(4, s.width);
+        return { x: minX-pad, y: minY-pad, w: maxX-minX+2*pad, h: maxY-minY+2*pad };
+    }
+
+    function drawSelection() {
+        if (!selectedIds.size) return;
+        ctx.save();
+        ctx.strokeStyle = '#6c5ce7';
+        ctx.lineWidth = 2 / zoom;
+        ctx.setLineDash([6/zoom, 4/zoom]);
+        selectedIds.forEach(id => {
+            const s = strokesById[id];
+            if (!s) return;
+            const bb = strokeBounds(s);
+            if (!bb) return;
+            ctx.strokeRect(bb.x, bb.y, bb.w, bb.h);
+        });
+        ctx.setLineDash([]);
+        // Resize handle tylko gdy pojedynczy wybor
+        if (selectedIds.size === 1) {
+            const sel = strokesById[[...selectedIds][0]];
+            if (sel) {
+                const bb = strokeBounds(sel);
+                if (bb) {
+                    const hSize = 14/zoom;
+                    ctx.fillStyle = '#6c5ce7';
+                    ctx.fillRect(bb.x+bb.w-hSize/2, bb.y+bb.h-hSize/2, hSize, hSize);
+                    ctx.strokeStyle = '#fff';
+                    ctx.strokeRect(bb.x+bb.w-hSize/2, bb.y+bb.h-hSize/2, hSize, hSize);
+                }
+            }
+        }
+        ctx.restore();
+    }
+
+    function redrawAll() {
+        clearCanvas();
+        allStrokes.forEach(drawStroke);
+        drawSelection();
+        scheduleMinimap();
+    }
+
+    function drawLivePreview() {
+        if (currentTool === 'pen' || currentTool === 'highlighter' || currentTool === 'eraser') {
+            if (currentPoints.length < 2) return;
+            ctx.save();
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.lineWidth = currentWidth;
+            if (currentTool === 'eraser') ctx.strokeStyle = BG_COLOR;
+            else if (currentTool === 'highlighter') { ctx.strokeStyle = currentColor; ctx.globalAlpha = 0.35; }
+            else ctx.strokeStyle = currentColor;
+            const a = currentPoints[currentPoints.length-2];
+            const b = currentPoints[currentPoints.length-1];
+            ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+            ctx.restore();
+        } else if ((currentTool === 'rect' || currentTool === 'ellipse' ||
+                    currentTool === 'line' || currentTool === 'arrow') && drawStart) {
+            // Preview = pelne redraw + preview obiektu
+            redrawAll();
+            drawStroke({
+                tool: currentTool, color: currentColor, width: currentWidth,
+                opacity: 1, points: [drawStart, currentPoints[currentPoints.length-1]],
+            });
+        }
+    }
+
+    // ═════ WSPOLRZEDNE ═════
+    function toLogical(e) {
+        const rect = canvas.getBoundingClientRect();
+        return [(e.clientX - rect.left) * (canvas.width / rect.width),
+                (e.clientY - rect.top) * (canvas.height / rect.height)];
+    }
+
+    function hitTest(lx, ly) {
+        for (let i = allStrokes.length - 1; i >= 0; i--) {
+            const s = allStrokes[i];
+            const bb = strokeBounds(s);
+            if (!bb) continue;
+            if (lx >= bb.x && lx <= bb.x+bb.w && ly >= bb.y && ly <= bb.y+bb.h) return s.id;
+        }
+        return null;
+    }
+
+    function isOnResizeHandle(lx, ly) {
+        if (selectedIds.size !== 1) return false;
+        const sel = strokesById[[...selectedIds][0]];
+        if (!sel) return false;
+        const bb = strokeBounds(sel);
+        if (!bb) return false;
+        const hSize = 14/zoom;
+        return lx >= bb.x+bb.w-hSize && lx <= bb.x+bb.w+hSize &&
+               ly >= bb.y+bb.h-hSize && ly <= bb.y+bb.h+hSize;
+    }
+
+    // Shift-snap do 45° (dla line/arrow/rect/ellipse)
+    function snapIfShift(startPt, endPt) {
+        if (!shiftDown) return endPt;
+        const dx = endPt[0] - startPt[0];
+        const dy = endPt[1] - startPt[1];
+
+        if (currentTool === 'line' || currentTool === 'arrow') {
+            // snap kat 45°
+            const angle = Math.atan2(dy, dx);
+            const snapAngle = Math.round(angle / (Math.PI/4)) * (Math.PI/4);
+            const length = Math.sqrt(dx*dx + dy*dy);
+            return [startPt[0] + length*Math.cos(snapAngle), startPt[1] + length*Math.sin(snapAngle)];
+        }
+        if (currentTool === 'rect' || currentTool === 'ellipse') {
+            // snap do kwadratu/kolka
+            const side = Math.max(Math.abs(dx), Math.abs(dy));
+            return [startPt[0] + Math.sign(dx||1)*side, startPt[1] + Math.sign(dy||1)*side];
+        }
+        return endPt;
+    }
+
+    // ═════ POINTER EVENTS ═════
+    function onDown(e) {
+        if (myPendingText) return;
+        if (e.button === 1) return;
+        if (e.button === 2) return;  // right click = ignore
+        e.preventDefault();
+
+        const [lx, ly] = toLogical(e);
+
+        // SELECT tool
+        if (currentTool === 'select') {
+            // Resize handle?
+            if (isOnResizeHandle(lx, ly)) {
+                const sel = strokesById[[...selectedIds][0]];
+                isResizing = true;
+                resizeStart = {
+                    mx: e.clientX, my: e.clientY,
+                    fontSize: sel.font_size || 18,
+                    width: sel.width || 3,
+                    widthBox: sel.width_box || 0,
+                    heightBox: sel.height_box || 0,
+                    stroke: sel,
+                };
+                return;
+            }
+            const hitId = hitTest(lx, ly);
+            if (hitId) {
+                if (e.shiftKey) {
+                    // multi-select toggle
+                    if (selectedIds.has(hitId)) selectedIds.delete(hitId);
+                    else selectedIds.add(hitId);
+                } else {
+                    if (!selectedIds.has(hitId)) selectedIds = new Set([hitId]);
+                }
+                // Drag start
+                isDragging = true;
+                dragStart = {
+                    mx: e.clientX, my: e.clientY, lx: lx, ly: ly,
+                    initial: new Map(),
+                };
+                selectedIds.forEach(id => {
+                    const s = strokesById[id];
+                    if (!s) return;
+                    dragStart.initial.set(id, JSON.parse(JSON.stringify(s.points)));
+                });
+                redrawAll();
+            } else {
+                // Kliknieto w puste - marquee select
+                selectedIds = new Set();
+                isMarqueeSelecting = true;
+                marqueeStart = { lx, ly, mx: e.clientX, my: e.clientY };
+                marqueeEl.style.left = '0px';
+                marqueeEl.style.top = '0px';
+                marqueeEl.style.width = '0px';
+                marqueeEl.style.height = '0px';
+                marqueeEl.classList.add('active');
+                redrawAll();
+            }
+            return;
+        }
+
+        selectedIds = new Set();
+
+        if (currentTool === 'text') {
+            openTextEditor(lx, ly, e.clientX, e.clientY, 'text');
+            return;
+        }
+        if (currentTool === 'sticky') {
+            openTextEditor(lx, ly, e.clientX, e.clientY, 'sticky');
+            return;
+        }
+
+        // Shapes lub pen/highlighter/eraser
+        if (currentTool === 'rect' || currentTool === 'ellipse' ||
+            currentTool === 'line' || currentTool === 'arrow') {
+            isDrawing = true;
+            drawStart = [lx, ly];
+            currentPoints = [[lx, ly], [lx, ly]];
+            return;
+        }
+
+        // pen / highlighter / eraser
+        isDrawing = true;
+        currentPoints = [[lx, ly]];
+        drawStroke({
+            tool: currentTool, color: currentColor, width: currentWidth,
+            opacity: currentTool === 'highlighter' ? 0.35 : 1, points: currentPoints,
+        });
+    }
+
+    function onMove(e) {
+        // Resize
+        if (isResizing && resizeStart) {
+            const dy = e.clientY - resizeStart.my;
+            const dx = e.clientX - resizeStart.mx;
+            const s = resizeStart.stroke;
+            if (s.tool === 'text') {
+                s.font_size = Math.max(6, Math.min(400, resizeStart.fontSize + dy * 0.6));
+            } else if (s.tool === 'sticky' || s.tool === 'image') {
+                s.width_box = Math.max(40, resizeStart.widthBox + dx / (canvas.width/canvas.getBoundingClientRect().width));
+                s.height_box = Math.max(40, resizeStart.heightBox + dy / (canvas.height/canvas.getBoundingClientRect().height));
+            } else if (s.tool === 'rect' || s.tool === 'ellipse' || s.tool === 'line' || s.tool === 'arrow') {
+                // scale: przesuwaj prawy-dolny punkt
+                const rect = canvas.getBoundingClientRect();
+                const sxScale = canvas.width / rect.width;
+                const syScale = canvas.height / rect.height;
+                s.points = [
+                    s.points[0],
+                    [s.points[1][0] + dx * sxScale, s.points[1][1] + dy * syScale],
+                ];
+                resizeStart.mx = e.clientX; resizeStart.my = e.clientY;
+            } else {
+                // pen/eraser/highlighter - skaluj width
+                s.width = Math.max(1, Math.min(80, resizeStart.width + dy * 0.15));
+            }
+            redrawAll();
+            return;
+        }
+
+        // Drag wybranych
+        if (isDragging && dragStart) {
+            const rect = canvas.getBoundingClientRect();
+            const sxScale = canvas.width / rect.width;
+            const syScale = canvas.height / rect.height;
+            const ddx = (e.clientX - dragStart.mx) * sxScale;
+            const ddy = (e.clientY - dragStart.my) * syScale;
+            selectedIds.forEach(id => {
+                const s = strokesById[id];
+                const orig = dragStart.initial.get(id);
+                if (!s || !orig) return;
+                s.points = orig.map(p => [p[0]+ddx, p[1]+ddy]);
+            });
+            redrawAll();
+            return;
+        }
+
+        // Marquee
+        if (isMarqueeSelecting && marqueeStart) {
+            const rect = canvas.getBoundingClientRect();
+            const wrapRect = canvasWrap.getBoundingClientRect();
+            const x1 = Math.min(marqueeStart.mx, e.clientX) - wrapRect.left;
+            const y1 = Math.min(marqueeStart.my, e.clientY) - wrapRect.top;
+            const w = Math.abs(e.clientX - marqueeStart.mx);
+            const h = Math.abs(e.clientY - marqueeStart.my);
+            marqueeEl.style.left = x1 + 'px';
+            marqueeEl.style.top = y1 + 'px';
+            marqueeEl.style.width = w + 'px';
+            marqueeEl.style.height = h + 'px';
+            return;
+        }
+
+        // Drawing
+        if (!isDrawing) {
+            // Hover tooltip nad kreska (tylko w select)
+            if (currentTool === 'select') {
+                const [lx, ly] = toLogical(e);
+                const hitId = hitTest(lx, ly);
+                if (hitId) {
+                    const s = strokesById[hitId];
+                    if (s && s.author_name) {
+                        tooltip.querySelector('#wb-author-name').textContent = s.author_name;
+                        tooltip.querySelector('#wb-author-dot').style.background = s.author_color || '#6c5ce7';
+                        tooltip.style.left = (e.clientX + 12) + 'px';
+                        tooltip.style.top = (e.clientY + 12) + 'px';
+                        tooltip.classList.add('visible');
+                        return;
+                    }
+                }
+            }
+            tooltip.classList.remove('visible');
+
+            // Kursor heartbeat
+            throttledCursorUpdate(toLogical(e));
+            return;
+        }
+        e.preventDefault();
+        const pt = toLogical(e);
+
+        if (currentTool === 'rect' || currentTool === 'ellipse' ||
+            currentTool === 'line' || currentTool === 'arrow') {
+            const snapped = snapIfShift(drawStart, pt);
+            currentPoints[1] = snapped;
+            drawLivePreview();
+        } else {
+            currentPoints.push(pt);
+            drawLivePreview();
+        }
+    }
+
+    async function onUp(e) {
+        // Resize commit
+        if (isResizing && resizeStart) {
+            isResizing = false;
+            const s = resizeStart.stroke;
+            try {
+                await fetch(`/api/tablica/${BOARD_ID}/stroke/${s.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({
+                        font_size: s.font_size, width: s.width,
+                        width_box: s.width_box, height_box: s.height_box,
+                        points: s.points,
+                    }),
+                });
+                setStatus({{ _('Zapisane')|tojson }});
+            } catch (e) { setStatus({{ _('Błąd zapisu')|tojson }}, 'error'); }
+            resizeStart = null;
+            return;
+        }
+
+        // Drag commit
+        if (isDragging && dragStart) {
+            isDragging = false;
+            for (const id of selectedIds) {
+                const s = strokesById[id];
+                if (!s) continue;
+                try {
+                    await fetch(`/api/tablica/${BOARD_ID}/stroke/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                        body: JSON.stringify({ points: s.points }),
+                    });
+                } catch (e) {}
+            }
+            setStatus({{ _('Zapisane')|tojson }});
+            dragStart = null;
+            return;
+        }
+
+        // Marquee commit
+        if (isMarqueeSelecting) {
+            isMarqueeSelecting = false;
+            marqueeEl.classList.remove('active');
+            // Wylicz bbox w logical coords
+            if (marqueeStart) {
+                const [lx1, ly1] = [marqueeStart.lx, marqueeStart.ly];
+                const [lx2, ly2] = toLogical(e);
+                const minX = Math.min(lx1, lx2), maxX = Math.max(lx1, lx2);
+                const minY = Math.min(ly1, ly2), maxY = Math.max(ly1, ly2);
+                // Minimalny rozmiar - ignoruj zbyt male (klik bez drag)
+                if (Math.abs(maxX-minX) > 5 || Math.abs(maxY-minY) > 5) {
+                    selectedIds = new Set();
+                    allStrokes.forEach(s => {
+                        const bb = strokeBounds(s);
+                        if (!bb) return;
+                        // selekcja jesli cały bb zawiera sie w marquee (lub przecina)
+                        if (bb.x < maxX && bb.x+bb.w > minX && bb.y < maxY && bb.y+bb.h > minY) {
+                            selectedIds.add(s.id);
+                        }
+                    });
+                    redrawAll();
+                }
+            }
+            marqueeStart = null;
+            return;
+        }
+
+        if (!isDrawing) return;
+        isDrawing = false;
+
+        if (currentTool === 'rect' || currentTool === 'ellipse' ||
+            currentTool === 'line' || currentTool === 'arrow') {
+            // Pomin jesli figura jest za mala
+            const [a, b] = currentPoints;
+            if (Math.abs(b[0]-a[0]) < 3 && Math.abs(b[1]-a[1]) < 3) {
+                currentPoints = []; drawStart = null;
+                redrawAll();
+                return;
+            }
+            await saveStroke({
+                tool: currentTool, color: currentColor, width: currentWidth,
+                opacity: 1, points: currentPoints,
+            });
+            drawStart = null;
+        } else if (currentPoints.length) {
+            await saveStroke({
+                tool: currentTool, color: currentColor, width: currentWidth,
+                opacity: currentTool === 'highlighter' ? 0.35 : 1, points: currentPoints,
+            });
+        }
+        currentPoints = [];
+    }
+
+    canvas.addEventListener('pointerdown', onDown);
+    canvas.addEventListener('pointermove', onMove);
+    canvas.addEventListener('pointerup', onUp);
+    canvas.addEventListener('pointerleave', onUp);
+
+    // Dblclick text → edit
+    canvas.addEventListener('dblclick', (e) => {
+        const [lx, ly] = toLogical(e);
+        const hitId = hitTest(lx, ly);
+        if (!hitId) return;
+        const s = strokesById[hitId];
+        if (!s) return;
+        if (s.tool === 'text' || s.tool === 'sticky') {
+            // otworz edytor populowany istniejaca wartoscia
+            openTextEditor(s.points[0][0], s.points[0][1], e.clientX, e.clientY,
+                           s.tool, s);
+        }
+    });
+
+    // ═════ THROTTLED CURSOR UPDATE ═════
+    let lastCursorSent = 0;
+    async function throttledCursorUpdate(pt) {
+        const now = Date.now();
+        if (now - lastCursorSent < CURSOR_MS) return;
+        lastCursorSent = now;
+        try {
+            await fetch(`/api/tablica/${BOARD_ID}/cursor`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify({ x: pt[0], y: pt[1] }),
+            });
+        } catch (e) {}
+    }
+
+    // ═════ TEXT EDITOR (drag + resize przed Enter, edycja istniejacego) ═════
+    function openTextEditor(canvasX, canvasY, screenX, screenY, kind, existing) {
+        const editor = document.createElement('div');
+        editor.className = 'wb-text-editor';
+        const dragBar = document.createElement('div');
+        dragBar.className = 'wb-text-drag';
+        const kindLabel = kind === 'sticky' ? 'Sticky' : {{ _('Tekst')|tojson }};
+        dragBar.innerHTML = `<span><i class="bi bi-arrows-move"></i> ${kindLabel}</span><span class="wb-text-hint">${ {{ _('Enter = OK · Esc = anuluj')|tojson }} }</span>`;
+
+        const body = document.createElement('div');
+        body.className = 'wb-text-body';
+        const textarea = document.createElement('textarea');
+        textarea.rows = 1;
+        textarea.placeholder = kind === 'sticky' ? {{ _('Notatka...')|tojson }} : {{ _('Wpisz tekst...')|tojson }};
+
+        let fontSize = existing ? (existing.font_size || 18) : Math.max(14, currentWidth * 5);
+        textarea.style.fontSize = fontSize + 'px';
+
+        if (kind === 'sticky') {
+            body.style.background = existing ? existing.color : '#fef3c7';
+            body.style.borderColor = existing ? existing.color : '#fbbf24';
+            textarea.style.color = '#1a1a1a';
+            textarea.value = existing ? (existing.text || '') : '';
+        } else {
+            textarea.style.color = existing ? existing.color : currentColor;
+            textarea.value = existing ? (existing.text || '') : '';
+        }
+
+        body.appendChild(textarea);
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'wb-text-resize';
+        body.appendChild(resizeHandle);
+
+        editor.appendChild(dragBar); editor.appendChild(body);
+
+        const wrapRect = canvasWrap.getBoundingClientRect();
+        editor.style.left = (screenX - wrapRect.left) + 'px';
+        editor.style.top = (screenY - wrapRect.top) + 'px';
+        canvasWrap.appendChild(editor);
+        textarea.focus();
+
+        myPendingText = { editor };
+
+        function autoGrow() {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }
+        textarea.addEventListener('input', autoGrow);
+        autoGrow();
+
+        // DRAG
+        let isDrag = false, dragS = null;
+        dragBar.addEventListener('pointerdown', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            isDrag = true;
+            dragS = { mx: e.clientX, my: e.clientY,
+                      left: parseFloat(editor.style.left)||0, top: parseFloat(editor.style.top)||0 };
+            dragBar.setPointerCapture(e.pointerId);
+        });
+        dragBar.addEventListener('pointermove', (e) => {
+            if (!isDrag) return;
+            editor.style.left = (dragS.left + e.clientX - dragS.mx) + 'px';
+            editor.style.top = (dragS.top + e.clientY - dragS.my) + 'px';
+        });
+        dragBar.addEventListener('pointerup', (e) => {
+            if (!isDrag) return; isDrag = false;
+            try { dragBar.releasePointerCapture(e.pointerId); } catch (_) {}
+            textarea.focus();
+        });
+
+        // RESIZE (font_size)
+        let isResize = false, rS = null;
+        resizeHandle.addEventListener('pointerdown', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            isResize = true;
+            rS = { mx: e.clientX, my: e.clientY, fs: fontSize };
+            resizeHandle.setPointerCapture(e.pointerId);
+        });
+        resizeHandle.addEventListener('pointermove', (e) => {
+            if (!isResize) return;
+            const dy = e.clientY - rS.my;
+            fontSize = Math.max(8, Math.min(400, rS.fs + dy * 0.8));
+            textarea.style.fontSize = fontSize + 'px';
+            autoGrow();
+        });
+        resizeHandle.addEventListener('pointerup', (e) => {
+            if (!isResize) return; isResize = false;
+            try { resizeHandle.releasePointerCapture(e.pointerId); } catch (_) {}
+            textarea.focus();
+        });
+
+        textarea.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); await commit(); }
+            else if (e.key === 'Escape') { cancel(); }
+        });
+
+        async function onOutsideClick(ev) {
+            if (!editor.contains(ev.target)) await commit();
+        }
+        setTimeout(() => document.addEventListener('pointerdown', onOutsideClick), 100);
+
+        async function commit() {
+            document.removeEventListener('pointerdown', onOutsideClick);
+            const textValue = textarea.value.trim();
+
+            // Nowa pozycja z aktualnego polozenia edytora
+            const bodyRect = body.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            const sx = canvas.width / canvasRect.width;
+            const sy = canvas.height / canvasRect.height;
+            const finalX = (bodyRect.left - canvasRect.left) * sx;
+            const finalY = (bodyRect.top - canvasRect.top) * sy;
+
+            if (existing) {
+                // PATCH istniejacego
+                if (!textValue) {
+                    await deleteStroke(existing.id);
+                } else {
+                    try {
+                        await fetch(`/api/tablica/${BOARD_ID}/stroke/${existing.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                            body: JSON.stringify({
+                                text: textValue,
+                                font_size: fontSize,
+                                points: [[finalX, finalY]],
+                            }),
+                        });
+                        existing.text = textValue;
+                        existing.font_size = fontSize;
+                        existing.points = [[finalX, finalY]];
+                        redrawAll();
+                    } catch (e) {}
+                }
+            } else if (textValue) {
+                // Nowy stroke
+                if (kind === 'sticky') {
+                    // przyblizony rozmiar karteczki wg tekstu
+                    const w = Math.max(200, bodyRect.width * sx);
+                    const h = Math.max(120, bodyRect.height * sy);
+                    await saveStroke({
+                        tool: 'sticky',
+                        color: '#fef3c7',
+                        points: [[finalX, finalY]],
+                        text: textValue,
+                        font_size: fontSize,
+                        width_box: w,
+                        height_box: h,
+                    });
+                } else {
+                    await saveStroke({
+                        tool: 'text',
+                        color: currentColor,
+                        points: [[finalX, finalY]],
+                        text: textValue,
+                        font_size: fontSize,
+                    });
+                }
+            }
+            editor.remove();
+            myPendingText = null;
+        }
+        function cancel() {
+            document.removeEventListener('pointerdown', onOutsideClick);
+            editor.remove();
+            myPendingText = null;
+        }
+    }
+
+    // ═════ SERWER ═════
+    function setStatus(text, type) {
+        document.getElementById('wb-status-text').textContent = text;
+        const dot = document.querySelector('.wb-status-dot');
+        dot.style.background = type === 'saving' ? '#f59e0b' :
+                                type === 'error' ? '#ef4444' : '#10b981';
+    }
+
+    async function saveStroke(stroke) {
+        setStatus({{ _('Zapis...')|tojson }}, 'saving');
+        try {
+            const r = await fetch(`/api/tablica/${BOARD_ID}/stroke`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify(stroke),
+            });
+            const data = await r.json();
+            if (!r.ok) { setStatus({{ _('Błąd zapisu')|tojson }}, 'error'); return; }
+            const full = { ...stroke, id: data.id, stroke_order: data.stroke_order,
+                           author_name: data.author, author_color: data.author_color };
+            allStrokes.push(full);
+            strokesById[data.id] = full;
+            if (data.id > latestId) latestId = data.id;
+            redrawAll();
+            setStatus({{ _('Zapisane')|tojson }});
+        } catch (e) { setStatus({{ _('Brak połączenia')|tojson }}, 'error'); }
+    }
+
+    async function deleteStroke(id) {
+        try {
+            await fetch(`/api/tablica/${BOARD_ID}/stroke/${id}/delete`, {
+                method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN },
+            });
+            allStrokes = allStrokes.filter(s => s.id !== id);
+            delete strokesById[id];
+            selectedIds.delete(id);
+            redrawAll();
+        } catch (e) {}
+    }
+
+    async function fetchState() {
+        try {
+            const r = await fetch(`/api/tablica/${BOARD_ID}/state?since=${latestId}&del_since=${latestDelId}`);
+            if (!r.ok) return;
+            const data = await r.json();
+            // Dodaj/zaktualizuj strokes
+            (data.strokes || []).forEach(s => {
+                const existing = strokesById[s.id];
+                if (existing) {
+                    Object.assign(existing, s);
+                } else {
+                    allStrokes.push(s);
+                    strokesById[s.id] = s;
+                }
+            });
+            // Usun deletions
+            (data.deletions || []).forEach(id => {
+                if (strokesById[id]) {
+                    allStrokes = allStrokes.filter(x => x.id !== id);
+                    delete strokesById[id];
+                    selectedIds.delete(id);
+                }
+            });
+            latestId = data.latest_id || latestId;
+            latestDelId = data.latest_del_id || latestDelId;
+
+            // Sort po stroke_order
+            allStrokes.sort((a, b) => (a.stroke_order || 0) - (b.stroke_order || 0) || a.id - b.id);
+
+            redrawAll();
+            renderRemoteCursors(data.cursors || []);
+
+            const authors = [...new Set(allStrokes.map(s => s.author_name).filter(Boolean))];
+            if (authors.length > 1) {
+                document.getElementById('wb-authors-text').textContent =
+                    {{ _('Aktywni autorzy:')|tojson }} + ' ' + authors.join(', ') + ' · ' + {{ _('Hover kreskę dla autora')|tojson }};
+            }
+        } catch (e) {}
+    }
+    fetchState();
+    setInterval(fetchState, POLL_MS);
+
+    // ═════ REMOTE CURSORS ═════
+    function renderRemoteCursors(cursors) {
+        // Usun stare
+        document.querySelectorAll('.wb-remote-cursor').forEach(el => el.remove());
+        cursors.forEach(c => {
+            const rect = canvas.getBoundingClientRect();
+            const sx = rect.width / canvas.width;
+            const sy = rect.height / canvas.height;
+            const wrapRect = canvasWrap.getBoundingClientRect();
+            const px = c.x * sx + (rect.left - wrapRect.left);
+            const py = c.y * sy + (rect.top - wrapRect.top);
+
+            const el = document.createElement('div');
+            el.className = 'wb-remote-cursor';
+            el.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 20 20">
+                    <path d="M3 2 L3 17 L7 13 L10 17 L12 16 L9 12 L14 12 Z"
+                          fill="${wbEsc(c.color)}" stroke="white" stroke-width="1.5"/>
+                </svg>
+                <div class="wb-remote-label" style="background: ${wbEsc(c.color)}">${wbEsc(c.initials || c.name)}</div>
+            `;
+            el.style.left = px + 'px';
+            el.style.top = py + 'px';
+            canvasWrap.appendChild(el);
+        });
+    }
+
+    // ═════ PASTE IMAGE (Ctrl+V) ═════
+    document.addEventListener('paste', async (e) => {
+        if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+        const items = (e.clipboardData || window.clipboardData)?.items || [];
+        for (const item of items) {
+            if (item.type && item.type.startsWith('image/')) {
+                e.preventDefault();
+                const blob = item.getAsFile();
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    const b64 = ev.target.result;
+                    // Sprawdz wymiary obrazu, przelicz na canvas coords
+                    const img = new Image();
+                    img.onload = async () => {
+                        // Wklej w srodku widoku
+                        const sRect = scrollWrap.getBoundingClientRect();
+                        const cRect = canvas.getBoundingClientRect();
+                        const sx = canvas.width / cRect.width;
+                        const sy = canvas.height / cRect.height;
+                        const centerSX = sRect.left + sRect.width/2;
+                        const centerSY = sRect.top + sRect.height/2;
+                        const centerLX = (centerSX - cRect.left) * sx;
+                        const centerLY = (centerSY - cRect.top) * sy;
+
+                        let w = img.width, h = img.height;
+                        // Limit do 60% canvasa
+                        const maxW = CANVAS_W * 0.6;
+                        if (w > maxW) { const r = maxW / w; w *= r; h *= r; }
+
+                        setStatus({{ _('Wgrywam obraz...')|tojson }}, 'saving');
+                        try {
+                            const r = await fetch(`/api/tablica/${BOARD_ID}/paste-image`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                                body: JSON.stringify({
+                                    image_base64: b64,
+                                    x: centerLX - w/2, y: centerLY - h/2,
+                                    width: w, height: h,
+                                }),
+                            });
+                            const data = await r.json();
+                            if (r.ok && data.stroke) {
+                                allStrokes.push(data.stroke);
+                                strokesById[data.stroke.id] = data.stroke;
+                                if (data.stroke.id > latestId) latestId = data.stroke.id;
+                                redrawAll();
+                                setStatus({{ _('Obraz wgrany')|tojson }});
+                            } else {
+                                setStatus({{ _('Błąd wgrywania')|tojson }}, 'error');
+                            }
+                        } catch (err) {
+                            setStatus({{ _('Błąd połączenia')|tojson }}, 'error');
+                        }
+                    };
+                    img.src = b64;
+                };
+                reader.readAsDataURL(blob);
+                return;
+            }
+        }
+    });
+
+    // ═════ EXPORT ═════
+    async function exportPng() {
+        // Generuj PNG z canvas - bez selection/marquee
+        const tmpCanvas = document.createElement('canvas');
+        tmpCanvas.width = canvas.width;
+        tmpCanvas.height = canvas.height;
+        const tmpCtx = tmpCanvas.getContext('2d');
+        tmpCtx.fillStyle = BG_COLOR;
+        tmpCtx.fillRect(0, 0, tmpCanvas.width, tmpCanvas.height);
+        // Eksport: kopiujemy aktualny canvas bez zaznaczenia
+        const savedIds = selectedIds;
+        selectedIds = new Set();
+        redrawAll();
+        tmpCtx.drawImage(canvas, 0, 0);
+        selectedIds = savedIds;
+        redrawAll();
+
+        tmpCanvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tablica-${BOARD_ID}.png`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        });
+    }
+
+    async function exportPdf() {
+        // Uzyj okna print z dedykowanym layoutem
+        const savedIds = selectedIds;
+        selectedIds = new Set();
+        redrawAll();
+        const dataUrl = canvas.toDataURL('image/png');
+        selectedIds = savedIds;
+        redrawAll();
+
+        const w = window.open('', '_blank');
+        const boardName = {{ board.name|tojson }}.replace(/[&<>"']/g, (c) => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+        w.document.write(`
+            <html><head><title>${ {{ _('Tablica')|tojson }} } - ${boardName}</title>
+            <style>body{margin:0;padding:20px;font-family:sans-serif}
+            h1{margin:0 0 10px;font-size:18px}
+            img{max-width:100%;border:1px solid #ddd}
+            @media print { body { padding: 0; } h1 { display: none; } }
+            </style></head><body>
+            <h1>${boardName}</h1>
+            <img src="${dataUrl}">
+            <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script>
+            </body></html>`);
+        w.document.close();
+    }
+
+    // ═════ MINIMAP ═════
+    let minimapTimer = null;
+    function scheduleMinimap() {
+        if (minimapTimer) clearTimeout(minimapTimer);
+        minimapTimer = setTimeout(drawMinimap, 100);
+    }
+    function drawMinimap() {
+        if (!minimapVisible) return;
+        const mW = minimapCanvas.width, mH = minimapCanvas.height;
+        minimapCtx.clearRect(0, 0, mW, mH);
+        minimapCtx.fillStyle = BG_COLOR;
+        minimapCtx.fillRect(0, 0, mW, mH);
+        // skaluj content
+        const scale = Math.min(mW / CANVAS_W, mH / CANVAS_H);
+        minimapCtx.save();
+        minimapCtx.scale(scale, scale);
+        // skopiuj glowny canvas jako obraz (skalowanie robi przegladarka)
+        minimapCtx.drawImage(canvas, 0, 0);
+        minimapCtx.restore();
+
+        // Viewport wskaznik
+        const rect = canvas.getBoundingClientRect();
+        const scrollRect = scrollWrap.getBoundingClientRect();
+        const visX = -Math.min(0, rect.left - scrollRect.left) / rect.width * CANVAS_W;
+        const visY = -Math.min(0, rect.top - scrollRect.top) / rect.height * CANVAS_H;
+        const visW = Math.min(scrollRect.width, rect.width) / rect.width * CANVAS_W;
+        const visH = Math.min(scrollRect.height, rect.height) / rect.height * CANVAS_H;
+        minimapViewport.style.left = (visX * scale) + 'px';
+        minimapViewport.style.top = (visY * scale) + 'px';
+        minimapViewport.style.width = (visW * scale) + 'px';
+        minimapViewport.style.height = (visH * scale) + 'px';
+    }
+    scrollWrap.addEventListener('scroll', scheduleMinimap);
+
+    // Klik w minimape -> skocz tam
+    minimapCanvas.addEventListener('click', (e) => {
+        const mRect = minimapCanvas.getBoundingClientRect();
+        const mx = (e.clientX - mRect.left) / mRect.width;
+        const my = (e.clientY - mRect.top) / mRect.height;
+        const rect = canvas.getBoundingClientRect();
+        const scrollRect = scrollWrap.getBoundingClientRect();
+        scrollWrap.scrollLeft = mx * rect.width - scrollRect.width/2;
+        scrollWrap.scrollTop = my * rect.height - scrollRect.height/2;
+    });
+
+    // ═════ FIT TO CONTENT ═════
+    function fitToContent() {
+        if (!allStrokes.length) { setZoom(1.0); return; }
+        let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+        allStrokes.forEach(s => {
+            const bb = strokeBounds(s);
+            if (!bb) return;
+            if (bb.x < minX) minX = bb.x;
+            if (bb.y < minY) minY = bb.y;
+            if (bb.x+bb.w > maxX) maxX = bb.x+bb.w;
+            if (bb.y+bb.h > maxY) maxY = bb.y+bb.h;
+        });
+        if (minX === Infinity) { setZoom(1.0); return; }
+        const contentW = maxX - minX;
+        const contentH = maxY - minY;
+        const scrollRect = scrollWrap.getBoundingClientRect();
+        const scaleX = scrollRect.width / contentW * 0.9;
+        const scaleY = scrollRect.height / contentH * 0.9;
+        // Do realnego zoom: docelowy zoom = taki, zeby canvas wyswietlany w scroll
+        // mial rozmiar scroll/(contentW/CANVAS_W)
+        const displayCanvasW = scrollRect.width / (contentW / CANVAS_W) * 0.9;
+        const targetZoom = displayCanvasW / scrollRect.width;
+        setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, targetZoom)));
+        // po zoom, scroll do contentu
+        setTimeout(() => {
+            const rect = canvas.getBoundingClientRect();
+            scrollWrap.scrollLeft = (minX / CANVAS_W) * rect.width - 20;
+            scrollWrap.scrollTop = (minY / CANVAS_H) * rect.height - 20;
+        }, 50);
+    }
+
+    // ═════ TOOLBAR ═════
+    document.querySelectorAll('.wb-tool[data-tool]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.wb-tool[data-tool]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentTool = btn.dataset.tool;
+            canvas.className = 'tool-' + currentTool;
+            if (currentTool !== 'select') {
+                selectedIds = new Set();
+                redrawAll();
+            }
+        });
+    });
+
+    document.querySelectorAll('.wb-color[data-color]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.wb-color[data-color]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentColor = btn.dataset.color;
+            // Jesli cos wybrane - zmien kolor
+            if (selectedIds.size) {
+                selectedIds.forEach(id => changeColor(id, currentColor));
+            }
+        });
+    });
+    document.getElementById('wb-color-picker').addEventListener('change', (e) => {
+        currentColor = e.target.value;
+        document.querySelectorAll('.wb-color[data-color]').forEach(b => b.classList.remove('active'));
+        if (selectedIds.size) selectedIds.forEach(id => changeColor(id, currentColor));
+    });
+
+    async function changeColor(id, color) {
+        const s = strokesById[id];
+        if (!s) return;
+        s.color = color;
+        redrawAll();
+        try {
+            await fetch(`/api/tablica/${BOARD_ID}/stroke/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify({ color }),
+            });
+        } catch (e) {}
+    }
+
+    const widthSlider = document.getElementById('wb-width');
+    const widthVal = document.getElementById('wb-width-val');
+    widthSlider.addEventListener('input', () => {
+        currentWidth = parseInt(widthSlider.value, 10);
+        widthVal.textContent = currentWidth + 'px';
+    });
+
+    document.getElementById('wb-undo').addEventListener('click', async () => {
+        setStatus({{ _('Cofam...')|tojson }}, 'saving');
+        try {
+            const r = await fetch(`/api/tablica/${BOARD_ID}/undo`, {
+                method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN },
+            });
+            const data = await r.json();
+            if (data.ok && data.removed_id) {
+                allStrokes = allStrokes.filter(s => s.id !== data.removed_id);
+                delete strokesById[data.removed_id];
+                selectedIds.delete(data.removed_id);
+                redrawAll();
+                setStatus({{ _('Cofnięte')|tojson }});
+            } else setStatus({{ _('Nic do cofnięcia')|tojson }});
+        } catch (e) { setStatus({{ _('Brak połączenia')|tojson }}, 'error'); }
+    });
+
+    document.getElementById('wb-clear').addEventListener('click', async () => {
+        if (!confirm({{ _('Wyczyścić CAŁĄ tablicę? Obaj stracicie rysunki.')|tojson }})) return;
+        try {
+            const r = await fetch(`/api/tablica/${BOARD_ID}/clear`, {
+                method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN },
+            });
+            if (r.ok) {
+                allStrokes = []; strokesById = {}; selectedIds = new Set();
+                latestId = 0;
+                redrawAll();
+                setStatus({{ _('Wyczyszczone')|tojson }});
+            }
+        } catch (e) { setStatus({{ _('Brak połączenia')|tojson }}, 'error'); }
+    });
+
+    document.getElementById('wb-export-png').addEventListener('click', exportPng);
+    document.getElementById('wb-export-pdf').addEventListener('click', exportPdf);
+
+    document.getElementById('wb-fit').addEventListener('click', fitToContent);
+
+    document.getElementById('wb-grid-toggle').addEventListener('click', () => {
+        gridVisible = !gridVisible;
+        gridOverlay.classList.toggle('visible', gridVisible);
+        document.getElementById('wb-grid-toggle').classList.toggle('active', gridVisible);
+    });
+    document.getElementById('wb-minimap-toggle').addEventListener('click', () => {
+        minimapVisible = !minimapVisible;
+        minimapEl.classList.toggle('visible', minimapVisible);
+        document.getElementById('wb-minimap-toggle').classList.toggle('active', minimapVisible);
+    });
+
+    // Fullscreen
+    const fsBtn = document.getElementById('wb-fullscreen');
+    fsBtn.addEventListener('click', async () => {
+        try {
+            if (!document.fullscreenElement) {
+                await fsTarget.requestFullscreen();
+                fsBtn.innerHTML = '<i class="bi bi-fullscreen-exit"></i>';
+            } else { await document.exitFullscreen(); }
+        } catch (e) {}
+    });
+    document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement) fsBtn.innerHTML = '<i class="bi bi-arrows-fullscreen"></i>';
+    });
+
+    // ZOOM
+    function setZoom(newZoom, aX, aY) {
+        newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+        if (newZoom === zoom) return;
+        let anchor = null;
+        if (aX != null) {
+            const rect = canvas.getBoundingClientRect();
+            anchor = {
+                x: (aX - rect.left) * (canvas.width / rect.width),
+                y: (aY - rect.top) * (canvas.height / rect.height),
+            };
+        }
+        zoom = newZoom;
+        canvasWrap.style.width = (100 * zoom) + '%';
+        document.getElementById('wb-zoom-val').textContent = Math.round(zoom * 100) + '%';
+        redrawAll();
+        if (anchor) {
+            requestAnimationFrame(() => {
+                const rect = canvas.getBoundingClientRect();
+                const sx = canvas.width / rect.width;
+                const sy = canvas.height / rect.height;
+                const nsx = anchor.x / sx + rect.left - scrollWrap.getBoundingClientRect().left;
+                const nsy = anchor.y / sy + rect.top - scrollWrap.getBoundingClientRect().top;
+                const tsx = aX - scrollWrap.getBoundingClientRect().left;
+                const tsy = aY - scrollWrap.getBoundingClientRect().top;
+                scrollWrap.scrollLeft += (nsx - tsx);
+                scrollWrap.scrollTop += (nsy - tsy);
+            });
+        }
+    }
+    document.getElementById('wb-zoom-in').addEventListener('click', () => setZoom(zoom * 1.25));
+    document.getElementById('wb-zoom-out').addEventListener('click', () => setZoom(zoom / 1.25));
+    const zoomChip = document.getElementById('wb-zoom-val');
+    zoomChip.addEventListener('click', () => setZoom(1.0));
+    zoomChip.addEventListener('dblclick', fitToContent);
+
+    scrollWrap.addEventListener('wheel', (e) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 1/1.15 : 1.15;
+        setZoom(zoom * factor, e.clientX, e.clientY);
+    }, { passive: false });
+
+    // Middle mouse pan
+    let isPanning = false, panStart = null;
+    scrollWrap.addEventListener('pointerdown', (e) => {
+        if (e.button !== 1) return;
+        e.preventDefault();
+        isPanning = true;
+        panStart = { x: e.clientX, y: e.clientY, sx: scrollWrap.scrollLeft, sy: scrollWrap.scrollTop };
+        canvas.classList.add('panning');
+    });
+    window.addEventListener('pointermove', (e) => {
+        if (!isPanning) return;
+        scrollWrap.scrollLeft = panStart.sx - (e.clientX - panStart.x);
+        scrollWrap.scrollTop = panStart.sy - (e.clientY - panStart.y);
+    });
+    window.addEventListener('pointerup', () => {
+        if (isPanning) { isPanning = false; canvas.classList.remove('panning'); }
+    });
+
+    // ═════ KEYBOARD ═════
+    document.addEventListener('keydown', async (e) => {
+        if (e.key === 'Shift') shiftDown = true;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); document.getElementById('wb-undo').click(); return; }
+        if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); setZoom(zoom * 1.25); return; }
+        if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); setZoom(zoom / 1.25); return; }
+        if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); setZoom(1.0); return; }
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            if (selectedIds.size) {
+                e.preventDefault();
+                for (const id of selectedIds) await deleteStroke(id);
+                selectedIds = new Set();
+                return;
+            }
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+            e.preventDefault();
+            selectedIds = new Set(allStrokes.map(s => s.id));
+            redrawAll();
+            return;
+        }
+
+        if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault(); document.getElementById('wb-fullscreen').click(); return;
+        }
+        if (e.key.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault(); document.getElementById('wb-grid-toggle').click(); return;
+        }
+        if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault(); document.getElementById('wb-minimap-toggle').click(); return;
+        }
+
+        const map = { p:'pen', h:'highlighter', e:'eraser', t:'text', s:'select',
+                       n:'sticky', r:'rect', o:'ellipse', l:'line', a:'arrow' };
+        if (map[e.key.toLowerCase()]) {
+            const btn = document.querySelector(`.wb-tool[data-tool="${map[e.key.toLowerCase()]}"]`);
+            if (btn) btn.click();
+        }
+    });
+    document.addEventListener('keyup', (e) => {
+        if (e.key === 'Shift') shiftDown = false;
+    });
+})();
+</script>
+
+{% endblock %}

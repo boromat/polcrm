@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+{% block title %}{{ article.title }} - PolCRM{% endblock %}
+
+{% block extra_head %}
+<style>
+.kb-content { color: #e5e7eb; }
+.kb-content h1 { font-size: 1.5rem; font-weight: 700; color: #fff; margin: 1.5rem 0 0.75rem; }
+.kb-content h2 { font-size: 1.2rem; font-weight: 700; color: #a29bfe; margin: 1.25rem 0 0.5rem; }
+.kb-content h3 { font-size: 1rem; font-weight: 600; color: #cbd5e1; margin: 1rem 0 0.4rem; }
+.kb-content p { margin: 0.5rem 0; line-height: 1.6; }
+.kb-content ul, .kb-content ol { margin: 0.5rem 0 0.5rem 1.5rem; }
+.kb-content li { margin: 0.25rem 0; }
+.kb-content code { background: #0f0f1a; padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.85rem; color: #a29bfe; }
+.kb-content pre { background: #0f0f1a; padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.5rem 0; }
+.kb-content pre code { background: transparent; padding: 0; color: #e5e7eb; }
+.kb-content blockquote { border-left: 3px solid #6c5ce7; padding-left: 1rem; color: #9ca3af; margin: 0.5rem 0; }
+.kb-content a { color: #a29bfe; text-decoration: underline; }
+.kb-content table { border-collapse: collapse; margin: 0.5rem 0; }
+.kb-content th, .kb-content td { border: 1px solid #2a2a44; padding: 0.4rem 0.75rem; }
+.kb-content th { background: #0f0f1a; }
+.kb-content hr { border: 0; border-top: 1px solid #2a2a44; margin: 1rem 0; }
+</style>
+{% endblock %}
+
+{% block page_title %}{{ article.title }}{% endblock %}
+{% block page_subtitle %}{{ article.category }} · {{ _('zaktualizowano %(date)s', date=article.updated_at.strftime('%d.%m.%Y')) }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/knowledge" class="btn btn-ghost"><i class="bi bi-arrow-left"></i><span class="hidden sm:inline">{{ _('Powrót') }}</span></a>
+<a href="/knowledge/{{ article.id }}/edit" class="btn btn-ghost"><i class="bi bi-pencil"></i><span class="hidden sm:inline">{{ _('Edytuj') }}</span></a>
+<form method="POST" action="/knowledge/{{ article.id }}/delete" class="inline" onsubmit="return confirm({{ _('Usunąć artykuł?')|tojson|forceescape }})">
+    <button class="btn-danger-sm" style="padding: 8px 14px; font-size: 13px;"><i class="bi bi-trash3"></i></button>
+</form>
+{% endblock %}
+
+{% block content %}
+
+{% if article.pinned or article.tags %}
+<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+    {% if article.pinned %}<i class="bi bi-pin-fill" style="color: var(--warning-light);"></i>{% endif %}
+    {% if article.tags %}
+    {% for tag in article.tags %}
+    <span style="font-size: 10.5px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 5px; padding: 2px 7px; color: var(--text-muted);">#{{ tag }}</span>
+    {% endfor %}
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="card-sm" style="padding: 24px;">
+    <div class="kb-content">{{ html_body|safe }}</div>
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Błąd %(code)s', code=code) }} - PolCRM{% endblock %}
+
+{% block content %}
+<div style="max-width: 640px; margin: 60px auto; padding: 40px; background: var(--surface, #1a1a2e); border-radius: 16px; text-align: center;">
+    <div style="font-size: 80px; font-weight: 800; color: #ef4444; line-height: 1;">{{ code }}</div>
+    <h1 style="margin-top: 20px; font-size: 24px;">{{ _('Coś poszło nie tak') }}</h1>
+    <p style="margin-top: 16px; color: var(--muted, #94a3b8); font-size: 15px;">{{ message }}</p>
+    <div style="margin-top: 32px;">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary" style="padding: 10px 24px; background: var(--accent, #6c5ce7); color: white; border-radius: 8px; text-decoration: none; display: inline-block;">
+            <i class="bi bi-house"></i> {{ _('Powrót do pulpitu') }}
+        </a>
+    </div>
+</div>
+{% endblock %}

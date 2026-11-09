@@ -1,0 +1,29 @@
+# Sekrety i konfiguracja lokalna
+.env
+.env.local
+
+# Dane aplikacji: baza, kopie zapasowe, klucz deweloperski Fernet
+instance/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Pliki generowane przez aplikację (CSV, PDF, załączniki, obrazy z tablic)
+output/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Edytory i system
+.vscode/
+.idea/
+.claude/
+desktop.ini
+Thumbs.db
+.DS_Store

@@ -1,0 +1,18 @@
+{# Zakladki sekcji Klienci - include na companies_list / pipeline / audits_list #}
+{# Uzycie: {% set active_tab = 'list' %}  {% include '_company_tabs.html' %} #}
+
+<div class="company-tabs" style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 0;">
+    {% set tabs = [
+        ('list', 'bi-building', _('Lista firm'), url_for('companies_list')),
+        ('pipeline', 'bi-kanban-fill', 'Pipeline', url_for('pipeline')),
+        ('audits', 'bi-clipboard2-data-fill', _('Audyty'), url_for('audits_list')),
+        ('search', 'bi-geo-alt-fill', _('Znajdz przez Google'), url_for('search')),
+    ] %}
+    {% for key, icon, label, href in tabs %}
+        <a href="{{ href }}"
+           class="company-tab {% if active_tab == key %}active{% endif %}"
+           style="padding: 10px 16px; text-decoration: none; color: {% if active_tab == key %}var(--accent){% else %}var(--text-muted){% endif %}; border-bottom: 2px solid {% if active_tab == key %}var(--accent){% else %}transparent{% endif %}; font-weight: {% if active_tab == key %}700{% else %}500{% endif %}; font-size: 14px; transition: all 0.15s; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -1px;">
+            <i class="bi {{ icon }}"></i>{{ label }}
+        </a>
+    {% endfor %}
+</div>

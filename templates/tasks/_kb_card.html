@@ -1,0 +1,38 @@
+{# Kanban card for a task - requires `t` in context #}
+<a href="/tasks/{{ t.id }}" class="kb-card {% if t.status == 'done' %}done{% endif %}" data-task-id="{{ t.id }}">
+    <div class="kb-card-top">
+        <span class="kb-prio {{ t.priority }}">{{ t.priority_label }}</span>
+        {% if t.deadline %}
+        <span class="kb-date {% if t.deadline < today_date and t.status != 'done' %}overdue{% endif %}">{{ t.deadline.strftime('%d.%m') }}</span>
+        {% endif %}
+    </div>
+    <div class="kb-card-title" style="{% if t.status == 'done' %}text-decoration: line-through; color: var(--text-muted);{% endif %}">{{ t.title }}</div>
+    {% if t.subtasks %}
+    {% set prog = t.progress_subtasks %}
+    <div style="margin-bottom: 6px; display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--text-subtle);">
+        <i class="bi bi-check2-square"></i>
+        <span>{{ prog[0] }}/{{ prog[1] }}</span>
+        <div style="flex: 1; height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden;">
+            <div style="height: 100%; width: {{ prog[2] }}%; background: var(--accent);"></div>
+        </div>
+    </div>
+    {% endif %}
+    <div class="kb-foot">
+        <div style="display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1;">
+            {% if t.company %}<span class="kb-client"><i class="bi bi-building"></i>{{ t.company.name }}</span>{% endif %}
+            {% if t.created_by %}
+            <span class="author-avatar-xs" style="background: linear-gradient(135deg, {{ t.created_by.avatar_color }}, {{ t.created_by.avatar_color }}cc);" title="{{ _('Dodał: %(name)s', name=t.created_by.name) }}">{{ t.created_by.initials or t.created_by.name[0] }}</span>
+            {% endif %}
+        </div>
+        {% if t.status != 'done' %}
+        <form method="POST" action="/tasks/{{ t.id }}/status" class="inline" onclick="event.stopPropagation()" onsubmit="event.stopPropagation()">
+            <input type="hidden" name="status" value="done">
+            <button class="kb-action" type="submit" title="{{ _('Oznacz jako zrobione') }}"><i class="bi bi-check2"></i></button>
+        </form>
+        {% else %}
+        <form method="POST" action="/tasks/{{ t.id }}/delete" class="inline" onsubmit='event.stopPropagation(); return confirm({{ _("Usunąć zadanie?")|tojson }});' onclick="event.stopPropagation()">
+            <button class="kb-action" type="submit" title="{{ _('Usuń') }}" style="color: var(--danger-light);"><i class="bi bi-trash3"></i></button>
+        </form>
+        {% endif %}
+    </div>
+</a>

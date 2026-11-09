@@ -1,0 +1,5 @@
+# Testy, lint i opcjonalne maskowanie danych osobowych (polanon).
+-r requirements.txt
+pytest==9.2.0
+polanon==0.2.2
+ruff==0.17.4

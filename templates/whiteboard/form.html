@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Nowa tablica') }} - PolCRM{% endblock %}
+{% block page_title %}{{ _('Nowa tablica') }}{% endblock %}
+{% block page_subtitle %}{{ _('Zaraz zaczniesz rysować - ustaw nazwę, kolor i ewentualnie klienta') }}{% endblock %}
+
+{% block content %}
+
+<form method="POST" style="max-width: 640px;">
+
+    <div class="card-sm" style="padding: 24px; margin-bottom: 16px;">
+        <div style="margin-bottom: 18px;">
+            <label style="display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; font-weight: 600;">{{ _('Nazwa tablicy') }}</label>
+            <input type="text" name="name" required autofocus maxlength="256"
+                   placeholder="{{ _('Np. Plan strony warsztatu samochodowego') }}"
+                   style="width: 100%; padding: 10px 14px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px;">
+        </div>
+
+        <div style="margin-bottom: 18px;">
+            <label style="display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; font-weight: 600;">{{ _('Opis (opcjonalnie)') }}</label>
+            <textarea name="description" maxlength="1000" rows="3"
+                      placeholder="{{ _('Do czego służy ta tablica?') }}"
+                      style="width: 100%; padding: 10px 14px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; resize: vertical; font-family: inherit;"></textarea>
+        </div>
+
+        <div style="margin-bottom: 18px;">
+            <label style="display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; font-weight: 600;">{{ _('Przypisz do klienta (opcjonalnie)') }}</label>
+            <select name="company_id"
+                    style="width: 100%; padding: 10px 14px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px;">
+                <option value="">{{ _('- nieprzypisana -') }}</option>
+                {% for c in companies %}
+                    <option value="{{ c.id }}" {% if preset_company_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+            <div style="font-size: 11.5px; color: var(--text-subtle); margin-top: 4px;">
+                {{ _('Tablice przypisane do klienta pokazują się w jego detalu obok audytów i wizyt.') }}
+            </div>
+        </div>
+
+        <div>
+            <label style="display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; font-weight: 600;">{{ _('Kolor tła') }}</label>
+            <div style="display: flex; gap: 10px;">
+                <label style="cursor: pointer; flex: 1;">
+                    <input type="radio" name="bg_color" value="#ffffff" checked style="display: none;" onchange="updateBgSelection(this)">
+                    <div class="bg-option" data-value="#ffffff" style="padding: 14px; border: 2px solid var(--accent); border-radius: 10px; background: #ffffff; text-align: center; font-size: 12px; color: #333; font-weight: 600;">
+                        <i class="bi bi-sun" style="font-size: 18px; display: block; margin-bottom: 4px;"></i>{{ _('Białe') }}
+                    </div>
+                </label>
+                <label style="cursor: pointer; flex: 1;">
+                    <input type="radio" name="bg_color" value="#fef3c7" style="display: none;" onchange="updateBgSelection(this)">
+                    <div class="bg-option" data-value="#fef3c7" style="padding: 14px; border: 2px solid var(--border); border-radius: 10px; background: #fef3c7; text-align: center; font-size: 12px; color: #78350f; font-weight: 600;">
+                        <i class="bi bi-sticky" style="font-size: 18px; display: block; margin-bottom: 4px;"></i>{{ _('Żółte') }}
+                    </div>
+                </label>
+                <label style="cursor: pointer; flex: 1;">
+                    <input type="radio" name="bg_color" value="#0f0f1a" style="display: none;" onchange="updateBgSelection(this)">
+                    <div class="bg-option" data-value="#0f0f1a" style="padding: 14px; border: 2px solid var(--border); border-radius: 10px; background: #0f0f1a; text-align: center; font-size: 12px; color: #fff; font-weight: 600;">
+                        <i class="bi bi-moon" style="font-size: 18px; display: block; margin-bottom: 4px;"></i>{{ _('Ciemne') }}
+                    </div>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+        <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">
+            <i class="bi bi-easel"></i> {{ _('Stwórz i rysuj') }}
+        </button>
+        <a href="{{ url_for('whiteboard_list') }}" class="btn" style="padding: 10px 20px; background: var(--surface-dark); color: var(--text); text-decoration: none; border-radius: 8px;">
+            {{ _('Anuluj') }}
+        </a>
+    </div>
+
+</form>
+
+<script>
+function updateBgSelection(radio) {
+    document.querySelectorAll('.bg-option').forEach(el => {
+        el.style.borderColor = el.dataset.value === radio.value ? 'var(--accent)' : 'var(--border)';
+    });
+}
+</script>
+
+{% endblock %}

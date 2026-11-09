@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0a14">
+    <title>{% block title %}PolCRM{% endblock %} - PolCRM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 20px; position: relative; z-index: 1; }
+        .auth-card { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px 28px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35); }
+        .auth-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+        .auth-logo .logo { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--accent-light)); display: grid; place-items: center; color: white; font-weight: 800; font-size: 20px; box-shadow: 0 8px 24px rgba(108, 92, 231, 0.45); }
+        .auth-logo-text { font-size: 20px; font-weight: 800; color: white; letter-spacing: -0.02em; }
+        .auth-logo-sub { color: var(--text-subtle); font-size: 12px; margin-top: 2px; }
+        .auth-title { font-size: 24px; font-weight: 800; color: white; letter-spacing: -0.02em; margin-bottom: 6px; }
+        .auth-sub { color: var(--text-muted); font-size: 13.5px; margin-bottom: 22px; line-height: 1.5; }
+        .auth-card .form-field { margin-bottom: 14px; }
+        .auth-card label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+        .auth-card input { width: 100%; box-sizing: border-box; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; font-size: 14px; color: var(--text); font-family: inherit; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+        .auth-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.18); }
+        .auth-error { background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); color: var(--danger-light); border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 16px; }
+        .auth-card .btn { width: 100%; justify-content: center; margin-top: 6px; }
+        .auth-footer { margin-top: 18px; color: var(--text-subtle); font-size: 11.5px; text-align: center; }
+        .auth-lang { margin-top: 14px; text-align: center; }
+        .auth-lang button { background: none; border: 0; color: var(--accent-light); font: inherit; font-size: 12px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="auth-wrap">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <div class="logo">P</div>
+                <div>
+                    <div class="auth-logo-text">PolCRM</div>
+                    <div class="auth-logo-sub">{{ _('Hub Agencyjny') }}</div>
+                </div>
+            </div>
+            {% block content %}{% endblock %}
+            <form method="POST" action="{{ url_for('set_ui_language', lang='en' if lang == 'pl' else 'pl') }}" class="auth-lang">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit">{{ 'English' if lang == 'pl' else 'Polski' }}</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

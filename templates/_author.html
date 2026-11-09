@@ -1,0 +1,8 @@
+{# Inline author chip - wymaga `user` w kontekście (User object lub None) #}
+{# Użycie: {% with user=task.created_by %}{% include '_author.html' %}{% endwith %} #}
+{% if user %}
+<span class="author-chip" title="{{ user.name }}">
+    <span class="author-avatar-xs" style="background: linear-gradient(135deg, {{ user.avatar_color }}, {{ user.avatar_color }}cc);">{{ user.initials or user.name[0] }}</span>
+    <span class="author-name">{{ user.name }}</span>
+</span>
+{% endif %}

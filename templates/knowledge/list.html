@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Baza wiedzy / SOP') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Baza wiedzy / SOP') }}{% endblock %}
+{% block page_subtitle %}{{ _('Procedury, checklisty, scenariusze, szablony') }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/knowledge/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Nowy artykuł') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'knowledge' %}{% include '_notatnik_tabs.html' %}
+
+{% if categories %}
+<div class="tabs-wrap" style="gap: 6px;">
+    <a href="/knowledge" class="chip {% if not category %}active{% endif %}">{{ _('Wszystkie') }}</a>
+    {% for c in categories %}
+    <a href="/knowledge?category={{ c }}" class="chip {% if category == c %}active{% endif %}">{{ c }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if articles %}
+<div class="bento-bottom" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
+    {% for a in articles %}
+    <a href="/knowledge/{{ a.id }}" class="cell cell-audits" style="grid-column: span 1; text-decoration: none; display: block;">
+        <div style="display: flex; align-items: start; gap: 8px; margin-bottom: 10px;">
+            {% if a.pinned %}<i class="bi bi-pin-fill" style="color: var(--warning-light); font-size: 12px; margin-top: 2px;"></i>{% endif %}
+            <h3 style="font-size: 14.5px; font-weight: 700; color: white; flex: 1; letter-spacing: -0.01em;">{{ a.title }}</h3>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+            <span class="badge-stage badge-accent">{{ a.category }}</span>
+            <span class="mono" style="font-size: 11px; color: var(--text-subtle);">{{ a.updated_at.strftime('%d.%m.%Y') }}</span>
+        </div>
+        {% if a.tags %}
+        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+            {% for tag in a.tags %}
+            <span style="font-size: 10.5px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 5px; padding: 2px 7px; color: var(--text-muted);">#{{ tag }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state" style="padding: 60px 24px;">
+    <i class="bi bi-book-half"></i>
+    <p>{{ _('Brak artykułów w bazie wiedzy.') }}</p>
+    <a href="/knowledge/new" class="btn btn-primary" style="margin-top: 16px; display: inline-flex;"><i class="bi bi-plus-lg"></i>{{ _('Dodaj pierwszy') }}</a>
+</div>
+{% endif %}
+
+{% endblock %}

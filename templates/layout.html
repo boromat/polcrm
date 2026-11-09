@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" class="dark" data-theme="{{ current_theme }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0a14">
+    <title>{% block title %}PolCRM{% endblock %}</title>
+
+    {# Fonts - Inter + Geist Mono (match v7 design) #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha384-XGjxtQfXaH2tnPFa9x+ruJTuLE3Aa6LhHSWRr1XeTyhezb4abCG4ccI5AkVDxqC+" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ static_version }}">
+
+    {# PWA #}
+    <link rel="manifest" href="{{ url_for('web_manifest') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/icon.svg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon.svg') }}">
+
+    {%- set app_users = [] -%}
+    {%- for u in (all_users or []) -%}{%- set _discard = app_users.append({"id": u.id, "name": u.name, "initials": u.initials or u.name[0], "avatar_color": u.avatar_color}) -%}{%- endfor %}
+    <meta name="app-users" content="{{ app_users|tojson|forceescape }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+    // Auto-wstrzykiwanie tokenu CSRF do kazdego formularza POST i kazdego fetch()
+    (function () {
+        const CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        function injectIntoForms(root) {
+            (root || document).querySelectorAll('form').forEach(function (f) {
+                const method = (f.getAttribute('method') || 'GET').toUpperCase();
+                if (method !== 'POST') return;
+                if (f.querySelector('input[name="csrf_token"]')) return;
+                const inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = 'csrf_token';
+                inp.value = CSRF;
+                f.appendChild(inp);
+            });
+        }
+
+        // 1. Formularze: wstrzyknij od razu + obserwuj dodawane dynamicznie
+        document.addEventListener('DOMContentLoaded', function () {
+            injectIntoForms();
+            new MutationObserver(function (muts) {
+                muts.forEach(function (m) {
+                    m.addedNodes.forEach(function (n) {
+                        if (n.nodeType === 1) injectIntoForms(n);
+                    });
+                });
+            }).observe(document.body, { childList: true, subtree: true });
+        });
+
+        // 2. fetch(): dopisz naglowek X-CSRFToken do kazdego ne-GET zadania
+        const originalFetch = window.fetch;
+        window.fetch = function (input, init) {
+            init = init || {};
+            const method = (init.method || (typeof input === 'object' && input.method) || 'GET').toUpperCase();
+            if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+                init.headers = new Headers(init.headers || {});
+                if (!init.headers.has('X-CSRFToken')) {
+                    init.headers.set('X-CSRFToken', CSRF);
+                }
+            }
+            return originalFetch.call(this, input, init);
+        };
+    })();
+    </script>
+    {# Tłumaczenia dla JavaScriptu: t('tekst') zwraca wersję w języku interfejsu (zob. i18n.py) #}
+    <script>
+    window.POLCRM_LANG = {{ lang|tojson }};
+    window.POLCRM_I18N = {{ js_i18n|tojson }};
+    window.t = function (s) { return (window.POLCRM_I18N && window.POLCRM_I18N[s]) || s; };
+    </script>
+    {% block extra_head %}{% endblock %}
+    {# Tailwind zbudowany lokalnie (tailwind.config.js). Na końcu <head>, jak wcześniej Play CDN,
+       żeby kolejność w kaskadzie względem style.css się nie zmieniła. #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}?v={{ static_version }}">
+</head>
+<body data-theme="{{ current_theme }}">
+
+    {# Endpointy w kazdej sekcji - pierwsza pasujaca trasa pokaze podswietlenie. #}
+    {% set nav_sections = [
+        (_('Start'), [
+            ('dashboard', 'bi-grid-1x2-fill', _('Dashboard'), '/',
+                ['dashboard', 'inbox', 'activity_list']),
+        ]),
+        (_('Zadania'), [
+            ('tasks_list',     'bi-check2-square',        _('Wszystkie'),      '/tasks',                ['tasks_list', 'task_detail']),
+            ('tasks_today',    'bi-sun',                  _('Dziś'),           '/tasks?scope=today',    []),
+            ('tasks_overdue',  'bi-exclamation-triangle', _('Po terminie'),    '/tasks?scope=overdue',  []),
+            ('tasks_week',     'bi-calendar-week',        _('Ten tydzień'),    '/tasks?scope=week',     []),
+            ('task_new',       'bi-plus-circle',          _('+ Nowe zadanie'), '/tasks/new',            ['task_new']),
+        ]),
+        (_('Klienci'), [
+            ('companies_list', 'bi-building', _('Firmy'), '/companies',
+                ['companies_list', 'company_detail', 'company_new', 'pipeline', 'audits_list', 'search']),
+            ('calendar', 'bi-calendar3', _('Kalendarz'), '/calendar',
+                ['calendar', 'visit_detail']),
+        ]),
+        (_('Operacje'), [
+            ('projects_list', 'bi-diagram-3', _('Projekty'), '/projects',
+                ['projects_list', 'project_detail']),
+            ('content_list', 'bi-file-text', 'Content', '/content',
+                ['content_list', 'content_edit', 'content_new']),
+            ('whiteboard_list', 'bi-easel-fill', _('Tablica'), '/tablica',
+                ['whiteboard_list', 'whiteboard_new', 'whiteboard_detail']),
+        ]),
+        (_('Finanse'), [
+            ('finances_index', 'bi-pie-chart-fill', _('Finanse'), '/finances',
+                ['finances_index', 'finances_payments', 'finances_expenses',
+                 'finances_subscriptions', 'finances_report_internal',
+                 'payment_edit', 'payment_new', 'expense_edit', 'expense_new',
+                 'subscription_edit', 'subscription_new']),
+        ]),
+        (_('Biblioteka'), [
+            ('notes_list', 'bi-journal-text', _('Notatnik'), '/notes',
+                ['notes_list', 'note_new', 'note_edit', 'knowledge_list',
+                 'knowledge_detail', 'knowledge_new', 'knowledge_edit']),
+            ('emails_templates_list', 'bi-envelope-paper', _('Szablony'), '/emails/templates',
+                ['emails_templates_list', 'email_template_new', 'email_template_edit',
+                 'contracts_templates_list', 'contract_template_edit',
+                 'packages_list', 'emails_log']),
+        ]),
+        (_('Ustawienia'), [
+            ('settings', 'bi-gear-fill', _('Ustawienia'), '/settings',
+                ['settings', 'visit_guide']),
+        ]),
+    ] %}
+
+    <div class="layout" style="display: flex; min-height: 100vh; position: relative; z-index: 1;">
+
+        {# ═════ SIDEBAR DESKTOP ═════ #}
+        <aside class="sidebar">
+            <a href="/" class="sb-brand" style="text-decoration: none;">
+                <div class="logo">P</div>
+                <div>
+                    <div class="sb-brand-text">PolCRM</div>
+                    <div class="sb-brand-sub">{{ _('Hub Agencyjny') }}</div>
+                </div>
+            </a>
+
+            <nav>
+                {% for section_label, items in nav_sections %}
+                <div class="sb-section">{{ section_label }}</div>
+                {% for endpoint, icon, label, href, active_endpoints in items %}
+                {%- set scope_q = request.args.get('scope', '') -%}
+                {%- set is_filtered_match = (
+                    (endpoint == 'tasks_today'   and request.endpoint == 'tasks_list' and scope_q == 'today')   or
+                    (endpoint == 'tasks_overdue' and request.endpoint == 'tasks_list' and scope_q == 'overdue') or
+                    (endpoint == 'tasks_week'    and request.endpoint == 'tasks_list' and scope_q == 'week')
+                ) -%}
+                {%- set is_plain_tasks = (endpoint == 'tasks_list' and request.endpoint == 'tasks_list' and not scope_q) -%}
+                {%- set is_active = is_filtered_match or is_plain_tasks or (endpoint not in ['tasks_list','tasks_today','tasks_overdue','tasks_week'] and request.endpoint in active_endpoints) -%}
+                <a href="{{ href }}" class="sb-item {% if is_active %}active{% endif %}">
+                    <i class="bi {{ icon }}"></i>
+                    <span>{{ label }}</span>
+                    {% if endpoint == 'tasks_overdue' and overdue_tasks_count %}
+                    <span class="sb-badge">{{ overdue_tasks_count }}</span>
+                    {% elif endpoint == 'tasks_today' and tasks_today_count %}
+                    <span class="sb-badge" style="background: var(--accent);">{{ tasks_today_count }}</span>
+                    {% elif endpoint == 'tasks_week' and tasks_week_count %}
+                    <span class="sb-badge" style="background: var(--info, #3b82f6); color: white;">{{ tasks_week_count }}</span>
+                    {% elif endpoint == 'dashboard' and unread_mentions_count %}
+                    <span class="sb-badge" style="background: var(--accent);">{{ unread_mentions_count }}</span>
+                    {% endif %}
+                </a>
+                {% endfor %}
+                {% endfor %}
+            </nav>
+
+            <div class="sb-footer">
+                <span class="sb-footer-dot"></span>
+                <span>{{ request.host }}</span>
+            </div>
+        </aside>
+
+        {# ═════ MOBILE SIDEBAR (slide-in drawer) ═════ #}
+        <div id="mobile-sidebar" class="lg:hidden fixed inset-0 z-40 pointer-events-none" style="display: none;">
+            <div class="absolute inset-0 bg-black/60 sidebar-backdrop" id="sidebar-overlay"></div>
+            <aside class="absolute left-0 top-0 h-full sidebar-slide sidebar" style="width: 260px; position: absolute; height: 100%;">
+                <div class="sb-brand" style="justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="logo">P</div>
+                        <div>
+                            <div class="sb-brand-text">PolCRM</div>
+                            <div class="sb-brand-sub">{{ _('Hub Agencyjny') }}</div>
+                        </div>
+                    </div>
+                    <button id="menu-close" class="topbar-hamburger" aria-label="{{ _('Zamknij menu') }}"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <nav>
+                    {% for section_label, items in nav_sections %}
+                    <div class="sb-section">{{ section_label }}</div>
+                    {% for endpoint, icon, label, href, active_endpoints in items %}
+                    {%- set scope_q = request.args.get('scope', '') -%}
+                    {%- set is_filtered_match = (
+                        (endpoint == 'tasks_today'   and request.endpoint == 'tasks_list' and scope_q == 'today')   or
+                        (endpoint == 'tasks_overdue' and request.endpoint == 'tasks_list' and scope_q == 'overdue') or
+                        (endpoint == 'tasks_week'    and request.endpoint == 'tasks_list' and scope_q == 'week')
+                    ) -%}
+                    {%- set is_plain_tasks = (endpoint == 'tasks_list' and request.endpoint == 'tasks_list' and not scope_q) -%}
+                    {%- set is_active = is_filtered_match or is_plain_tasks or (endpoint not in ['tasks_list','tasks_today','tasks_overdue','tasks_week'] and request.endpoint in active_endpoints) -%}
+                    <a href="{{ href }}" class="sb-item {% if is_active %}active{% endif %}">
+                        <i class="bi {{ icon }}"></i>
+                        <span>{{ label }}</span>
+                        {% if endpoint == 'tasks_overdue' and overdue_tasks_count %}
+                        <span class="sb-badge">{{ overdue_tasks_count }}</span>
+                        {% elif endpoint == 'tasks_today' and tasks_today_count %}
+                        <span class="sb-badge" style="background: var(--accent);">{{ tasks_today_count }}</span>
+                        {% elif endpoint == 'tasks_week' and tasks_week_count %}
+                        <span class="sb-badge" style="background: var(--info, #3b82f6); color: white;">{{ tasks_week_count }}</span>
+                        {% endif %}
+                    </a>
+                    {% endfor %}
+                    {% endfor %}
+                </nav>
+            </aside>
+        </div>
+
+        {# ═════ MAIN ═════ #}
+        <main class="main-with-sidebar" style="flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-height: 100vh; min-width: 0;">
+
+            {# ═════ TOPBAR ═════ #}
+            <div class="topbar">
+                {# Mobile hamburger (CSS-driven visibility - widoczny <1024px) #}
+                <button id="menu-toggle" class="topbar-hamburger" aria-label="{{ _('Otwórz menu') }}"><i class="bi bi-list"></i></button>
+
+                <div class="topbar-title" style="flex-shrink: 0;">
+                    {% block topbar_title %}
+                    <h1>{% block page_title %}{{ _('Dashboard') }}{% endblock %}</h1>
+                    {% if self.page_subtitle()|trim %}<div class="sub">{% block page_subtitle %}{{ today_date | pl_date }}{% endblock %}</div>{% endif %}
+                    {% endblock %}
+                </div>
+
+                {% block topbar_search %}
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" placeholder="{{ _('Szukaj wszędzie: firmy, zadania, projekty, notatki, klienci...') }}" id="global-search" aria-label="{{ _('Szukaj') }}">
+                    <kbd>⌘K</kbd>
+                </div>
+                {% endblock %}
+
+                <div class="topbar-actions">
+                    {% block topbar_actions %}
+                    <a href="/tasks/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Nowe zadanie') }}</span></a>
+                    {% endblock %}
+
+                    {# Język interfejsu #}
+                    <form method="POST" action="{{ url_for('set_ui_language', lang='en' if lang == 'pl' else 'pl') }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="theme-toggle mono" style="font-size: 11px; font-weight: 700; width: auto; padding: 0 10px;" title="{{ 'Switch to English' if lang == 'pl' else _('Przełącz na polski') }}" aria-label="{{ 'Switch to English' if lang == 'pl' else _('Przełącz na polski') }}">{{ 'EN' if lang == 'pl' else 'PL' }}</button>
+                    </form>
+
+                    {# Theme toggle #}
+                    <form method="POST" action="/toggle-theme" style="display: inline;">
+                        <button type="submit" class="theme-toggle" title="{% if current_theme == 'colorful' %}{{ _('Przełącz na motyw minimal') }}{% else %}{{ _('Przełącz na motyw kolorowy') }}{% endif %}" aria-label="{{ _('Przełącz motyw') }}">
+                            {% if current_theme == 'colorful' %}<i class="bi bi-circle-half"></i>{% else %}<i class="bi bi-palette-fill"></i>{% endif %}
+                        </button>
+                    </form>
+
+                    {# User menu - avatar + dropdown #}
+                    {% if current_user %}
+                    <details class="user-menu" style="position: relative;">
+                        <summary class="avatar" style="list-style: none; background: linear-gradient(135deg, {{ current_user.avatar_color }}, {{ current_user.avatar_color }}dd); box-shadow: 0 4px 12px {{ current_user.avatar_color }}55;" title="{{ current_user.name }}">
+                            {{ current_user.initials or current_user.name[0] }}
+                        </summary>
+                        <div style="position: absolute; right: 0; top: calc(100% + 8px); min-width: 200px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.5); z-index: 50;">
+                            <div style="padding: 10px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px;">
+                                <div style="font-weight: 700; color: white; font-size: 13px;">{{ current_user.name }}</div>
+                                <div style="font-size: 11px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px;">
+                                    {% if current_theme == 'minimal' %}{{ _('Motyw: minimal') }}{% else %}{{ _('Motyw: kolorowy') }}{% endif %}
+                                </div>
+                            </div>
+                            <a href="/settings" class="sb-item" style="padding: 8px 12px; border-radius: 8px;"><i class="bi bi-gear"></i>{{ _('Ustawienia') }}</a>
+                            <a href="/kim-jestes" class="sb-item" style="padding: 8px 12px; border-radius: 8px;"><i class="bi bi-person-gear"></i>{{ _('Zmień profil') }}</a>
+                            <form method="POST" action="/set-default-theme" style="padding: 4px 12px;">
+                                <input type="hidden" name="theme" value="{{ current_theme }}">
+                                <button type="submit" class="sb-item" style="background: transparent; border: 0; width: 100%; text-align: left; padding: 8px 0; cursor: pointer; font-family: inherit; font-size: 13px;"><i class="bi bi-bookmark-star"></i>{{ _('Zapisz motyw jako domyślny') }}</button>
+                            </form>
+                            <form method="POST" action="/wyloguj" style="margin: 0;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="sb-item" style="padding: 8px 12px; border-radius: 8px; color: var(--danger-light); width: 100%; text-align: left; background: none; border: 0; cursor: pointer; font: inherit;"><i class="bi bi-box-arrow-right"></i>{{ _('Wyloguj') }}</button></form>
+                        </div>
+                    </details>
+                    {% else %}
+                    <a href="/kim-jestes" class="avatar" title="{{ _('Wybierz profil') }}">?</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# ═════ CONTENT ═════ #}
+            <div class="content" style="padding: 24px 28px 40px; flex: 1;">
+
+                {# Flash messages #}
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for cat, msg in messages %}
+                    <div class="flash-msg card-sm mb-4 px-4 py-3 border text-sm
+                        {% if cat == 'success' %}bg-emerald-900/30 border-emerald-700 text-emerald-300
+                        {% elif cat == 'danger' %}bg-red-900/30 border-red-700 text-red-300
+                        {% elif cat == 'warning' %}bg-amber-900/30 border-amber-700 text-amber-300
+                        {% else %}bg-blue-900/30 border-blue-700 text-blue-300{% endif %}">
+                        {{ msg }}
+                        <button class="flash-dismiss" onclick="this.parentElement.remove()" aria-label="{{ _('Zamknij') }}"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+    (function () {
+        const toggle = document.getElementById('menu-toggle');
+        const sidebarWrap = document.getElementById('mobile-sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const sidebarPanel = sidebarWrap ? sidebarWrap.querySelector('.sidebar-slide') : null;
+        const closeBtn = document.getElementById('menu-close');
+
+        // Mobilny wrapper sidebara: pokaż w DOM tylko <1024px (CSS jest głównym sterownikiem widoczności)
+        function updateMobile() {
+            const isMobile = window.innerWidth < 1024;
+            if (sidebarWrap) sidebarWrap.style.display = isMobile ? 'block' : 'none';
+            const mainEl = document.querySelector('.main-with-sidebar');
+            if (mainEl) mainEl.style.marginLeft = isMobile ? '0' : 'var(--sidebar-w)';
+        }
+        updateMobile();
+        window.addEventListener('resize', updateMobile);
+
+        function openSidebar() {
+            if (!sidebarWrap) return;
+            sidebarWrap.classList.add('pointer-events-auto');
+            sidebarWrap.classList.remove('pointer-events-none');
+            overlay.classList.add('open');
+            sidebarPanel.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeSidebar() {
+            overlay.classList.remove('open');
+            sidebarPanel.classList.remove('open');
+            document.body.style.overflow = '';
+            setTimeout(() => {
+                sidebarWrap.classList.remove('pointer-events-auto');
+                sidebarWrap.classList.add('pointer-events-none');
+            }, 300);
+        }
+        if (toggle) toggle.onclick = openSidebar;
+        if (overlay) overlay.onclick = closeSidebar;
+        if (closeBtn) closeBtn.onclick = closeSidebar;
+
+        // Close on sidebar link click (mobile UX)
+        if (sidebarPanel) {
+            sidebarPanel.querySelectorAll('.sb-item').forEach(a => {
+                a.addEventListener('click', () => setTimeout(closeSidebar, 100));
+            });
+        }
+
+        // Enter on global search → /search (dla mobile, gdzie nie otwieramy palety)
+        const globalSearch = document.getElementById('global-search');
+        if (globalSearch) {
+            globalSearch.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && this.value.trim()) {
+                    window.location.href = '/szukaj-globalnie?q=' + encodeURIComponent(this.value.trim());
+                }
+            });
+        }
+    })();
+    </script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v={{ static_version }}" defer></script>
+    <script src="{{ url_for('static', filename='js/assistant.js') }}?v={{ static_version }}" defer></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

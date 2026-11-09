@@ -1,0 +1,102 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Nowa umowa') }} - {{ company.name }}{% endblock %}
+
+{% block page_title %}{{ _('Nowa umowa') }}{% endblock %}
+{% block page_subtitle %}{{ company.name }}{% endblock %}
+{% block topbar_actions %}
+<a href="/companies/{{ company.id }}#contracts" class="btn btn-ghost"><i class="bi bi-arrow-left"></i><span class="hidden sm:inline">{{ _('Wróć') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="max-w-3xl space-y-4">
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="mb-4">
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Szablon *') }}</label>
+            <select name="template_key" required class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+                <option value="">{{ _('- wybierz szablon -') }}</option>
+                {% for t in templates %}<option value="{{ t.key }}" {% if preset_template_key == t.key %}selected{% endif %}>{{ t.name }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="mb-4">
+            <label class="block text-xs text-gray-500 mb-1">{{ _('Nazwa umowy (opcj.)') }}</label>
+            <input type="text" name="name" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none" placeholder="{{ _('Domyślnie: nazwa szablonu') }}">
+        </div>
+    </div>
+
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <h3 class="text-sm font-semibold text-gray-400 uppercase mb-3">{{ _('Pola umowy (wypełnij co potrzebne)') }}</h3>
+        <div class="grid md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Abonament miesięczny netto') }}</label>
+                <input type="number" step="0.01" name="monthly_fee_net" value="{{ company.monthly_fee_net or '' }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Abonament brutto (auto)') }}</label>
+                <input type="text" name="monthly_fee_gross" placeholder="{{ _('liczone z netto i stawki VAT z Ustawień') }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Dzień fakturowania') }}</label>
+                <input type="number" min="1" max="28" name="billing_day" value="{{ company.billing_day or 10 }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Domena (dla umowy WWW)') }}</label>
+                <input type="text" name="domain" value="{{ company.website }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Wartość projektu netto (WWW)') }}</label>
+                <input type="number" step="0.01" name="total_net" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Wartość projektu brutto') }}</label>
+                <input type="text" name="total_gross" placeholder="auto" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Etap 1 płatności') }}</label>
+                <input type="text" name="payment_stage_1" placeholder="{{ _('30%% po podpisaniu') }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Etap 2 płatności') }}</label>
+                <input type="text" name="payment_stage_2" placeholder="{{ _('40%% po akceptacji projektu') }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Etap 3 płatności') }}</label>
+                <input type="text" name="payment_stage_3" placeholder="{{ _('30%% po odbiorze') }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Deadline (WWW)') }}</label>
+                <input type="text" name="deadline" placeholder="{{ _('np. 30.06.2026') }}" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Data umowy głównej (RODO)') }}</label>
+                <input type="text" name="main_contract_date" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Czas obowiązywania (lata, NDA)') }}</label>
+                <input type="number" name="duration_years" value="3" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Kara umowna (NDA)') }}</label>
+                <input type="text" name="penalty" value="10 000" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none">
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Dodatkowe klauzule') }}</label>
+                <textarea name="extra_clauses" rows="3" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none"></textarea>
+            </div>
+            <div class="md:col-span-2">
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Notatki wewnętrzne') }}</label>
+                <textarea name="notes" rows="2" class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-gray-200 text-sm input-focus outline-none"></textarea>
+            </div>
+        </div>
+        <p class="text-xs text-gray-600 mt-3">
+            {{ _('Dane klienta (nazwa, NIP, adres) pobierane z profilu firmy. Jeśli brakuje - uzupełnij w') }}
+            <a href="/companies/{{ company.id }}" class="text-accent hover:underline">{{ _('zakładce „Dane prawne klienta"') }}</a>.
+        </p>
+    </div>
+
+    <div style="display: flex; gap: 10px; margin-top: 14px;">
+        <button class="btn btn-primary"><i class="bi bi-filetype-pdf"></i>{{ _('Generuj PDF') }}</button>
+        <a href="/companies/{{ company.id }}#contracts" class="btn btn-ghost">{{ _('Anuluj') }}</a>
+    </div>
+</form>
+{% endblock %}

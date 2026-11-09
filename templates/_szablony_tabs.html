@@ -1,0 +1,18 @@
+{# Zakladki Szablonow - include na /emails/templates, /contracts/templates, /packages, /emails/log #}
+{# Uzycie: {% set active_tab = 'email' %}  {% include '_szablony_tabs.html' %} #}
+
+<div class="szablony-tabs" style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 0;">
+    {% set tabs = [
+        ('email', 'bi-envelope-paper', _('Szablony maili'), url_for('emails_templates_list')),
+        ('contracts', 'bi-file-earmark-text', _('Szablony umow'), url_for('contracts_templates_list')),
+        ('packages', 'bi-briefcase-fill', _('Pakiety uslug'), url_for('packages_list')),
+        ('log', 'bi-envelope-check', _('Historia maili'), url_for('emails_log')),
+    ] %}
+    {% for key, icon, label, href in tabs %}
+        <a href="{{ href }}"
+           class="szablony-tab {% if active_tab == key %}active{% endif %}"
+           style="padding: 10px 16px; text-decoration: none; color: {% if active_tab == key %}var(--accent){% else %}var(--text-muted){% endif %}; border-bottom: 2px solid {% if active_tab == key %}var(--accent){% else %}transparent{% endif %}; font-weight: {% if active_tab == key %}700{% else %}500{% endif %}; font-size: 14px; transition: all 0.15s; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -1px;">
+            <i class="bi {{ icon }}"></i>{{ label }}
+        </a>
+    {% endfor %}
+</div>

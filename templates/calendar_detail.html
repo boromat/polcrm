@@ -1,0 +1,143 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Wizyta') }} - {{ visit.company.name }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ visit.type_label }}: {{ visit.company.name }}{% endblock %}
+{% block page_subtitle %}{{ _('Wizyta · termin, przygotowanie, notatki') }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/calendar" class="btn btn-ghost"><i class="bi bi-arrow-left"></i><span class="hidden sm:inline">{{ _('Kalendarz') }}</span></a>
+<a href="/companies/{{ visit.company.id }}" class="btn btn-ghost"><i class="bi bi-building"></i><span class="hidden sm:inline">{{ visit.company.name }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+<form method="POST" class="max-w-3xl space-y-4">
+
+    <!-- Status & scheduling -->
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">{{ _('Termin i status') }}</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Data i godzina') }}</label>
+                <input type="datetime-local" name="scheduled_at"
+                       value="{{ visit.scheduled_at.strftime('%Y-%m-%dT%H:%M') }}"
+                       class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Czas trwania (min)') }}</label>
+                <input type="number" name="duration_minutes" value="{{ visit.duration_minutes }}"
+                       class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none">
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Typ') }}</label>
+                <select name="visit_type" disabled
+                        class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 outline-none opacity-60 cursor-not-allowed">
+                    <option value="consultation" {% if visit.visit_type == 'consultation' %}selected{% endif %}>{{ _('Konsultacja') }}</option>
+                    <option value="follow_up" {% if visit.visit_type == 'follow_up' %}selected{% endif %}>Follow-up</option>
+                    <option value="closing" {% if visit.visit_type == 'closing' %}selected{% endif %}>{{ _('Domknięcie') }}</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">Status</label>
+                <select name="status"
+                        class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none">
+                    {% set statuses = [('planned', _('Zaplanowana')), ('completed', _('Odbyta')), ('cancelled', _('Odwołana')), ('rescheduled', _('Przełożona'))] %}
+                    {% for val, label in statuses %}
+                    <option value="{{ val }}" {% if visit.status == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preparation checklist -->
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide">{{ _('Checklist przygotowania') }}</h2>
+            <span class="text-xs text-gray-500">{{ _('%(done)s/4 gotowe', done=visit.prep_done_count) }}</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            {% set prep_items = [
+                ('prep_report_printed', _('Raport wydrukowany / PDF'), 'bi-file-earmark-pdf'),
+                ('prep_screenshots', _('Screenshoty (Google, wizytówka, strona)'), 'bi-camera'),
+                ('prep_offer_template', _('Szablon oferty z pakietami'), 'bi-briefcase'),
+                ('prep_questions', _('Lista pytań pogłębiających'), 'bi-chat-left-text'),
+            ] %}
+            {% for field, label, icon in prep_items %}
+            <label class="flex items-center gap-3 bg-surface-dark border border-border rounded-lg p-3 cursor-pointer hover:border-accent/50 transition">
+                <input type="checkbox" name="{{ field }}" {% if visit[field] %}checked{% endif %}
+                       class="w-5 h-5 rounded bg-surface border-border text-accent focus:ring-accent">
+                <div>
+                    <i class="bi {{ icon }} text-gray-500 mr-1"></i>
+                    <span class="text-sm text-gray-300">{{ label }}</span>
+                </div>
+            </label>
+            {% endfor %}
+        </div>
+
+        <!-- Quick links -->
+        {% if visit.company.audits %}
+        <div class="mt-3 pt-3 border-t border-border/50 flex flex-wrap gap-2">
+            {% set latest = visit.company.latest_audit %}
+            {% if latest %}
+            <a href="/audits/{{ latest.id }}/report" target="_blank"
+               class="text-xs bg-accent/10 text-accent border border-accent/20 rounded-lg px-3 py-1 no-underline hover:bg-accent/20 transition">
+                <i class="bi bi-file-earmark-richtext mr-1"></i>{{ _('Otwórz raport') }}
+            </a>
+            <a href="/audits/{{ latest.id }}/pdf"
+               class="text-xs bg-accent/10 text-accent border border-accent/20 rounded-lg px-3 py-1 no-underline hover:bg-accent/20 transition">
+                <i class="bi bi-file-pdf mr-1"></i>{{ _('Pobierz PDF') }}
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Post-visit notes -->
+    <div class="bg-surface border border-border rounded-xl p-5 card-sm">
+        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">{{ _('Po wizycie') }}</h2>
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Notatki ze spotkania') }}</label>
+                <textarea name="notes" rows="4"
+                          class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm text-gray-200 input-focus transition outline-none"
+                          placeholder="{{ _('Co zostało omówione, jakie pytania padły...') }}">{{ visit.notes or '' }}</textarea>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-500 mb-1">{{ _('Rezultat spotkania') }}</label>
+                <textarea name="outcome" rows="2"
+                          class="w-full bg-surface-dark border border-border rounded-lg px-3 py-2 text-sm text-gray-200 input-focus transition outline-none"
+                          placeholder="{{ _('Klient zainteresowany pakietem GROWTH, chce ofertę mailem...') }}">{{ visit.outcome or '' }}</textarea>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">{{ _('Następny krok (follow-up)') }}</label>
+                    <input type="text" name="follow_up_action" value="{{ visit.follow_up_action or '' }}"
+                           class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none"
+                           placeholder="{{ _('Wysłać ofertę mailem, zadzwonić...') }}">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">{{ _('Data follow-up') }}</label>
+                    <input type="date" name="follow_up_date"
+                           value="{{ visit.follow_up_date.isoformat() if visit.follow_up_date else '' }}"
+                           class="w-full bg-surface-dark border border-border rounded-lg px-3 py-1.5 text-sm text-gray-200 input-focus transition outline-none">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex gap-3">
+        <button type="submit" class="bg-accent hover:bg-accent-dark text-white font-bold py-2 px-6 rounded-lg text-sm btn-lift transition">
+            <i class="bi bi-floppy mr-1"></i>{{ _('Zapisz wizytę') }}
+        </button>
+        <a href="/calendar" class="bg-surface border border-border text-gray-400 hover:text-white hover:border-gray-500 px-4 py-2 rounded-lg text-sm no-underline transition">
+            <i class="bi bi-arrow-left mr-1"></i>{{ _('Wróć do kalendarza') }}
+        </a>
+        <a href="/visit-guide" target="_blank"
+           class="bg-surface border border-border text-gray-400 hover:text-accent hover:border-gray-500 px-4 py-2 rounded-lg text-sm no-underline transition">
+            <i class="bi bi-bullseye mr-1"></i>{{ _('Otwórz scenariusz rozmowy') }}
+        </a>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Szablony umów') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Szablony umów') }}{% endblock %}
+{% block page_subtitle %}{{ _('Edytuj treść - generowane jako PDF z danymi klienta') }}{% endblock %}
+{% block topbar_actions %}{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'contracts' %}{% include '_szablony_tabs.html' %}
+
+{% if templates %}
+<div class="space-y-3">
+    {% for t in templates %}
+    <div class="bg-surface border border-border rounded-xl p-4 card-sm flex justify-between items-center">
+        <div>
+            <h3 class="text-sm font-bold text-gray-200">{{ t.name }}</h3>
+            <code class="text-xs text-accent">{{ t.key }}</code>
+            {% if t.placeholders_doc %}<div class="text-xs text-gray-600 mt-1"><code>{{ t.placeholders_doc }}</code></div>{% endif %}
+        </div>
+        <a href="/contracts/templates/{{ t.id }}/edit" class="text-accent hover:text-accent-light text-sm no-underline"><i class="bi bi-pencil"></i> {{ _('Edytuj') }}</a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state py-10"><i class="bi bi-file-earmark-text"></i><p>{{ _('Brak szablonów umów.') }}</p></div>
+{% endif %}
+{% endblock %}

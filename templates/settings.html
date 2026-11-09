@@ -1,0 +1,513 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Ustawienia') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Ustawienia') }}{% endblock %}
+{% block page_subtitle %}{% if current_user.is_admin %}{{ _('Firma, zespół, integracje i Twój profil') }}{% else %}{{ _('Twój profil, język i hasło') }}{% endif %}{% endblock %}
+
+{% block topbar_actions %}{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* zakładki i sekcje w jednej kolumnie pośrodku: na szerokim ekranie nie przyklejają się do lewej */
+    .settings-shell { max-width: 1000px; margin: 0 auto; }
+    /* nagłówek i wiersze zespołu na tej samej siatce, żeby kolumny stały pod nagłówkami */
+    .team-grid { display: grid; grid-template-columns: 1.3fr 1.6fr 0.9fr 0.6fr 1fr 96px; gap: 8px; align-items: center; padding: 8px 6px; }
+    .team-head { padding-top: 10px; padding-bottom: 10px; }
+    .team-head span:first-child { padding-left: 36px; }  /* nad polem imienia, za awatarem */
+    /* pola w tabeli zespołu - ten sam wygląd co w formularzach */
+    #team table input[type="text"], #team table input[type="email"], #team table input[type="password"], #team table select {
+        width: 100%; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px;
+        padding: 7px 10px; font-size: 13px; color: var(--text); outline: none; box-sizing: border-box;
+    }
+    #team table input:focus, #team table select:focus { border-color: var(--accent); }
+    .form-field label { display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-weight: 600; }
+    .form-field input[type="text"], .form-field input[type="password"], .form-field input[type="number"], .form-field input[type="email"], .form-field textarea, .form-field select {
+        width: 100%;
+        background: var(--surface-dark);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 13px;
+        color: var(--text);
+        outline: none;
+        font-family: inherit;
+        transition: all 0.15s;
+    }
+    .form-field input:focus, .form-field textarea:focus, .form-field select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
+    }
+    .form-field select { height: 39.5px; }  /* ta sama wysokość co pola tekstowe (13px x 1.5 + padding + ramka) */
+    .form-field .hint { font-size: 11.5px; color: var(--text-subtle); margin-top: 4px; }
+    .form-field .hint a { color: var(--accent-light); }
+    .form-section {
+        margin-bottom: 24px;
+    }
+    .form-section h2 {
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-subtle);
+        font-weight: 600;
+        margin-bottom: 14px;
+    }
+    .form-section code {
+        background: var(--surface-dark);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-family: 'Geist Mono', monospace;
+        color: var(--accent-light);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-shell">
+
+{# Tabs #}
+<div class="tabs-wrap">
+    {% if current_user.is_admin %}
+    <a href="#general" class="tab-btn">{{ _('Ogólne') }}</a>
+    <a href="#finance" class="tab-btn">{{ _('Finanse i dane prawne') }}</a>
+    <a href="#smtp" class="tab-btn">SMTP (email)</a>
+    <a href="#google_oauth" class="tab-btn">Google OAuth (GSC + GA)</a>
+    <a href="#ai" class="tab-btn">{{ _('AI Asystent') }}</a>
+    <a href="#team" class="tab-btn">{{ _('Zespół') }}</a>
+    {% endif %}
+    <a href="#profile" class="tab-btn">{{ _('Mój profil') }}</a>
+    <a href="{{ url_for('visit_guide') }}" class="tab-btn">{{ _('Scenariusz wizyty ↗') }}</a>
+</div>
+
+{% if current_user.is_admin %}
+
+{# ═════ OGÓLNE ═════ #}
+<section id="general">
+    <form method="POST">
+        <input type="hidden" name="section" value="general">
+
+        <div class="card-sm form-section" style="padding: 20px;">
+            <h2>{{ _('Klucz API Google') }}</h2>
+            <div class="form-field">
+                <label>Google Maps API Key</label>
+                <input type="password" name="google_api_key" value="" autocomplete="off" placeholder="{% if settings.google_api_key %}● ● ● ● ●  {{ _('(zapisany - wpisz nowy, żeby nadpisać)') }}{% else %}AIza...{% endif %}">
+                <div class="hint">{{ _('Wymagane:') }} <b>Places API</b>, <b>Maps JavaScript API</b>, <b>PageSpeed Insights API</b>.</div>
+            </div>
+        </div>
+
+        <div class="card-sm form-section" style="padding: 20px;">
+            <h2>{{ _('Dane agencji (wyświetlane)') }}</h2>
+            <div style="display: grid; gap: 14px;">
+                <div class="form-field">
+                    <label>{{ _('Nazwa agencji') }}</label>
+                    <input type="text" name="agency_name" value="{{ settings.agency_name }}" placeholder="{{ _('Twoja Agencja') }}">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div class="form-field">
+                        <label>{{ _('Telefon') }}</label>
+                        <input type="text" name="agency_phone" value="{{ settings.agency_phone }}" placeholder="+48 123 456 789">
+                    </div>
+                    <div class="form-field">
+                        <label>Email</label>
+                        <input type="text" name="agency_email" value="{{ settings.agency_email }}" placeholder="{{ _('kontakt@agencja.example') }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+    </form>
+</section>
+
+{# ═════ FINANSE ═════ #}
+<section id="finance" style="display: none;">
+    <form method="POST">
+        <input type="hidden" name="section" value="finance">
+
+        <div class="card-sm form-section" style="padding: 20px;">
+            <h2>{{ _('Dane prawne agencji (do umów)') }}</h2>
+            <div style="display: grid; gap: 14px;">
+                <div class="form-field">
+                    <label>{{ _('Pełna nazwa firmy') }}</label>
+                    <input type="text" name="agency_legal_name" value="{{ settings.agency_legal_name }}" placeholder="{{ _('np. JAN KOWALSKI SEO PRO') }}">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div class="form-field">
+                        <label>{{ _('NIP') }}</label>
+                        <input type="text" name="agency_nip" value="{{ settings.agency_nip }}" placeholder="1234567890">
+                    </div>
+                    <div class="form-field">
+                        <label>{{ _('Nr konta bankowego') }}</label>
+                        <input type="text" name="agency_bank_account" value="{{ settings.agency_bank_account }}" placeholder="PL...">
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label>{{ _('Adres') }}</label>
+                    <textarea name="agency_address" rows="2">{{ settings.agency_address }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-sm form-section" style="padding: 20px;">
+            <h2>{{ _('Podatki') }}</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: end;">
+                <div class="form-field">
+                    <label>{{ _('Domyślna stawka VAT') }} (%)</label>
+                    <input type="number" step="0.01" name="default_vat_rate" value="{{ settings.default_vat_rate if settings.default_vat_rate is not none else 23 }}">
+                </div>
+                <label style="display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; padding-bottom: 10px;">
+                    <input type="checkbox" name="company_vat_payer" {% if settings.company_vat_payer %}checked{% endif %} style="accent-color: var(--accent);">
+                    {{ _('Jestem VAT-owcem') }}
+                </label>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+    </form>
+</section>
+
+{# ═════ SMTP ═════ #}
+<section id="smtp" style="display: none;">
+    <form method="POST">
+        <input type="hidden" name="section" value="smtp">
+
+        <div class="card-sm form-section" style="padding: 20px;">
+            <h2>{{ _('Konfiguracja SMTP') }}</h2>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                {{ _('Hasło jest szyfrowane lokalnie (Fernet) i zapisane w SQLite. Dla Gmaila użyj <b>hasła aplikacji</b>.') }}
+            </p>
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px;">
+                <div class="form-field">
+                    <label>SMTP Host</label>
+                    <input type="text" name="smtp_host" value="{{ settings.smtp_host }}" placeholder="smtp.gmail.com">
+                </div>
+                <div class="form-field">
+                    <label>Port</label>
+                    <input type="number" name="smtp_port" value="{{ settings.smtp_port or 587 }}">
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                <div class="form-field">
+                    <label>{{ _('Użytkownik (login)') }}</label>
+                    <input type="text" name="smtp_user" value="{{ settings.smtp_user }}">
+                </div>
+                <div class="form-field">
+                    <label>{{ _('Adres wysyłki (From)') }}</label>
+                    <input type="text" name="smtp_from_addr" value="{{ settings.smtp_from_addr }}" placeholder="{{ _('kontakt@agencja.example') }}">
+                </div>
+            </div>
+            <div class="form-field" style="margin-bottom: 14px;">
+                <label>{{ _('Hasło SMTP') }} {% if has_smtp_password %}<span style="color: var(--success-light);">{{ _('(zapisane - zostaw puste aby nie zmieniać)') }}</span>{% endif %}</label>
+                <input type="password" name="smtp_password" value="">
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px;">
+                <input type="checkbox" name="smtp_use_tls" {% if settings.smtp_use_tls %}checked{% endif %} style="accent-color: var(--accent);">
+                {{ _('Użyj STARTTLS (zalecane dla portu 587)') }}
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz SMTP') }}</button>
+    </form>
+</section>
+
+{# ═════ GOOGLE OAUTH ═════ #}
+<section id="google_oauth" style="display: none;">
+    <form method="POST">
+        <input type="hidden" name="section" value="google_oauth">
+
+        <div class="card-sm form-section" style="padding: 20px;">
+            <h2>Google OAuth (Search Console + Analytics 4)</h2>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                {% set console_link %}<a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color: var(--accent-light);">Google Cloud Console</a>{% endset %}
+                {{ _('W %(console)s utwórz OAuth 2.0 Client ID typu <b>Web application</b>.', console=console_link) }}
+                {{ _('Dodaj autoryzowany URI:') }} <code>{{ request.url_root }}oauth2callback</code>.
+                {{ _('Włącz API:') }} <b>Search Console API</b>, <b>Analytics Data API</b>.
+            </p>
+            <div style="display: grid; gap: 14px; margin-bottom: 14px;">
+                <div class="form-field">
+                    <label>Client ID</label>
+                    <input type="text" name="google_oauth_client_id" value="{{ settings.google_oauth_client_id }}" placeholder="...apps.googleusercontent.com">
+                </div>
+                <div class="form-field">
+                    <label>Client Secret</label>
+                    <input type="password" name="google_oauth_client_secret" value="" autocomplete="off" placeholder="{% if settings.google_oauth_client_secret %}● ● ● ● ●  {{ _('(zapisany - wpisz nowy, żeby nadpisać)') }}{% endif %}">
+                </div>
+                <div class="form-field">
+                    <label>{{ _('Domyślne GA4 property ID (opcjonalne)') }}</label>
+                    <input type="text" name="ga_property_id_default" value="{{ settings.ga_property_id_default }}" placeholder="123456789">
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+                <a href="/google-oauth/start" class="btn btn-ghost">
+                    <i class="bi bi-google"></i>
+                    {% if has_google_token %}{{ _('Połącz ponownie') }}{% else %}{{ _('Autoryzuj w Google') }}{% endif %}
+                </a>
+                {% if has_google_token %}
+                <span style="color: var(--success-light); font-size: 13px;"><i class="bi bi-check-circle-fill"></i> {{ _('Połączono') }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+</section>
+
+{# ═════ AI ASYSTENT ═════ #}
+<section id="ai" style="display: none;">
+    <form method="POST">
+        <input type="hidden" name="section" value="ai">
+
+        <div class="card-sm form-section" style="padding: 20px;">
+            <h2>{{ _('AI Asystent (OpenRouter)') }}</h2>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                {{ _('Asystent rozmawia z bazą zadań/firm/notatek/finansów i odpowiada w naturalnym języku.') }}
+                {% set openrouter_link %}<a href="https://openrouter.ai/settings/keys" target="_blank" style="color: var(--accent-light);">openrouter.ai</a>{% endset %}
+                {{ _('Klucz API generujesz na %(link)s.', link=openrouter_link) }}
+                {{ _('Koszt: kilka dolarów miesięcznie dla małego zespołu (Gemini Flash Lite). Klucz zapisujemy zaszyfrowany Fernetem.') }}
+            </p>
+
+            <div style="display: grid; gap: 14px; margin-bottom: 14px;">
+                <div class="form-field">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" name="assistant_enabled" {% if settings.assistant_enabled %}checked{% endif %} style="width: 16px; height: 16px;">
+                        <span>{{ _('Włącz asystenta AI w aplikacji (FAB ⚡ w prawym dolnym rogu)') }}</span>
+                    </label>
+                </div>
+                <div class="form-field">
+                    <label>{{ _('Klucz API OpenRouter') }}</label>
+                    <input type="password" name="openrouter_api_key" value="" placeholder="{% if has_openrouter_key %}● ● ● ● ●  {{ _('(zapisane - wpisz nowy żeby nadpisać)') }}{% else %}sk-or-v1-...{% endif %}">
+                    <small style="display: block; color: var(--text-subtle); margin-top: 4px; font-size: 11px;">
+                        {% if has_openrouter_key %}{{ _('Klucz jest już zapisany. Pole pokazuje się puste - wpisz nowy tylko jeśli chcesz nadpisać.') }}{% else %}{{ _('Pole jest puste - klucz jeszcze niezapisany.') }}{% endif %}
+                    </small>
+                </div>
+                <div class="form-field">
+                    <label>{{ _('Model AI') }}</label>
+                    <select name="assistant_model" style="width: 100%;">
+                        {% set current_model = settings.assistant_model or 'google/gemini-3.1-flash-lite-preview' %}
+                        {% for opt_value, opt_label in [
+                            ('google/gemini-3.1-flash-lite-preview', _('Gemini 3.1 Flash Lite (preview, najtańszy ~$0.04/M)')),
+                            ('google/gemini-2.5-flash', _('Gemini 2.5 Flash (stabilny, ~$0.30/M)')),
+                            ('anthropic/claude-haiku-4.5', _('Claude Haiku 4.5 (świetny polski, tool use, ~$0.80/M)')),
+                            ('openai/gpt-4o-mini', _('GPT-4o mini (najtańszy z OpenAI, ~$0.15/M)')),
+                            ('meta-llama/llama-3.3-70b-instruct', 'Llama 3.3 70B (open-source, ~$0.50/M)'),
+                        ] %}
+                        <option value="{{ opt_value }}" {% if current_model == opt_value %}selected{% endif %}>{{ opt_label }}</option>
+                        {% endfor %}
+                    </select>
+                    <small style="display: block; color: var(--text-subtle); margin-top: 4px; font-size: 11px;">
+                        {{ _('Dla małego zespołu wystarczy Gemini Flash Lite. Jeśli chcesz lepszego polskiego - Claude Haiku 4.5.') }}
+                    </small>
+                </div>
+            </div>
+
+            <div class="form-field" style="margin-bottom: 14px; padding: 14px; border: 1px solid var(--border); border-radius: 10px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" name="pii_masking_enabled" {% if settings.pii_masking_enabled %}checked{% endif %} {% if not polanon.installed and not settings.pii_masking_enabled %}disabled{% endif %} style="width: 16px; height: 16px;">
+                    <span><i class="bi bi-shield-lock"></i> {{ _('Maskuj dane osobowe przed wysłaniem do AI (polanon)') }}</span>
+                </label>
+                <small style="display: block; color: var(--text-subtle); margin-top: 6px; font-size: 11px; line-height: 1.6;">
+                    {{ _('Imiona i nazwiska, e-maile, telefony, NIP, PESEL i numery kont rozpoznane przez polanon oraz <strong>zawsze</strong> nazwy firm z Twojej bazy klientów są zamieniane na tokeny (np. <code>&lt;OSOBA_1&gt;</code>, <code>&lt;FIRMA_1&gt;</code>) w pytaniu, historii i wynikach narzędzi.') }}
+                    {{ _('Model widzi tylko tokeny, a prawdziwe wartości wracają lokalnie do argumentów narzędzi i do odpowiedzi.') }}
+                    {{ _('Gdy maskowanie jest włączone, a polanon nie działa, nic nie zostanie wysłane do AI.') }}
+                </small>
+                <small style="display: block; margin-top: 6px; font-size: 11px;">
+                    {% if polanon.installed %}
+                    <span style="color: var(--success-light);"><i class="bi bi-check-circle-fill"></i> {{ _('polanon %(version)s zainstalowany', version=polanon.version) }}</span>
+                    {% else %}
+                    <span style="color: var(--warning-light, var(--text-muted));"><i class="bi bi-exclamation-circle"></i> {{ _('polanon nie jest zainstalowany:') }} <code>pip install polanon</code></span>
+                    {% endif %}
+                </small>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-top: 10px;">
+                    <input type="checkbox" name="pii_masking_ner" {% if settings.pii_masking_ner %}checked{% endif %} {% if not polanon.ner and not settings.pii_masking_ner %}disabled{% endif %} style="width: 16px; height: 16px;">
+                    <span>{{ _('Dokładniejsze wykrywanie z modelem spaCy (miejsca, rzadkie nazwiska)') }}</span>
+                </label>
+                <small style="display: block; color: var(--text-subtle); margin-top: 4px; font-size: 11px;">
+                    {% if polanon.ner %}{{ _('Model <code>pl_core_news_md</code> jest dostępny.') }}{% else %}{{ _('Wymaga <code>pip install "polanon[ner]"</code> i <code>python -m spacy download pl_core_news_md</code>.') }}{% endif %}
+                </small>
+            </div>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+                {% if has_openrouter_key %}
+                <span style="color: var(--success-light); font-size: 13px;"><i class="bi bi-check-circle-fill"></i> {{ _('Klucz zapisany') }}</span>
+                {% endif %}
+                {% if has_openrouter_key and settings.assistant_enabled %}
+                <span style="color: var(--accent-light); font-size: 13px;"><i class="bi bi-stars"></i> {{ _('Asystent aktywny') }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card-sm form-section" style="padding: 20px;">
+            <h2>{{ _('Co potrafi asystent') }}</h2>
+            <ul style="font-size: 13px; color: var(--text-muted); padding-left: 20px; line-height: 1.7;">
+                <li>{{ _('"Co mam dziś do zrobienia?" → lista zadań na dziś') }}</li>
+                <li>{{ _('"Pokaż przeterminowane" → lista + przyciski "zaplanuj na dziś"') }}</li>
+                <li>{{ _('"Ile zarobiliśmy w tym miesiącu?" → bilans + breakdown per klient') }}</li>
+                <li>{{ _('"Dodaj zadanie: zadzwoń do Wiśniewskiej w piątek" → utworzy zadanie') }}</li>
+                <li>{{ _('"Jakie wizyty mamy w tym tygodniu?" → kalendarz wizyt i publikacji') }}</li>
+                <li>{{ _('"Notatka: pomysł na content dla Pizzerii" → zapisze notatkę') }}</li>
+            </ul>
+        </div>
+    </form>
+</section>
+
+{# ═════ PROFIL I MOTYW ═════ #}
+{# ═════ ZESPÓŁ (admin) ═════ #}
+<section id="team" style="display: none;">
+    <div class="card-sm form-section" style="padding: 20px;">
+        <h2>{{ _('Zespół (%(n)s aktywnych)', n=team|selectattr('is_active')|list|length) }}</h2>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+            {{ _('<strong>Administrator</strong> zarządza zespołem, kluczami API, SMTP i integracjami.') }}
+            {{ _('<strong>Członek</strong> pracuje na danych: firmy, zadania, finanse, content, notatki.') }}
+            {{ _('Dezaktywacja odbiera dostęp, ale zostawia autorstwo wpisów.') }}
+        </p>
+        <div class="table-wrap" style="overflow-x: auto;">
+        <table class="data-table" style="width: 100%;">
+            <thead><tr><th colspan="6" style="padding: 0;">
+                <div class="team-grid team-head"><span>{{ _('Osoba') }}</span><span>E-mail</span><span>{{ _('Rola') }}</span><span style="text-align: center;">{{ _('Aktywna') }}</span><span>{{ _('Ostatnie logowanie') }}</span><span></span></div>
+            </th></tr></thead>
+            <tbody>
+            {% for u in team %}
+            <tr{% if not u.is_active %} style="opacity: 0.55;"{% endif %}>
+                <td colspan="6" style="padding: 0;">
+                <form method="POST" action="{{ url_for('team_update', user_id=u.id) }}" class="team-grid">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="avatar" style="width: 28px; height: 28px; font-size: 11px; background: {{ u.avatar_color }};">{{ u.initials or u.name[0] }}</span>
+                        <input type="text" name="name" value="{{ u.name }}" aria-label="{{ _('Imię') }}" style="min-width: 0;">
+                    </div>
+                    <input type="email" name="email" value="{{ u.email }}" aria-label="E-mail">
+                    <select name="role" aria-label="{{ _('Rola') }}">
+                        {% for r in roles %}<option value="{{ r }}" {% if u.role == r %}selected{% endif %}>{{ _('administrator') if r == 'admin' else _('członek') }}</option>{% endfor %}
+                    </select>
+                    <label style="display: flex; justify-content: center;"><input type="checkbox" name="is_active" {% if u.is_active %}checked{% endif %} aria-label="{{ _('Aktywna') }}" style="width: 16px; height: 16px;"></label>
+                    <span style="font-size: 12px; color: var(--text-muted);">{{ u.last_login_at.strftime('%d.%m.%Y %H:%M') if u.last_login_at else '-' }}{% if u.id == current_user.id %} · <strong>{{ _('Ty') }}</strong>{% endif %}</span>
+                    <button type="submit" class="btn btn-ghost" style="padding: 6px 10px;"><i class="bi bi-check2"></i>{{ _('Zapisz') }}</button>
+                </form>
+                {% if auth_mode == 'password' %}
+                <form method="POST" action="{{ url_for('team_password', user_id=u.id) }}" style="display: flex; gap: 8px; align-items: center; padding: 0 6px 10px 42px;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="password" name="password" minlength="{{ min_password_len }}" placeholder="{{ _('Nowe hasło (min. %(n)s znaków)', n=min_password_len) }}" autocomplete="new-password" aria-label="{{ _('Nowe hasło') }}" style="max-width: 320px;">
+                    <button type="submit" class="btn btn-ghost" style="padding: 6px 10px;"><i class="bi bi-key"></i>{{ _('Ustaw hasło') }}</button>
+                    {% if not u.has_password %}<span style="font-size: 11.5px; color: var(--warning-light, var(--text-muted));">{{ _('brak hasła - ta osoba nie może się jeszcze zalogować') }}</span>{% endif %}
+                </form>
+                {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <div class="card-sm form-section" style="padding: 20px;">
+        <h2>{{ _('Dodaj osobę') }}</h2>
+        <form method="POST" action="{{ url_for('team_add') }}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-field"><label>{{ _('Imię i nazwisko') }}</label><input type="text" name="name" required></div>
+            <div class="form-field"><label>E-mail (login)</label><input type="email" name="email" required></div>
+            <div class="form-field"><label>{{ _('Rola') }}</label>
+                <select name="role"><option value="member">{{ _('członek') }}</option><option value="admin">{{ _('administrator') }}</option></select>
+            </div>
+            {% if auth_mode == 'password' %}
+            <div class="form-field"><label>{{ _('Hasło startowe (min. %(n)s)', n=min_password_len) }}</label><input type="password" name="password" minlength="{{ min_password_len }}" required autocomplete="new-password"></div>
+            {% endif %}
+            <div><button type="submit" class="btn btn-primary"><i class="bi bi-person-plus"></i>{{ _('Dodaj do zespołu') }}</button></div>
+        </form>
+        {% if auth_mode == 'cloudflare' %}
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 10px;">{{ _('Tryb Cloudflare Access: osoba musi też być w polityce Access (i w ALLOWED_EMAILS, jeśli lista jest ustawiona).') }}</p>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+<section id="profile" style="display: none;">
+    <div class="card-sm form-section" style="padding: 20px;">
+        <h2>{{ _('Twój profil') }}</h2>
+        {% if current_user %}
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 18px;">
+            <div class="avatar" style="width: 56px; height: 56px; font-size: 22px; background: linear-gradient(135deg, {{ current_user.avatar_color }}, {{ current_user.avatar_color }}dd); box-shadow: 0 8px 20px {{ current_user.avatar_color }}55;">{{ current_user.initials or current_user.name[0] }}</div>
+            <div>
+                <div style="font-size: 16px; font-weight: 700; color: white;">{{ current_user.name }}</div>
+                <div style="font-size: 12px; color: var(--text-muted);">{{ _('Domyślny motyw:') }} <strong style="color: var(--accent-light);">{{ 'minimal' if current_user.default_theme == 'minimal' else _('kolorowy') }}</strong></div>
+            </div>
+        </div>
+        {% endif %}
+
+        <h2 style="margin-top: 8px;">{{ _('Aktualny motyw') }}</h2>
+        <p style="font-size: 12.5px; color: var(--text-muted); margin-bottom: 14px;">
+            {{ _('Używasz teraz motywu:') }} <strong style="color: var(--accent-light);">{{ _('minimal - mniej kolorów') if current_theme == 'minimal' else _('kolorowy - pełen bento') }}</strong>.
+        </p>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px;">
+            <form method="POST" action="/toggle-theme" style="display: inline;">
+                <button type="submit" class="btn btn-ghost">
+                    {% if current_theme == 'colorful' %}<i class="bi bi-circle-half"></i>{{ _('Przełącz na minimal') }}{% else %}<i class="bi bi-palette-fill"></i>{{ _('Przełącz na kolorowy') }}{% endif %}
+                </button>
+            </form>
+            <form method="POST" action="/set-default-theme" style="display: inline;">
+                <input type="hidden" name="theme" value="{{ current_theme }}">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-bookmark-star"></i>{{ _('Zapisz ten motyw jako mój domyślny') }}</button>
+            </form>
+        </div>
+
+        <h2 style="margin-top: 8px;">{{ _('Dane i język') }}</h2>
+        <form method="POST" action="{{ url_for('profile_update') }}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; align-items: end; margin-bottom: 18px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-field"><label>{{ _('Imię i nazwisko') }}</label><input type="text" name="name" value="{{ current_user.name }}" required></div>
+            <div class="form-field"><label>{{ _('Inicjały') }}</label><input type="text" name="initials" value="{{ current_user.initials }}" maxlength="4"></div>
+            <div class="form-field"><label>{{ _('Kolor awatara') }}</label>
+                <select name="avatar_color">
+                    {% for c, label in [('#6c5ce7', _('fioletowy')), ('#10b981', _('zielony')), ('#f59e0b', _('pomarańczowy')), ('#ef4444', _('czerwony')), ('#3b82f6', _('niebieski')), ('#ec4899', _('różowy')), ('#14b8a6', _('morski')), ('#8b5cf6', _('lawendowy'))] %}
+                    <option value="{{ c }}" {% if current_user.avatar_color == c %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-field"><label>{{ _('Język interfejsu') }}</label>
+                <select name="language">
+                    <option value="pl" {% if current_user.language != 'en' %}selected{% endif %}>Polski</option>
+                    <option value="en" {% if current_user.language == 'en' %}selected{% endif %}>English</option>
+                </select>
+            </div>
+            <div><button type="submit" class="btn btn-primary"><i class="bi bi-check2"></i>{{ _('Zapisz profil') }}</button></div>
+        </form>
+
+        {% if auth_mode == 'password' %}
+        <h2 style="margin-top: 8px;">{{ _('Zmiana hasła') }}</h2>
+        <form method="POST" action="{{ url_for('profile_password') }}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end; margin-bottom: 18px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-field"><label>{{ _('Obecne hasło') }}</label><input type="password" name="current_password" autocomplete="current-password" {% if current_user.has_password %}required{% endif %}></div>
+            <div class="form-field"><label>{{ _('Nowe hasło (min. %(n)s)', n=min_password_len) }}</label><input type="password" name="new_password" minlength="{{ min_password_len }}" required autocomplete="new-password"></div>
+            <div class="form-field"><label>{{ _('Powtórz nowe hasło') }}</label><input type="password" name="new_password2" minlength="{{ min_password_len }}" required autocomplete="new-password"></div>
+            <div><button type="submit" class="btn btn-ghost"><i class="bi bi-key"></i>{{ _('Zmień hasło') }}</button></div>
+        </form>
+        {% endif %}
+
+        <h2 style="margin-top: 8px;">{{ _('Sesja') }}</h2>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            {% if auth_mode == 'profile' %}<a href="{{ url_for('choose_profile') }}" class="btn btn-ghost"><i class="bi bi-person-gear"></i>{{ _('Zmień profil') }}</a>{% endif %}
+            <form method="POST" action="/wyloguj" style="display: inline; margin: 0;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn btn-ghost" style="color: var(--danger-light);"><i class="bi bi-box-arrow-right"></i>{{ _('Wyloguj się') }}</button></form>
+        </div>
+    </div>
+</section>
+
+</div>{# /settings-shell #}
+
+<script>
+(function () {
+    const tabs = document.querySelectorAll('.tab-btn');
+    const sections = ['general','finance','smtp','google_oauth','ai','team','profile'];
+    const fallback = document.getElementById('general') ? 'general' : 'profile';  // członek widzi tylko profil
+    function activateTab(hash) {
+        let target = (hash || fallback).replace('#','');
+        if (!document.getElementById(target)) target = fallback;
+        tabs.forEach(t => t.classList.toggle('active', t.getAttribute('href') === '#' + target));
+        sections.forEach(s => {
+            const el = document.getElementById(s);
+            if (el) el.style.display = s === target ? '' : 'none';
+        });
+    }
+    activateTab(location.hash);
+    window.addEventListener('hashchange', () => activateTab(location.hash));
+})();
+</script>
+{% endblock %}

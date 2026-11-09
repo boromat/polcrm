@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Szablony emaili') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Szablony emaili') }}{% endblock %}
+{% block page_subtitle %}{{ _('Wysyłka przez SMTP z placeholderami Jinja2') }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/emails/templates/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Nowy szablon') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'email' %}{% include '_szablony_tabs.html' %}
+
+{% if templates %}
+<div class="space-y-3">
+    {% for t in templates %}
+    <div class="bg-surface border border-border rounded-xl p-4 card-sm">
+        <div class="flex items-center justify-between mb-2">
+            <div>
+                <h3 class="text-sm font-bold text-gray-200">{{ t.name or t.key }}</h3>
+                <code class="text-xs text-accent">{{ t.key }}</code>
+            </div>
+            <div class="flex gap-2">
+                <a href="/emails/templates/{{ t.id }}/edit" class="text-gray-400 hover:text-white text-sm no-underline"><i class="bi bi-pencil"></i> {{ _('Edytuj') }}</a>
+                <form method="POST" action="/emails/templates/{{ t.id }}/delete" class="inline" onsubmit="return confirm({{ _('Usunąć szablon?')|tojson|forceescape }})">
+                    <button class="text-red-400 hover:text-red-300 text-sm"><i class="bi bi-trash3"></i></button>
+                </form>
+            </div>
+        </div>
+        <div class="text-xs text-gray-500 mb-2">{{ _('Temat:') }} <span class="text-gray-300">{{ t.subject_template }}</span></div>
+        {% if t.placeholders_doc %}<div class="text-xs text-gray-600"><code>{{ t.placeholders_doc }}</code></div>{% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state py-10"><i class="bi bi-envelope-paper"></i><p>{{ _('Brak szablonów.') }}</p></div>
+{% endif %}
+{% endblock %}

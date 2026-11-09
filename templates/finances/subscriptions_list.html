@@ -1,0 +1,61 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Subskrypcje') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Subskrypcje') }}{% endblock %}
+{% block page_subtitle %}{{ _('Cykliczne koszty - amortyzowane miesięcznie w bilansie') }}{% endblock %}
+
+{% block topbar_actions %}
+<a href="/finances/subscriptions/new" class="btn btn-primary"><i class="bi bi-plus-lg"></i><span class="hidden sm:inline">{{ _('Nowa subskrypcja') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+{% set active_tab = 'subscriptions' %}{% include 'finances/_tabs.html' %}
+
+{% if subscriptions %}
+<div class="card-sm" style="padding: 0; overflow: hidden;">
+    <div style="overflow-x: auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{{ _('Aktywna') }}</th>
+                    <th>{{ _('Nazwa') }}</th>
+                    <th>{{ _('Dostawca') }}</th>
+                    <th>{{ _('Cykl') }}</th>
+                    <th class="col-num">{{ _('Kwota netto') }}</th>
+                    <th class="col-num">{{ _('/ mies.') }}</th>
+                    <th>{{ _('Odnowienie') }}</th>
+                    <th style="text-align: right;">{{ _('Akcje') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in subscriptions %}
+                <tr>
+                    <td>{% if s.is_active %}<i class="bi bi-check-circle-fill" style="color: var(--success);"></i>{% else %}<i class="bi bi-pause-circle" style="color: var(--text-subtle);"></i>{% endif %}</td>
+                    <td style="color: var(--text); font-weight: 500;">{{ s.name }}</td>
+                    <td class="col-muted">{{ s.vendor }}</td>
+                    <td class="col-muted">{{ s.cycle_label }}</td>
+                    <td class="col-num">{{ '{:,.2f}'.format(s.amount_net or 0).replace(',', ' ') }}</td>
+                    <td class="col-num" style="color: var(--warning-light);">{{ '{:,.2f}'.format(s.monthly_allocation).replace(',', ' ') }}</td>
+                    <td class="mono" style="font-size: 11.5px; color: var(--text-muted); white-space: nowrap;">{{ s.renewal_date.strftime('%d.%m.%Y') if s.renewal_date else '-' }}</td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        <a href="/finances/subscriptions/{{ s.id }}/edit" class="btn-ghost" style="padding: 6px 9px; font-size: 11.5px; display: inline-flex;"><i class="bi bi-pencil"></i></a>
+                        <form method="POST" action="/finances/subscriptions/{{ s.id }}/delete" class="inline" onsubmit="return confirm({{ _('Usunąć subskrypcję?')|tojson|forceescape }})">
+                            <button class="btn-danger-sm"><i class="bi bi-trash3"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="empty-state" style="padding: 60px 24px;">
+    <i class="bi bi-arrow-repeat"></i>
+    <p>{{ _('Brak subskrypcji. Dodaj np. Ahrefs, Senuto, hosting.') }}</p>
+    <a href="/finances/subscriptions/new" class="btn btn-primary" style="margin-top: 16px; display: inline-flex;"><i class="bi bi-plus-lg"></i>{{ _('Dodaj pierwszą') }}</a>
+</div>
+{% endif %}
+
+{% endblock %}

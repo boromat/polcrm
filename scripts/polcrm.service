@@ -1,0 +1,29 @@
+[Unit]
+Description=PolCRM (Flask + waitress)
+After=network.target
+
+[Service]
+Type=simple
+User=polcrm
+Group=polcrm
+WorkingDirectory=/home/polcrm/polcrm
+EnvironmentFile=/home/polcrm/polcrm/.env
+ExecStart=/home/polcrm/polcrm/venv/bin/python app.py
+Restart=on-failure
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/polcrm/polcrm/instance /home/polcrm/polcrm/output
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,102 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Kalendarz') }} - PolCRM{% endblock %}
+
+{% block page_title %}{{ _('Kalendarz') }}{% endblock %}
+{% block page_subtitle %}{{ _('Wizyty, deadliny zadań i publikacje content - jedno miejsce') }}{% endblock %}
+{% block topbar_actions %}
+<a href="/calendar?visits=1&tasks=1&content_dl=1&content_pub=1" class="btn btn-ghost"><i class="bi bi-arrow-clockwise"></i><span class="hidden sm:inline">{{ _('Wszystko') }}</span></a>
+{% endblock %}
+
+{% block content %}
+
+{# ═════ LEGEND / FILTERS ═════ #}
+<div class="cal-legend">
+    <a href="?visits={{ 0 if filters.visits else 1 }}&tasks={{ 1 if filters.tasks else 0 }}&content_dl={{ 1 if filters.content_dl else 0 }}&content_pub={{ 1 if filters.content_pub else 0 }}" class="cal-legend-chip {% if not filters.visits %}off{% endif %}" style="text-decoration: none;">
+        <span class="cal-legend-dot" style="background: #22d3ee;"></span>{{ _('Wizyty') }}
+    </a>
+    <a href="?visits={{ 1 if filters.visits else 0 }}&tasks={{ 0 if filters.tasks else 1 }}&content_dl={{ 1 if filters.content_dl else 0 }}&content_pub={{ 1 if filters.content_pub else 0 }}" class="cal-legend-chip {% if not filters.tasks %}off{% endif %}" style="text-decoration: none;">
+        <span class="cal-legend-dot" style="background: #fbbf24;"></span>{{ _('Deadliny zadań') }}
+    </a>
+    <a href="?visits={{ 1 if filters.visits else 0 }}&tasks={{ 1 if filters.tasks else 0 }}&content_dl={{ 0 if filters.content_dl else 1 }}&content_pub={{ 1 if filters.content_pub else 0 }}" class="cal-legend-chip {% if not filters.content_dl %}off{% endif %}" style="text-decoration: none;">
+        <span class="cal-legend-dot" style="background: #ec4899;"></span>{{ _('Deadliny content') }}
+    </a>
+    <a href="?visits={{ 1 if filters.visits else 0 }}&tasks={{ 1 if filters.tasks else 0 }}&content_dl={{ 1 if filters.content_dl else 0 }}&content_pub={{ 0 if filters.content_pub else 1 }}" class="cal-legend-chip {% if not filters.content_pub %}off{% endif %}" style="text-decoration: none;">
+        <span class="cal-legend-dot" style="background: #10b981;"></span>{{ _('Publikacje') }}
+    </a>
+    <span class="cal-legend-chip" style="border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.08); cursor: default;">
+        <span class="cal-legend-dot" style="background: #ef4444;"></span>{{ _('Przeterminowane') }}
+    </span>
+</div>
+
+<div style="display: grid; grid-template-columns: 3fr 1fr; gap: 16px;">
+
+    {# ═════ CALENDAR ═════ #}
+    <div class="card-sm" style="padding: 16px;">
+        <div id="calendar"></div>
+    </div>
+
+    {# ═════ SIDEBAR: upcoming visits w kb-card style ═════ #}
+    <div>
+        <div class="section-label" style="margin-bottom: 10px;">{{ _('Najbliższe wizyty') }}</div>
+        {% set upcoming = visits|selectattr('status', 'equalto', 'planned')|list %}
+        {% if upcoming %}
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            {% for v in upcoming[:8] %}
+            <a href="/visits/{{ v.id }}" class="kb-card">
+                <div class="kb-card-top">
+                    {% if v.visit_type == 'consultation' %}
+                    <span class="kb-prio medium"><i class="bi bi-person-video3"></i>{{ _('Konsultacja') }}</span>
+                    {% elif v.visit_type == 'follow_up' %}
+                    <span class="kb-prio medium" style="background: rgba(59,130,246,0.15); color: #60a5fa; border-color: rgba(59,130,246,0.4);"><i class="bi bi-arrow-repeat"></i>Follow-up</span>
+                    {% else %}
+                    <span class="kb-prio medium" style="background: rgba(16,185,129,0.15); color: #34d399; border-color: rgba(16,185,129,0.4);"><i class="bi bi-handshake"></i>{{ _('Domknięcie') }}</span>
+                    {% endif %}
+                    <span class="kb-date">{{ v.scheduled_at.strftime('%d.%m') }}</span>
+                </div>
+                <div class="kb-card-title">{{ v.company.name }}</div>
+                <div class="kb-foot">
+                    <span class="mono" style="font-size: 10.5px; color: var(--text-muted);">{{ v.scheduled_at.strftime('%H:%M') }} · {{ v.duration_minutes }}min</span>
+                    <span style="display: flex; gap: 2px;">
+                        {% set prep_items = [v.prep_report_printed, v.prep_screenshots, v.prep_offer_template, v.prep_questions] %}
+                        {% for done in prep_items %}
+                        <span style="width: 6px; height: 6px; border-radius: 50%; background: {% if done %}var(--success){% else %}rgba(255,255,255,0.1){% endif %};"></span>
+                        {% endfor %}
+                    </span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="panel-empty" style="padding: 32px;"><i class="bi bi-calendar-x"></i>{{ _('Brak zaplanowanych wizyt') }}</div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js" integrity="sha384-5JIwZN3kuxX2zKsavvNmbZ3zhZZMUtu/eQiK3BbXukpSXp0Cd2ZP4OAYKx7mrPgI" crossorigin="anonymous"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: {{ lang|tojson }},
+        firstDay: 1,
+        height: 'auto',
+        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth' },
+        events: {{ events|tojson }},
+        eventClick: function(info) {
+            if (info.event.url) {
+                info.jsEvent.preventDefault();
+                window.location.href = info.event.url;
+            }
+        },
+        buttonText: { today: {{ _('Dziś')|tojson }}, month: {{ _('Miesiąc')|tojson }}, week: {{ _('Tydzień')|tojson }}, day: {{ _('Dzień')|tojson }}, list: {{ _('Lista')|tojson }} },
+        dayMaxEvents: 4,
+        moreLinkText: (n) => '+' + n + ' ' + {{ _('więcej')|tojson }},
+    });
+    calendar.render();
+});
+</script>
+{% endblock %}

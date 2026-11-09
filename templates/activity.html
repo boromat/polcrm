@@ -1,0 +1,79 @@
+{% extends "layout.html" %}
+{% block title %}{{ _('Aktywność') }} - PolCRM{% endblock %}
+{% block page_title %}{{ _('Pełna historia aktywności') }}{% endblock %}
+{% block page_subtitle %}{{ ngettext('%(num)s wpis · strona %(page)s/%(pages)s', '%(num)s wpisów · strona %(page)s/%(pages)s', total, page=page, pages=total_pages) }}{% endblock %}
+
+{% block content %}
+
+<form method="GET" action="{{ url_for('activity_list') }}" class="card-sm" style="padding: 16px; margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+    <div>
+        <label style="display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-weight: 600;">{{ _('Osoba') }}</label>
+        <select name="user_id" style="padding: 8px 12px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px;">
+            <option value="">{{ _('Wszyscy') }}</option>
+            {% for u in users %}
+                <option value="{{ u.id }}" {% if user_filter == u.id %}selected{% endif %}>{{ u.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label style="display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-weight: 600;">{{ _('Tabela') }}</label>
+        <select name="table" style="padding: 8px 12px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px;">
+            <option value="">{{ _('Wszystkie') }}</option>
+            {% for t in tables %}
+                <option value="{{ t }}" {% if table_filter == t %}selected{% endif %}>{{ table_labels.get(t, t) }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label style="display: block; font-size: 10.5px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-weight: 600;">{{ _('Akcja') }}</label>
+        <select name="action" style="padding: 8px 12px; background: var(--surface-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px;">
+            <option value="">{{ _('Wszystkie') }}</option>
+            {% for a in actions %}
+                <option value="{{ a }}" {% if action_filter == a %}selected{% endif %}>{{ action_labels.get(a, a) }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary" style="padding: 8px 18px;">
+        <i class="bi bi-funnel"></i> {{ _('Filtruj') }}
+    </button>
+    {% if user_filter or table_filter or action_filter %}
+    <a href="{{ url_for('activity_list') }}" class="btn" style="padding: 8px 14px; background: var(--surface-dark); color: var(--text); text-decoration: none; border-radius: 8px;">
+        <i class="bi bi-x-lg"></i> {{ _('Wyczyść') }}
+    </a>
+    {% endif %}
+</form>
+
+<div class="card-sm" style="padding: 18px;">
+    {% if entries %}
+        {% include '_timeline.html' %}
+    {% else %}
+        <div class="panel-empty"><i class="bi bi-clock-history"></i>{{ _('Brak wpisów dla wybranych filtrów') }}</div>
+    {% endif %}
+</div>
+
+{# Paginacja #}
+{% if total_pages > 1 %}
+<div style="display: flex; gap: 8px; justify-content: center; margin-top: 24px; align-items: center; flex-wrap: wrap;">
+    {% set base_args = {'user_id': user_filter, 'table': table_filter, 'action': action_filter} %}
+
+    {% if page > 1 %}
+        <a href="{{ url_for('activity_list', page=page-1, **base_args) }}"
+           class="btn" style="padding: 8px 14px; background: var(--surface-dark); color: var(--text); text-decoration: none; border-radius: 8px;">
+            <i class="bi bi-chevron-left"></i> {{ _('Poprzednia') }}
+        </a>
+    {% endif %}
+
+    <span style="padding: 8px 16px; color: var(--text-subtle); font-size: 13px;">
+        {% set page_html %}<strong style="color: var(--text);">{{ page }}</strong>{% endset %}{{ _('Strona %(page)s z %(pages)s', page=page_html, pages=total_pages) }}
+    </span>
+
+    {% if page < total_pages %}
+        <a href="{{ url_for('activity_list', page=page+1, **base_args) }}"
+           class="btn" style="padding: 8px 14px; background: var(--surface-dark); color: var(--text); text-decoration: none; border-radius: 8px;">
+            {{ _('Następna') }} <i class="bi bi-chevron-right"></i>
+        </a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
