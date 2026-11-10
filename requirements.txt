@@ -4,7 +4,7 @@ Flask-SQLAlchemy==3.1.1
 SQLAlchemy==2.0.57
 googlemaps==4.10.0
 requests==2.32.3
-fpdf2==2.8.2
+fpdf2==2.8.8
 cryptography==43.0.3
 google-api-python-client==2.154.0
 google-auth-oauthlib==1.2.1
