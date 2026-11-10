@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- Dependencies with known vulnerabilities raised to fixed versions: cryptography 50.0.2 (from
+  43.0.3, with a patched bundled OpenSSL), Flask 3.1.3, fpdf2 2.8.9, bleach 6.4.0, Markdown 3.8.2,
+  requests 2.33.1 and python-dotenv 1.2.4. Rendered and sanitized Markdown is unchanged.
+
 ## 1.0.0 - 2026-11-09
 
 First public release. PolCRM comes from an internal tool built for a two-person agency, which was
