@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- polanon, used by the tests and by the optional masking of personal data before an AI call,
+  raised to 0.3.6 (from 0.2.2). Its rules read more Polish names and identifiers, a birth date
+  under a key such as `birthday` is masked, and English words of software, code and identifiers
+  are no longer taken for names. The test suite passes unchanged.
+
 ## 1.0.1 - 2026-11-10
 
 ### Security
