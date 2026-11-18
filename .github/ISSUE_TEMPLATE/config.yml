@@ -1,0 +1,10 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Data or secrets reachable where they should not be
+    url: https://github.com/boromat/polcrm/security/advisories/new
+    about: Report privately. A public issue would publish the way in along with the bug.
+  - name: A personal value was not masked before an AI call
+    url: https://github.com/boromat/polanon/issues
+    about: >-
+      Detection belongs to polanon, the library that does the masking. Report it there, with
+      invented data only.
