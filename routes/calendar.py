@@ -136,7 +136,7 @@ def calendar():
 
 @app.route("/visits/new/<int:company_id>", methods=["POST"])
 def visit_new(company_id):
-    db.get_or_404(Company, company_id)
+    c = db.get_or_404(Company, company_id)
     dt = request.form.get("scheduled_at", "")
     v = Visit(
         company_id=company_id,
@@ -146,7 +146,6 @@ def visit_new(company_id):
         status="planned",
     )
     db.session.add(v)
-    c = db.session.get(Company, company_id)
     if c.pipeline_stage in ("audit", "contact"):
         c.pipeline_stage = "visit"
     db.session.commit()

@@ -9,6 +9,13 @@
   under a key such as `birthday` is masked, and English words of software, code and identifiers
   are no longer taken for names. The test suite passes unchanged.
 
+### Fixed
+
+- A project, payment, content post or offer sent without a valid company or package, or with one
+  that no longer exists, is answered with 400 instead of a server error. An offer with no active
+  package to choose from was one way to get there. A custom price on an offer accepts a decimal
+  comma, like the other amounts.
+
 ## 1.0.1 - 2026-11-10
 
 ### Security

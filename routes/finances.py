@@ -13,6 +13,7 @@ from flask import (
 import finance_helpers
 import i18n
 from core import (
+    _form_record_id,
     _parse_date,
     _parse_float,
     _parse_int,
@@ -97,7 +98,7 @@ def finances_payments():
 def payment_new():
     if request.method == "POST":
         p = Payment(
-            company_id=int(request.form.get("company_id")),
+            company_id=_form_record_id("company_id", Company),
             title=request.form.get("title", "").strip(),
             description=request.form.get("description", "").strip(),
             amount_net=_parse_float(request.form.get("amount_net")) or 0,
@@ -132,7 +133,7 @@ def payment_new():
 def payment_edit(id):
     p = db.get_or_404(Payment, id)
     if request.method == "POST":
-        p.company_id = int(request.form.get("company_id"))
+        p.company_id = _form_record_id("company_id", Company)
         p.title = request.form.get("title", "").strip()
         p.description = request.form.get("description", "").strip()
         p.amount_net = _parse_float(request.form.get("amount_net")) or 0

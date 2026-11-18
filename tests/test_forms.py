@@ -2,6 +2,8 @@
 
 from datetime import date, timedelta
 
+import pytest
+
 
 def test_company_create_and_delete(client, seeded):
     from models import Company, db
@@ -91,3 +93,31 @@ def test_note_with_html_is_stored_but_rendered_safely(client, seeded):
         assert Note.query.filter_by(title="Notatka XSS").one()
     html = client.get("/notes").get_data(as_text=True)
     assert "<script>alert(1)</script>" not in html
+
+
+@pytest.mark.parametrize("path", ["/projects/new", "/finances/payments/new", "/content/new"])
+@pytest.mark.parametrize("company_id", [None, "abc", "999999"])
+def test_form_without_a_valid_company_is_a_bad_request(client, seeded, path, company_id):
+    """A missing, non-numeric or unknown company answers 400. It used to be a server error from
+    int(None), or on PostgreSQL from the foreign key."""
+    data = {"name": "Bez firmy", "title": "Bez firmy"}
+    if company_id is not None:
+        data["company_id"] = company_id
+    assert client.post(path, data=data).status_code == 400
+
+
+def test_offer_needs_a_package_and_reads_the_price(client, seeded):
+    from models import Company, Offer, Package
+
+    with seeded.app_context():
+        cid = Company.query.first().id
+        pid = Package.query.first().id
+    assert client.post(f"/companies/{cid}/offers/new", data={"custom_notes": "bez pakietu"}).status_code == 400
+
+    r = client.post(
+        f"/companies/{cid}/offers/new",
+        data={"package_id": str(pid), "custom_price": "1500,50", "custom_notes": "oferta z przecinkiem"},
+    )
+    assert r.status_code == 302
+    with seeded.app_context():
+        assert Offer.query.filter_by(custom_notes="oferta z przecinkiem").one().custom_price == 1500.5

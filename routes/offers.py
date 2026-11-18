@@ -9,6 +9,8 @@ from flask import (
 )
 
 from core import (
+    _form_record_id,
+    _parse_float,
     app,
 )
 from i18n import _
@@ -52,17 +54,16 @@ def package_edit(id):
 
 @app.route("/companies/<int:company_id>/offers/new", methods=["POST"])
 def offer_new(company_id):
-    db.get_or_404(Company, company_id)
+    c = db.get_or_404(Company, company_id)
     o = Offer(
         company_id=company_id,
-        package_id=int(request.form.get("package_id")),
+        package_id=_form_record_id("package_id", Package),
         audit_id=request.form.get("audit_id") or None,
-        custom_price=float(request.form.get("custom_price")) if request.form.get("custom_price") else None,
+        custom_price=_parse_float(request.form.get("custom_price")),
         custom_notes=request.form.get("custom_notes", "").strip(),
         status="draft",
     )
     db.session.add(o)
-    c = db.session.get(Company, company_id)
     if c.pipeline_stage in ("audit", "contact", "visit"):
         c.pipeline_stage = "offer"
     db.session.commit()
