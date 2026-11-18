@@ -1,0 +1,18 @@
+# Pilnuje aktualnych wersji akcji w CI i obrazu bazowego w Dockerfile. Akcje są przypięte do commitu,
+# a wersja jest w komentarzu, żeby przesunięty tag nie zmienił tego, co się uruchamia; Dependabot
+# aktualizuje jedno i drugie. Zależności Pythona (requirements*.txt) są poza tym plikiem: o wersjach
+# ze znanymi podatnościami mówią alerty Dependabota.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    # Wszystkie akcje w jednym pull requeście zamiast osobnego dla każdej.
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
