@@ -1,0 +1,43 @@
+name: Bug
+description: PolCRM does something it should not.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste real client data, logs containing it, or your `.env` here.** This issue is
+        public. If someone can read or change data beyond their role, get a secret out of the
+        database, or make the assistant send personal data while masking is on, report it privately
+        from the Security tab instead.
+
+        A personal value that masking did not recognise belongs to the library that does the
+        masking: report it at [polanon](https://github.com/boromat/polanon/issues).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      description: >-
+        With invented data only: the demo accounts and companies from
+        `scripts/seed_test_data.py`, addresses at example.com.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version and how you run it
+      description: The version from CHANGELOG.md or the commit, and how the app is started.
+      placeholder: 1.0.1, Docker Compose with PostgreSQL 16, AUTH_MODE=password
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and interface language
+      description: If the problem is on a page.
+      placeholder: Firefox 140, English
