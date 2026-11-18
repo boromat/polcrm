@@ -149,12 +149,12 @@ def monthly_balance(year, month, allocate_overhead=True):
     sub_alloc_total = sum(s.monthly_allocation for s in Subscription.query.filter_by(is_active=True).all())
 
     # Per-client revenue
-    revenue_by_client = defaultdict(float)
+    revenue_by_client: defaultdict[int, float] = defaultdict(float)
     for p in revenues:
         revenue_by_client[p.company_id] += p.amount_net or 0
 
     # Per-client direct expenses
-    direct_expense_by_client = defaultdict(float)
+    direct_expense_by_client: defaultdict[int, float] = defaultdict(float)
     unassigned_expenses = 0.0
     for e in expenses:
         if e.client_id:
@@ -220,7 +220,7 @@ def expense_category_breakdown(year, month):
         Expense.payment_date >= start,
         Expense.payment_date <= end,
     ).all()
-    buckets = defaultdict(float)
+    buckets: defaultdict[str, float] = defaultdict(float)
     for e in rows:
         buckets[e.category] += e.amount_net or 0
     return dict(buckets)

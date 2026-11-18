@@ -3,14 +3,21 @@
 import json
 import secrets
 from datetime import date, datetime, timezone
+from typing import Any
 
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import Mapped, relationship
 
 import i18n
 from crypto_utils import EncryptedText
 from i18n import _
 
 db = SQLAlchemy()
+
+# Klasa bazowa modeli. db.Model powstaje w trakcie działania, a pól z db.Column i relacji z backref
+# mypy nie opisze, więc modele dziedziczą dla niego po Any: sprawdza kod, który ich używa, a ich
+# pola i konstruktory przyjmuje takie, jakie są.
+Model: Any = db.Model
 
 
 def utcnow():
@@ -54,7 +61,7 @@ class JsonProperty:
 # ── Settings (singleton) ──────────────────────────────────────
 
 
-class Settings(db.Model):
+class Settings(Model):
     __tablename__ = "settings"
     id = db.Column(db.Integer, primary_key=True)
     google_api_key = db.Column(EncryptedText, default="")  # Fernet; stare wartości jawne są czytane bez zmian
@@ -115,7 +122,7 @@ class Settings(db.Model):
 PIPELINE_STAGES = ["lead", "audit", "contact", "visit", "offer", "client"]
 
 
-class Company(db.Model):
+class Company(Model):
     __tablename__ = "companies"
     id = db.Column(db.Integer, primary_key=True)
     place_id = db.Column(db.String(256), unique=True, nullable=True)
@@ -220,7 +227,7 @@ class Company(db.Model):
 # ── Audit ─────────────────────────────────────────────────────
 
 
-class Audit(db.Model):
+class Audit(Model):
     __tablename__ = "audits"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
@@ -301,7 +308,7 @@ class Audit(db.Model):
 # ── Competitor ────────────────────────────────────────────────
 
 
-class Competitor(db.Model):
+class Competitor(Model):
     __tablename__ = "competitors"
     id = db.Column(db.Integer, primary_key=True)
     audit_id = db.Column(db.Integer, db.ForeignKey("audits.id"), nullable=False)
@@ -320,7 +327,7 @@ class Competitor(db.Model):
 # ── Package ───────────────────────────────────────────────────
 
 
-class Package(db.Model):
+class Package(Model):
     __tablename__ = "packages"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
@@ -342,7 +349,7 @@ class Package(db.Model):
 # ── Offer ─────────────────────────────────────────────────────
 
 
-class Offer(db.Model):
+class Offer(Model):
     __tablename__ = "offers"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
@@ -369,7 +376,7 @@ class Offer(db.Model):
 # ── Visit ─────────────────────────────────────────────────────
 
 
-class Visit(db.Model):
+class Visit(Model):
     __tablename__ = "visits"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
@@ -419,7 +426,7 @@ class Visit(db.Model):
 NOTE_SCOPES = ["company", "project", "personal"]
 
 
-class Note(db.Model):
+class Note(Model):
     __tablename__ = "notes"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True)
@@ -456,7 +463,7 @@ PAYMENT_KINDS = ["retainer", "addon", "project_milestone", "one_time"]
 PAYMENT_STATUSES = ["unpaid", "paid", "overdue", "cancelled"]
 
 
-class Payment(db.Model):
+class Payment(Model):
     __tablename__ = "payments"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
@@ -507,7 +514,7 @@ class Payment(db.Model):
 EXPENSE_CATEGORIES = ["seo_tools", "subcontractor", "marketing", "office_transport"]
 
 
-class Expense(db.Model):
+class Expense(Model):
     __tablename__ = "expenses"
     id = db.Column(db.Integer, primary_key=True)
     category = db.Column(db.String(32), default="seo_tools")
@@ -547,7 +554,7 @@ class Expense(db.Model):
 BILLING_CYCLES = ["monthly", "quarterly", "yearly"]
 
 
-class Subscription(db.Model):
+class Subscription(Model):
     __tablename__ = "subscriptions"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(256), nullable=False)
@@ -588,7 +595,7 @@ PROJECT_KINDS = ["website", "seo_retainer", "content_campaign", "other"]
 PROJECT_STATUSES = ["planning", "active", "on_hold", "done", "cancelled"]
 
 
-class Project(db.Model):
+class Project(Model):
     __tablename__ = "projects"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
@@ -606,7 +613,9 @@ class Project(db.Model):
     created_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     updated_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
-    tasks = db.relationship("Task", backref="project", lazy=True, cascade="all, delete-orphan")
+    # Relacje, po których kod iteruje, mają typ Mapped[list[...]] (relationship z SQLAlchemy zamiast
+    # db.relationship, które mypy widzi jako właściwość, a nie listę). Działają tak samo.
+    tasks: Mapped[list["Task"]] = relationship("Task", backref="project", lazy=True, cascade="all, delete-orphan")
 
     @property
     def kind_label(self):
@@ -658,7 +667,7 @@ def task_status_label(code):
     return labels.get(code, code)
 
 
-class Task(db.Model):
+class Task(Model):
     __tablename__ = "tasks"
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(512), nullable=False)
@@ -678,7 +687,7 @@ class Task(db.Model):
     updated_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
     company = db.relationship("Company", foreign_keys=[company_id])
-    subtasks = db.relationship(
+    subtasks: Mapped[list["Task"]] = relationship(
         "Task",
         backref=db.backref("parent_task", remote_side="Task.id"),
         cascade="all, delete-orphan",
@@ -717,7 +726,7 @@ CONTENT_TYPES = ["blog", "landing", "guest_post", "social", "email"]
 CONTENT_STATUSES = ["idea", "writing", "review", "approved", "published"]
 
 
-class ContentPost(db.Model):
+class ContentPost(Model):
     __tablename__ = "content_posts"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
@@ -764,7 +773,7 @@ class ContentPost(db.Model):
 # ── KnowledgeArticle (SOP / baza wiedzy) ──────────────────────
 
 
-class KnowledgeArticle(db.Model):
+class KnowledgeArticle(Model):
     __tablename__ = "knowledge_articles"
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(512), nullable=False)
@@ -784,7 +793,7 @@ class KnowledgeArticle(db.Model):
 # ── ClientCredential (link do sejfu haseł) ────────────────────
 
 
-class ClientCredential(db.Model):
+class ClientCredential(Model):
     __tablename__ = "client_credentials"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
@@ -802,7 +811,7 @@ class ClientCredential(db.Model):
 # ── EmailTemplate ─────────────────────────────────────────────
 
 
-class EmailTemplate(db.Model):
+class EmailTemplate(Model):
     __tablename__ = "email_templates"
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(64), unique=True, nullable=False)
@@ -817,7 +826,7 @@ class EmailTemplate(db.Model):
 # ── EmailLog ──────────────────────────────────────────────────
 
 
-class EmailLog(db.Model):
+class EmailLog(Model):
     __tablename__ = "email_log"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True)
@@ -837,7 +846,7 @@ class EmailLog(db.Model):
 # ── ContractTemplate ──────────────────────────────────────────
 
 
-class ContractTemplate(db.Model):
+class ContractTemplate(Model):
     __tablename__ = "contract_templates"
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(64), unique=True, nullable=False)
@@ -851,7 +860,7 @@ class ContractTemplate(db.Model):
 # ── Contract ──────────────────────────────────────────────────
 
 
-class Contract(db.Model):
+class Contract(Model):
     __tablename__ = "contracts"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
@@ -879,7 +888,7 @@ class Contract(db.Model):
 FILE_CATEGORIES = ["contract", "brief", "mockup", "report", "other"]
 
 
-class ClientFile(db.Model):
+class ClientFile(Model):
     __tablename__ = "client_files"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=True)
@@ -944,7 +953,7 @@ class ClientFile(db.Model):
 # ── GSC / GA snapshots ────────────────────────────────────────
 
 
-class GscSnapshot(db.Model):
+class GscSnapshot(Model):
     __tablename__ = "gsc_snapshots"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
@@ -962,7 +971,7 @@ class GscSnapshot(db.Model):
     top_pages = JsonProperty("_top_pages")
 
 
-class GaSnapshot(db.Model):
+class GaSnapshot(Model):
     __tablename__ = "ga_snapshots"
     id = db.Column(db.Integer, primary_key=True)
     company_id = db.Column(db.Integer, db.ForeignKey("companies.id"), nullable=False)
@@ -987,7 +996,7 @@ ROLES = ("admin", "member")
 LANGUAGES = ("pl", "en")
 
 
-class User(db.Model):
+class User(Model):
     """Osoba w zespole. Admin zarządza zespołem i ustawieniami, członek pracuje na danych."""
 
     __tablename__ = "users"
@@ -1029,7 +1038,7 @@ class User(db.Model):
 # ── TaskComment (dyskusja pod zadaniem) ──────────────────────
 
 
-class TaskComment(db.Model):
+class TaskComment(Model):
     __tablename__ = "task_comments"
     id = db.Column(db.Integer, primary_key=True)
     task_id = db.Column(db.Integer, db.ForeignKey("tasks.id"), nullable=False)
@@ -1046,7 +1055,7 @@ class TaskComment(db.Model):
 # ── Mention (@mentions box / skrzynka) ───────────────────────
 
 
-class Mention(db.Model):
+class Mention(Model):
     __tablename__ = "mentions"
     id = db.Column(db.Integer, primary_key=True)
     mentioned_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
@@ -1065,7 +1074,7 @@ class Mention(db.Model):
 # ── Whiteboard (tablice rysunkowe, wspólne dla zespołu) ──────────
 
 
-class Whiteboard(db.Model):
+class Whiteboard(Model):
     __tablename__ = "whiteboards"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(256), nullable=False, default="Tablica")
@@ -1080,7 +1089,7 @@ class Whiteboard(db.Model):
     created_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     updated_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
-    strokes = db.relationship(
+    strokes: Mapped[list["WhiteboardStroke"]] = relationship(
         "WhiteboardStroke",
         backref="whiteboard",
         cascade="all, delete-orphan",
@@ -1116,7 +1125,7 @@ WHITEBOARD_TOOLS = (
 )
 
 
-class WhiteboardStroke(db.Model):
+class WhiteboardStroke(Model):
     """Pojedynczy obiekt na tablicy - kreska, ksztalt, tekst, sticky, obraz."""
 
     __tablename__ = "whiteboard_strokes"
@@ -1150,7 +1159,7 @@ class WhiteboardStroke(db.Model):
     author = db.relationship("User", foreign_keys=[author_user_id])
 
 
-class WhiteboardDeletion(db.Model):
+class WhiteboardDeletion(Model):
     """Log skasowan - do propagacji do pollingujacych klientow."""
 
     __tablename__ = "whiteboard_deletions"
@@ -1160,7 +1169,7 @@ class WhiteboardDeletion(db.Model):
     deleted_at = db.Column(db.DateTime, default=utcnow)
 
 
-class WhiteboardCursor(db.Model):
+class WhiteboardCursor(Model):
     """Live cursor - pozycja uzytkownika na tablicy. Update przez heartbeat."""
 
     __tablename__ = "whiteboard_cursors"
@@ -1178,7 +1187,7 @@ class WhiteboardCursor(db.Model):
 # ── AuditLog (historia zmian dla detail views) ───────────────
 
 
-class AuditLog(db.Model):
+class AuditLog(Model):
     __tablename__ = "audit_log"
     id = db.Column(db.Integer, primary_key=True)
     table_name = db.Column(db.String(64), nullable=False)  # tasks | notes | payments ...

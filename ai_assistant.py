@@ -789,7 +789,7 @@ def run_conversation(
     Zwraca: {"reply": str, "tools_called": [...], "error": None | str, "masked": int}
     """
     call = call or call_model
-    tools_called = []
+    tools_called: list[dict] = []
     try:
         return _run(
             user_message, history, models, db, finance_helpers, user_id, max_iterations, masker, call, tools_called
