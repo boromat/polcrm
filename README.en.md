@@ -170,8 +170,10 @@ Reporting issues: [SECURITY.md](SECURITY.md).
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest
+python -m pytest --cov      # tests and code coverage (60% floor in .coveragerc)
 python -m ruff check .      # lint: pyflakes rules
+python -m ruff format --check .
+python -m mypy .            # types (settings in mypy.ini)
 # the same suite on PostgreSQL:
 TEST_DATABASE_URL=postgresql+psycopg://user:password@127.0.0.1:5432/polcrm_test python -m pytest
 ```
@@ -188,7 +190,7 @@ The tests cover:
 - finance and audit scoring logic and the main forms,
 - a crawl of every GET route with no server error and no network access.
 
-114 tests in total, the same suite on SQLite and PostgreSQL 16. CI runs them on Linux (Python 3.12 and 3.13) and Windows, separately on PostgreSQL 16, builds the Docker image and checks that the built Tailwind is up to date.
+124 tests in total, the same suite on SQLite and PostgreSQL 16. CI checks lint, formatting and types, runs the tests with a coverage floor on Linux (Python 3.12 and 3.13) and Windows, separately on PostgreSQL 16, builds the Docker image and checks that the built Tailwind is up to date.
 
 After changing Tailwind classes in templates, rebuild the CSS (Node.js is needed only for this step):
 

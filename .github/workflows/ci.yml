@@ -39,11 +39,15 @@ jobs:
       - name: Instalacja (z polanonem, żeby testy maskowania szły na prawdziwej bibliotece)
         run: python -m pip install -r requirements-dev.txt
 
-      - name: Lint (pyflakes przez ruff)
-        run: python -m ruff check .
+      - name: Lint (pyflakes przez ruff) i format
+        run: python -m ruff check --output-format=github . && python -m ruff format --check .
 
-      - name: Testy
-        run: python -m pytest
+      - name: Typy (mypy, ustawienia w mypy.ini)
+        run: python -m mypy .
+
+      # Próg pokrycia jest w .coveragerc (fail_under): poniżej niego krok kończy się błędem.
+      - name: Testy z pokryciem
+        run: python -m pytest --cov --cov-report=term-missing
 
   postgres:
     name: Testy na PostgreSQL 16
