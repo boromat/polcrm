@@ -190,7 +190,7 @@ The tests cover:
 - finance and audit scoring logic and the main forms,
 - a crawl of every GET route with no server error and no network access.
 
-124 tests in total, the same suite on SQLite and PostgreSQL 16. CI checks lint, formatting and types, runs the tests with a coverage floor on Linux (Python 3.12 and 3.13) and Windows, separately on PostgreSQL 16, builds the Docker image and checks that the built Tailwind is up to date.
+124 tests in total, the same suite on SQLite and PostgreSQL 16. CI checks lint, formatting and types, runs the tests with a coverage floor on Linux (Python 3.12, 3.13 and 3.15, the last as in the Docker image) and Windows, separately on PostgreSQL 16, builds the Docker image and checks that the built Tailwind is up to date.
 
 After changing Tailwind classes in templates, rebuild the CSS (Node.js is needed only for this step):
 
