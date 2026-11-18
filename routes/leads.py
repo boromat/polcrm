@@ -38,6 +38,7 @@ from models import (
 
 # ── Search (Google Places) ────────────────────────────────────
 
+
 @app.route("/search")
 def search():
     return render_template("search.html", api_key=get_api_key())
@@ -61,25 +62,30 @@ def activity_list():
         q = q.filter(AuditLog.action == action_filter)
 
     total = q.count()
-    entries = (q.order_by(AuditLog.created_at.desc())
-                .offset((page - 1) * per_page)
-                .limit(per_page)
-                .all())
+    entries = q.order_by(AuditLog.created_at.desc()).offset((page - 1) * per_page).limit(per_page).all()
     total_pages = max(1, (total + per_page - 1) // per_page)
 
     users = User.query.order_by(User.name).all()
-    tables = [t[0] for t in db.session.query(AuditLog.table_name)
-              .distinct().order_by(AuditLog.table_name).all() if t[0]]
-    actions = [a[0] for a in db.session.query(AuditLog.action)
-               .distinct().order_by(AuditLog.action).all() if a[0]]
+    tables = [
+        t[0] for t in db.session.query(AuditLog.table_name).distinct().order_by(AuditLog.table_name).all() if t[0]
+    ]
+    actions = [a[0] for a in db.session.query(AuditLog.action).distinct().order_by(AuditLog.action).all() if a[0]]
 
-    return render_template("activity.html",
-                           entries=entries, total=total,
-                           page=page, total_pages=total_pages,
-                           users=users, tables=tables, actions=actions,
-                           user_filter=user_filter, table_filter=table_filter,
-                           action_filter=action_filter,
-                           table_labels=AuditLog.table_labels(), action_labels=AuditLog.action_labels())
+    return render_template(
+        "activity.html",
+        entries=entries,
+        total=total,
+        page=page,
+        total_pages=total_pages,
+        users=users,
+        tables=tables,
+        actions=actions,
+        user_filter=user_filter,
+        table_filter=table_filter,
+        action_filter=action_filter,
+        table_labels=AuditLog.table_labels(),
+        action_labels=AuditLog.action_labels(),
+    )
 
 
 @app.route("/szukaj-globalnie")
@@ -92,67 +98,113 @@ def global_search():
 
     like = f"%{q}%"
 
-    companies = Company.query.filter(
-        db.or_(
-            Company.name.ilike(like),
-            Company.address.ilike(like),
-            Company.industry.ilike(like),
-            Company.contact_person.ilike(like),
-            Company.contact_email.ilike(like),
-            Company.phone.ilike(like),
-            Company.website.ilike(like),
-            Company.client_legal_name.ilike(like),
-            Company.client_nip.ilike(like),
-            Company.main_services.ilike(like),
+    companies = (
+        Company.query.filter(
+            db.or_(
+                Company.name.ilike(like),
+                Company.address.ilike(like),
+                Company.industry.ilike(like),
+                Company.contact_person.ilike(like),
+                Company.contact_email.ilike(like),
+                Company.phone.ilike(like),
+                Company.website.ilike(like),
+                Company.client_legal_name.ilike(like),
+                Company.client_nip.ilike(like),
+                Company.main_services.ilike(like),
+            )
         )
-    ).limit(50).all()
+        .limit(50)
+        .all()
+    )
 
-    tasks = Task.query.filter(
-        db.or_(Task.title.ilike(like), Task.description.ilike(like))
-    ).limit(50).all()
+    tasks = Task.query.filter(db.or_(Task.title.ilike(like), Task.description.ilike(like))).limit(50).all()
 
-    projects = Project.query.filter(
-        db.or_(Project.name.ilike(like), Project.notes.ilike(like),
-               Project.domain.ilike(like), Project.hosting.ilike(like))
-    ).limit(50).all()
+    projects = (
+        Project.query.filter(
+            db.or_(
+                Project.name.ilike(like),
+                Project.notes.ilike(like),
+                Project.domain.ilike(like),
+                Project.hosting.ilike(like),
+            )
+        )
+        .limit(50)
+        .all()
+    )
 
-    notes = Note.query.filter(
-        db.or_(Note.title.ilike(like), Note.content.ilike(like))
-    ).limit(50).all()
+    notes = Note.query.filter(db.or_(Note.title.ilike(like), Note.content.ilike(like))).limit(50).all()
 
-    content_posts = ContentPost.query.filter(
-        db.or_(ContentPost.title.ilike(like), ContentPost.brief.ilike(like),
-               ContentPost._keywords.ilike(like), ContentPost.url.ilike(like),
-               ContentPost.writer_name.ilike(like))
-    ).limit(50).all()
+    content_posts = (
+        ContentPost.query.filter(
+            db.or_(
+                ContentPost.title.ilike(like),
+                ContentPost.brief.ilike(like),
+                ContentPost._keywords.ilike(like),
+                ContentPost.url.ilike(like),
+                ContentPost.writer_name.ilike(like),
+            )
+        )
+        .limit(50)
+        .all()
+    )
 
-    kb_articles = KnowledgeArticle.query.filter(
-        db.or_(KnowledgeArticle.title.ilike(like), KnowledgeArticle.body.ilike(like),
-               KnowledgeArticle.category.ilike(like))
-    ).limit(50).all()
+    kb_articles = (
+        KnowledgeArticle.query.filter(
+            db.or_(
+                KnowledgeArticle.title.ilike(like),
+                KnowledgeArticle.body.ilike(like),
+                KnowledgeArticle.category.ilike(like),
+            )
+        )
+        .limit(50)
+        .all()
+    )
 
-    payments = Payment.query.filter(
-        db.or_(Payment.title.ilike(like), Payment.description.ilike(like),
-               Payment.payment_number.ilike(like),
-               Payment.external_invoice_number.ilike(like))
-    ).limit(50).all()
+    payments = (
+        Payment.query.filter(
+            db.or_(
+                Payment.title.ilike(like),
+                Payment.description.ilike(like),
+                Payment.payment_number.ilike(like),
+                Payment.external_invoice_number.ilike(like),
+            )
+        )
+        .limit(50)
+        .all()
+    )
 
-    credentials = ClientCredential.query.filter(
-        db.or_(ClientCredential.label.ilike(like),
-               ClientCredential.login_url.ilike(like),
-               ClientCredential.username_hint.ilike(like),
-               ClientCredential.notes.ilike(like))
-    ).limit(50).all()
+    credentials = (
+        ClientCredential.query.filter(
+            db.or_(
+                ClientCredential.label.ilike(like),
+                ClientCredential.login_url.ilike(like),
+                ClientCredential.username_hint.ilike(like),
+                ClientCredential.notes.ilike(like),
+            )
+        )
+        .limit(50)
+        .all()
+    )
 
-    email_tpls = EmailTemplate.query.filter(
-        db.or_(EmailTemplate.name.ilike(like), EmailTemplate.key.ilike(like),
-               EmailTemplate.subject_template.ilike(like))
-    ).limit(20).all()
+    email_tpls = (
+        EmailTemplate.query.filter(
+            db.or_(
+                EmailTemplate.name.ilike(like),
+                EmailTemplate.key.ilike(like),
+                EmailTemplate.subject_template.ilike(like),
+            )
+        )
+        .limit(20)
+        .all()
+    )
 
-    contracts = Contract.query.filter(
-        db.or_(Contract.name.ilike(like), Contract.content_rendered.ilike(like),
-               Contract.notes.ilike(like))
-    ).limit(20).all()
+    contracts = (
+        Contract.query.filter(
+            db.or_(Contract.name.ilike(like), Contract.content_rendered.ilike(like), Contract.notes.ilike(like))
+        )
+        .limit(20)
+        .all()
+    )
 
     groups = [
         (_("Firmy"), "bi-building", "company_detail", "id", companies),
@@ -216,7 +268,10 @@ def search_run():
         collected = 0
         try:
             response = gmaps.places_nearby(
-                location=(lat, lng), radius=radius, keyword=keyword, language=i18n.DEFAULT_LANGUAGE,
+                location=(lat, lng),
+                radius=radius,
+                keyword=keyword,
+                language=i18n.DEFAULT_LANGUAGE,
             )
         except Exception as exc:
             flash(_("Błąd Nearby Search [%(keyword)s]: %(error)s", keyword=keyword, error=exc), "warning")
@@ -240,8 +295,11 @@ def search_run():
             time.sleep(2)
             try:
                 response = gmaps.places_nearby(
-                    location=(lat, lng), radius=radius, keyword=keyword,
-                    page_token=next_token, language=i18n.DEFAULT_LANGUAGE,
+                    location=(lat, lng),
+                    radius=radius,
+                    keyword=keyword,
+                    page_token=next_token,
+                    language=i18n.DEFAULT_LANGUAGE,
                 )
             except Exception:
                 break
@@ -267,22 +325,24 @@ def search_run():
 
         geo = r.get("geometry", {}).get("location", {})
         types_list = r.get("types", [])
-        places.append({
-            "place_id": pid,
-            "name": r.get("name", ""),
-            "address": r.get("formatted_address", ""),
-            "phone": r.get("formatted_phone_number", ""),
-            "intl_phone": r.get("international_phone_number", ""),
-            "lat": geo.get("lat"),
-            "lng": geo.get("lng"),
-            "rating": rating,
-            "user_ratings_total": r.get("user_ratings_total"),
-            "business_status": r.get("business_status", ""),
-            "primary_type": types_list[0] if types_list else "",
-            "google_maps_url": r.get("url", ""),
-            "open_now": open_now,
-            "source_keyword": item["source_keyword"],
-        })
+        places.append(
+            {
+                "place_id": pid,
+                "name": r.get("name", ""),
+                "address": r.get("formatted_address", ""),
+                "phone": r.get("formatted_phone_number", ""),
+                "intl_phone": r.get("international_phone_number", ""),
+                "lat": geo.get("lat"),
+                "lng": geo.get("lng"),
+                "rating": rating,
+                "user_ratings_total": r.get("user_ratings_total"),
+                "business_status": r.get("business_status", ""),
+                "primary_type": types_list[0] if types_list else "",
+                "google_maps_url": r.get("url", ""),
+                "open_now": open_now,
+                "source_keyword": item["source_keyword"],
+            }
+        )
 
     existing_pids = set()
     if places:
@@ -292,7 +352,9 @@ def search_run():
 
     return render_template(
         "results.html",
-        places=places, total_found=total_found, keywords=keywords,
+        places=places,
+        total_found=total_found,
+        keywords=keywords,
         existing_pids=existing_pids,
     )
 

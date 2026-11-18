@@ -18,6 +18,7 @@ from models import ClientCredential, Company, db
 #  DOSTĘPY KLIENTÓW (LINKI DO SEJFÓW)
 # ═══════════════════════════════════════════════════════════════
 
+
 @app.route("/companies/<int:company_id>/credentials/new", methods=["POST"])
 def credential_new(company_id):
     db.get_or_404(Company, company_id)

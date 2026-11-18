@@ -19,6 +19,7 @@ from models import KnowledgeArticle, db
 #  BAZA WIEDZY / SOP
 # ═══════════════════════════════════════════════════════════════
 
+
 @app.route("/knowledge")
 def knowledge_list():
     category = request.args.get("category", "")

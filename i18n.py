@@ -84,14 +84,50 @@ def js_catalog(lang: str) -> dict[str, str]:
 
 # Dates: the app shows weekday and month names in both languages.
 MONTHS = {
-    "pl": ["stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca", "lipca", "sierpnia",
-           "września", "października", "listopada", "grudnia"],
-    "en": ["January", "February", "March", "April", "May", "June", "July", "August", "September",
-           "October", "November", "December"],
+    "pl": [
+        "stycznia",
+        "lutego",
+        "marca",
+        "kwietnia",
+        "maja",
+        "czerwca",
+        "lipca",
+        "sierpnia",
+        "września",
+        "października",
+        "listopada",
+        "grudnia",
+    ],
+    "en": [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ],
 }
 MONTHS_NOMINATIVE = {
-    "pl": ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień",
-           "Wrzesień", "Październik", "Listopad", "Grudzień"],
+    "pl": [
+        "Styczeń",
+        "Luty",
+        "Marzec",
+        "Kwiecień",
+        "Maj",
+        "Czerwiec",
+        "Lipiec",
+        "Sierpień",
+        "Wrzesień",
+        "Październik",
+        "Listopad",
+        "Grudzień",
+    ],
     "en": MONTHS["en"],
 }
 WEEKDAYS = {

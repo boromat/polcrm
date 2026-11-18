@@ -8,12 +8,35 @@ import ai_assistant
 import privacy
 
 PAGES = [
-    "/", "/companies", "/companies/new", "/pipeline", "/tasks", "/tasks/new", "/calendar",
-    "/finances", "/finances/payments", "/finances/expenses", "/finances/subscriptions",
-    "/finances/report/internal", "/projects", "/content", "/content/calendar", "/notes",
-    "/knowledge", "/packages", "/audits", "/emails/templates", "/emails/log",
-    "/contracts/templates", "/tablica", "/settings", "/aktywnosci", "/inbox", "/search",
-    "/szukaj-globalnie?q=Kowalski", "/visit-guide",
+    "/",
+    "/companies",
+    "/companies/new",
+    "/pipeline",
+    "/tasks",
+    "/tasks/new",
+    "/calendar",
+    "/finances",
+    "/finances/payments",
+    "/finances/expenses",
+    "/finances/subscriptions",
+    "/finances/report/internal",
+    "/projects",
+    "/content",
+    "/content/calendar",
+    "/notes",
+    "/knowledge",
+    "/packages",
+    "/audits",
+    "/emails/templates",
+    "/emails/log",
+    "/contracts/templates",
+    "/tablica",
+    "/settings",
+    "/aktywnosci",
+    "/inbox",
+    "/search",
+    "/szukaj-globalnie?q=Kowalski",
+    "/visit-guide",
 ]
 
 
@@ -67,17 +90,33 @@ def test_assistant_api_masks_end_to_end(client, seeded, monkeypatch):
                 text = text.replace(value, token)
         return text, mapping
 
-    monkeypatch.setattr(ai_assistant, "build_masker",
-                        lambda settings=None: privacy.Masker(anonymize=fake_anonymize))
+    monkeypatch.setattr(ai_assistant, "build_masker", lambda settings=None: privacy.Masker(anonymize=fake_anonymize))
     sent = []
 
     def fake_call(messages, **kw):
         sent.append(json.dumps(messages, ensure_ascii=False))
         if len(sent) == 1:
-            return {"choices": [{"message": {"content": "", "tool_calls": [{
-                "id": "c1", "type": "function", "function": {
-                    "name": "add_note",
-                    "arguments": json.dumps({"title": "Telefon", "content": "Oddzwonić do <OSOBA_1>"})}}]}}]}
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "",
+                            "tool_calls": [
+                                {
+                                    "id": "c1",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "add_note",
+                                        "arguments": json.dumps(
+                                            {"title": "Telefon", "content": "Oddzwonić do <OSOBA_1>"}
+                                        ),
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ]
+            }
         return {"choices": [{"message": {"content": "Dodałem notatkę o <OSOBA_1>."}}]}
 
     monkeypatch.setattr(ai_assistant, "call_model", fake_call)
@@ -133,8 +172,7 @@ def test_api_keys_are_encrypted_at_rest(seeded):
         s.google_api_key = "AIza-test-not-a-real-key"
         s.google_oauth_client_secret = "oauth-secret-not-real"
         db.session.commit()
-        raw = db.session.execute(
-            text("SELECT google_api_key, google_oauth_client_secret FROM settings")).first()
+        raw = db.session.execute(text("SELECT google_api_key, google_oauth_client_secret FROM settings")).first()
         assert "AIza-test-not-a-real-key" not in raw[0]
         assert "oauth-secret-not-real" not in raw[1]
         db.session.expire_all()

@@ -22,6 +22,7 @@ from models import (
 
 # ── Packages ──────────────────────────────────────────────────
 
+
 @app.route("/packages", methods=["GET"])
 def packages_list():
     packages = Package.query.all()
@@ -47,6 +48,7 @@ def package_edit(id):
 
 
 # ── Offers ────────────────────────────────────────────────────
+
 
 @app.route("/companies/<int:company_id>/offers/new", methods=["POST"])
 def offer_new(company_id):

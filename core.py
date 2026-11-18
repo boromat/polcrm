@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 # Wczytaj .env jesli istnieje - musi byc PRZED uzyciem os.environ
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass
@@ -54,6 +55,7 @@ from models import (
 
 # ── Konfiguracja z ENV ─────────────────────────────────────────
 
+
 def _env_bool(key, default=False):
     return os.environ.get(key, str(default)).strip().lower() in ("1", "true", "yes", "on")
 
@@ -61,14 +63,11 @@ def _env_bool(key, default=False):
 IS_PRODUCTION = os.environ.get("FLASK_ENV", "development").lower() == "production"
 # AUTH_MODE: password (domyślnie) | cloudflare | profile (demo). Stare CF_ACCESS_ENABLED=true = cloudflare.
 AUTH_MODE = auth.resolve_auth_mode(
-    os.environ.get("AUTH_MODE", ""), _env_bool("CF_ACCESS_ENABLED", False), IS_PRODUCTION)
+    os.environ.get("AUTH_MODE", ""), _env_bool("CF_ACCESS_ENABLED", False), IS_PRODUCTION
+)
 CF_ACCESS_ENABLED = AUTH_MODE == "cloudflare"
 LOGIN_LIMITER = auth.LoginRateLimiter()
-ALLOWED_EMAILS = {
-    e.strip().lower()
-    for e in os.environ.get("ALLOWED_EMAILS", "").split(",")
-    if e.strip()
-}
+ALLOWED_EMAILS = {e.strip().lower() for e in os.environ.get("ALLOWED_EMAILS", "").split(",") if e.strip()}
 if AUTH_MODE == "cloudflare" and not ALLOWED_EMAILS:
     # Druga warstwa kontroli jest wtedy pusta: wejdzie każdy, kogo przepuści polityka Access.
     print("[UWAGA] AUTH_MODE=cloudflare bez ALLOWED_EMAILS - aplikacja polega tylko na polityce Cloudflare Access.")
@@ -85,8 +84,7 @@ _secret = os.environ.get("FLASK_SECRET_KEY", "").strip()
 if not _secret:
     if IS_PRODUCTION:
         raise RuntimeError(
-            "FLASK_SECRET_KEY musi byc ustawiony w produkcji. "
-            "Uruchom: python scripts/generate_keys.py i wklej do .env"
+            "FLASK_SECRET_KEY musi byc ustawiony w produkcji. Uruchom: python scripts/generate_keys.py i wklej do .env"
         )
     _secret = "dev-only-insecure-key-do-not-use-in-prod"
 app.secret_key = _secret
@@ -119,10 +117,18 @@ WHITEBOARD_IMG_DIR = BASE_DIR / "output" / "whiteboard_images"
 WHITEBOARD_IMG_DIR.mkdir(parents=True, exist_ok=True)
 
 DETAIL_FIELDS = [
-    "name", "formatted_address", "formatted_phone_number",
-    "international_phone_number", "website", "geometry/location",
-    "rating", "user_ratings_total", "business_status", "type",
-    "url", "opening_hours",
+    "name",
+    "formatted_address",
+    "formatted_phone_number",
+    "international_phone_number",
+    "website",
+    "geometry/location",
+    "rating",
+    "user_ratings_total",
+    "business_status",
+    "type",
+    "url",
+    "opening_hours",
 ]
 
 
@@ -224,8 +230,12 @@ def _resolve_current_user():
         user = User.query.filter(db.func.lower(User.email) == email).first()
         if not user:
             first = User.query.count() == 0
-            user = User(name=email.split("@")[0].title(), email=email, initials=email[0].upper(),
-                        role="admin" if first else "member")
+            user = User(
+                name=email.split("@")[0].title(),
+                email=email,
+                initials=email[0].upper(),
+                role="admin" if first else "member",
+            )
             db.session.add(user)
             db.session.commit()
         return user if user.is_active else None
@@ -267,6 +277,7 @@ def admin_exists():
 
 def admin_required(view):
     """Tylko admin: zespół, klucze API, SMTP, integracje, asystent AI."""
+
     @wraps(view)
     def wrapper(*args, **kwargs):
         user = get_current_user()
@@ -275,6 +286,7 @@ def admin_required(view):
                 return jsonify({"error": _("Tylko administrator może to zrobić.")}), 403
             abort(403, _("Tylko administrator może to zrobić."))
         return view(*args, **kwargs)
+
     return wrapper
 
 
@@ -304,8 +316,17 @@ def _safe_referrer(default_url):
     return default_url
 
 
-_PUBLIC_ENDPOINTS = ("static", "login", "setup", "choose_profile", "set_profile", "toggle_theme",
-                     "oauth2callback", "set_ui_language", "web_manifest")
+_PUBLIC_ENDPOINTS = (
+    "static",
+    "login",
+    "setup",
+    "choose_profile",
+    "set_profile",
+    "toggle_theme",
+    "oauth2callback",
+    "set_ui_language",
+    "web_manifest",
+)
 
 
 @app.before_request
@@ -356,10 +377,10 @@ def check_settings():
         return None
     # Routy ktore *wymagaja* Google Maps / GSC API
     needs_google_api = (
-        "audit_",          # audit_new, audit_edit, audit_report, audit_pdf, audit_pagespeed, ...
-        "audits_",         # audits_list, audits_new
-        "company_geocode", # geocoding adresow firm
-        "search",          # wyszukiwanie firm w Google Places (search, search_run, search_competitor)
+        "audit_",  # audit_new, audit_edit, audit_report, audit_pdf, audit_pagespeed, ...
+        "audits_",  # audits_list, audits_new
+        "company_geocode",  # geocoding adresow firm
+        "search",  # wyszukiwanie firm w Google Places (search, search_run, search_competitor)
     )
     if any(request.endpoint.startswith(r) for r in needs_google_api):
         s = Settings.get()
@@ -369,6 +390,7 @@ def check_settings():
 
 
 # ── Template globals ──────────────────────────────────────────
+
 
 @app.context_processor
 def inject_globals():
@@ -434,6 +456,7 @@ def inject_globals():
 
 # ── Helpers ────────────────────────────────────────────────────
 
+
 def get_gmaps():
     s = Settings.get()
     if not s.google_api_key:
@@ -483,6 +506,7 @@ def _parse_int(s):
 
 # ── Attribution + audit helpers ────────────────────────────────
 
+
 def _set_audit_user(obj, is_new=False):
     """Set created_by_user_id on create, updated_by_user_id on update."""
     user = get_current_user()
@@ -515,6 +539,7 @@ def _find_mentions(text, source_type, source_id, task_id=None, snippet=""):
     if not text:
         return []
     import re as _re
+
     current = get_current_user()
     users = {u.name.lower(): u for u in User.query.all()}
     found_ids = set()
@@ -541,9 +566,34 @@ def _find_mentions(text, source_type, source_id, task_id=None, snippet=""):
 
 
 _BLEACH_TAGS = [
-    "p", "br", "strong", "em", "b", "i", "u", "code", "pre", "blockquote",
-    "ul", "ol", "li", "a", "h1", "h2", "h3", "h4", "h5", "h6",
-    "table", "thead", "tbody", "tr", "th", "td", "hr", "span",
+    "p",
+    "br",
+    "strong",
+    "em",
+    "b",
+    "i",
+    "u",
+    "code",
+    "pre",
+    "blockquote",
+    "ul",
+    "ol",
+    "li",
+    "a",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "hr",
+    "span",
 ]
 _BLEACH_ATTRS = {
     "a": ["href", "title", "rel", "target"],
@@ -565,18 +615,22 @@ def _render_markdown(text, mentions=True):
         return ""
     import bleach as _bleach
     import markdown as _md
+
     raw_html = _md.markdown(text, extensions=["fenced_code", "tables", "nl2br"])
     if not mentions:
-        return _bleach.clean(raw_html, tags=_BLEACH_TAGS, attributes=_BLEACH_ATTRS,
-                             protocols=_BLEACH_PROTOCOLS, strip=True)
+        return _bleach.clean(
+            raw_html, tags=_BLEACH_TAGS, attributes=_BLEACH_ATTRS, protocols=_BLEACH_PROTOCOLS, strip=True
+        )
     import re as _re
+
     raw_html = _re.sub(
         r"@([A-Za-z\u0105\u0107\u0119\u0142\u0144\u00F3\u015B\u017A\u017C\u0104\u0106\u0118\u0141\u0143\u00D3\u015A\u0179\u017B]+)",
         r'<span class="mention">@\1</span>',
         raw_html,
     )
-    clean = _bleach.clean(raw_html, tags=_BLEACH_TAGS, attributes=_BLEACH_ATTRS,
-                          protocols=_BLEACH_PROTOCOLS, strip=True)
+    clean = _bleach.clean(
+        raw_html, tags=_BLEACH_TAGS, attributes=_BLEACH_ATTRS, protocols=_BLEACH_PROTOCOLS, strip=True
+    )
     return clean
 
 

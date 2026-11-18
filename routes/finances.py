@@ -37,6 +37,7 @@ from i18n import _
 #  FINANSE
 # ═══════════════════════════════════════════════════════════════
 
+
 @app.route("/finances")
 def finances_index():
     today = date.today()
@@ -53,18 +54,22 @@ def finances_index():
             m += 12
             y -= 1
         b = finance_helpers.monthly_balance(y, m, allocate_overhead=False)
-        trend.append({
-            "label": f"{i18n.month_name(m)[:3]} {str(y)[-2:]}",
-            "revenue": b["revenue_total"],
-            "expense": b["expense_total"] + b["subscription_allocation"],
-            "balance": b["balance"],
-        })
+        trend.append(
+            {
+                "label": f"{i18n.month_name(m)[:3]} {str(y)[-2:]}",
+                "revenue": b["revenue_total"],
+                "expense": b["expense_total"] + b["subscription_allocation"],
+                "balance": b["balance"],
+            }
+        )
 
-    return render_template("finances/index.html", balance=bal, overdue=overdue,
-                           category_breakdown=cat_breakdown, trend=trend)
+    return render_template(
+        "finances/index.html", balance=bal, overdue=overdue, category_breakdown=cat_breakdown, trend=trend
+    )
 
 
 # -- Payments --
+
 
 @app.route("/finances/payments")
 def finances_payments():
@@ -77,9 +82,15 @@ def finances_payments():
         q = q.filter_by(company_id=company_id)
     payments = q.order_by(Payment.issued_at.desc()).all()
     companies = Company.query.order_by(Company.name).all()
-    return render_template("finances/payments_list.html", payments=payments,
-                           companies=companies, status=status, selected_company_id=company_id,
-                           statuses=PAYMENT_STATUSES, kinds=PAYMENT_KINDS)
+    return render_template(
+        "finances/payments_list.html",
+        payments=payments,
+        companies=companies,
+        status=status,
+        selected_company_id=company_id,
+        statuses=PAYMENT_STATUSES,
+        kinds=PAYMENT_KINDS,
+    )
 
 
 @app.route("/finances/payments/new", methods=["GET", "POST"])
@@ -107,9 +118,14 @@ def payment_new():
         flash(_("Dodano płatność %(number)s.", number=p.payment_number), "success")
         return redirect(url_for("finances_payments"))
     companies = Company.query.order_by(Company.name).all()
-    return render_template("finances/payment_form.html", payment=None, companies=companies,
-                           kinds=PAYMENT_KINDS, statuses=PAYMENT_STATUSES,
-                           preset_company_id=_parse_int(request.args.get("company_id")))
+    return render_template(
+        "finances/payment_form.html",
+        payment=None,
+        companies=companies,
+        kinds=PAYMENT_KINDS,
+        statuses=PAYMENT_STATUSES,
+        preset_company_id=_parse_int(request.args.get("company_id")),
+    )
 
 
 @app.route("/finances/payments/<int:id>/edit", methods=["GET", "POST"])
@@ -134,9 +150,14 @@ def payment_edit(id):
         flash(_("Zapisano płatność %(number)s.", number=p.payment_number), "success")
         return redirect(url_for("finances_payments"))
     companies = Company.query.order_by(Company.name).all()
-    return render_template("finances/payment_form.html", payment=p, companies=companies,
-                           kinds=PAYMENT_KINDS, statuses=PAYMENT_STATUSES,
-                           preset_company_id=p.company_id)
+    return render_template(
+        "finances/payment_form.html",
+        payment=p,
+        companies=companies,
+        kinds=PAYMENT_KINDS,
+        statuses=PAYMENT_STATUSES,
+        preset_company_id=p.company_id,
+    )
 
 
 @app.route("/finances/payments/<int:id>/mark-paid", methods=["POST"])
@@ -165,14 +186,21 @@ def payments_generate_retainers():
     month = _parse_int(request.form.get("month")) or date.today().month
     count = finance_helpers.generate_monthly_retainers(year, month)
     if count:
-        flash(_("Wygenerowano %(count)s płatności abonamentowych dla %(period)s.", count=count,
-                period=f"{year}-{month:02d}"), "success")
+        flash(
+            _(
+                "Wygenerowano %(count)s płatności abonamentowych dla %(period)s.",
+                count=count,
+                period=f"{year}-{month:02d}",
+            ),
+            "success",
+        )
     else:
         flash(_("Brak nowych abonamentów do wygenerowania (już są lub nie ma klientów retainer)."), "info")
     return redirect(url_for("finances_payments"))
 
 
 # -- Expenses --
+
 
 @app.route("/finances/expenses")
 def finances_expenses():
@@ -181,8 +209,9 @@ def finances_expenses():
     if category in EXPENSE_CATEGORIES:
         q = q.filter_by(category=category)
     expenses = q.order_by(Expense.payment_date.desc()).all()
-    return render_template("finances/expenses_list.html", expenses=expenses,
-                           category=category, categories=EXPENSE_CATEGORIES)
+    return render_template(
+        "finances/expenses_list.html", expenses=expenses, category=category, categories=EXPENSE_CATEGORIES
+    )
 
 
 @app.route("/finances/expenses/new", methods=["GET", "POST"])
@@ -207,8 +236,13 @@ def expense_new():
         return redirect(url_for("finances_expenses"))
     companies = Company.query.order_by(Company.name).all()
     subscriptions = Subscription.query.order_by(Subscription.name).all()
-    return render_template("finances/expense_form.html", expense=None, companies=companies,
-                           subscriptions=subscriptions, categories=EXPENSE_CATEGORIES)
+    return render_template(
+        "finances/expense_form.html",
+        expense=None,
+        companies=companies,
+        subscriptions=subscriptions,
+        categories=EXPENSE_CATEGORIES,
+    )
 
 
 @app.route("/finances/expenses/<int:id>/edit", methods=["GET", "POST"])
@@ -231,8 +265,13 @@ def expense_edit(id):
         return redirect(url_for("finances_expenses"))
     companies = Company.query.order_by(Company.name).all()
     subscriptions = Subscription.query.order_by(Subscription.name).all()
-    return render_template("finances/expense_form.html", expense=e, companies=companies,
-                           subscriptions=subscriptions, categories=EXPENSE_CATEGORIES)
+    return render_template(
+        "finances/expense_form.html",
+        expense=e,
+        companies=companies,
+        subscriptions=subscriptions,
+        categories=EXPENSE_CATEGORIES,
+    )
 
 
 @app.route("/finances/expenses/<int:id>/delete", methods=["POST"])
@@ -245,6 +284,7 @@ def expense_delete(id):
 
 
 # -- Subscriptions --
+
 
 @app.route("/finances/subscriptions")
 def finances_subscriptions():
@@ -270,8 +310,9 @@ def subscription_new():
         db.session.commit()
         flash(_("Dodano subskrypcję %(name)s.", name=sub.name), "success")
         return redirect(url_for("finances_subscriptions"))
-    return render_template("finances/subscription_form.html", subscription=None,
-                           cycles=BILLING_CYCLES, categories=EXPENSE_CATEGORIES)
+    return render_template(
+        "finances/subscription_form.html", subscription=None, cycles=BILLING_CYCLES, categories=EXPENSE_CATEGORIES
+    )
 
 
 @app.route("/finances/subscriptions/<int:id>/edit", methods=["GET", "POST"])
@@ -290,8 +331,9 @@ def subscription_edit(id):
         db.session.commit()
         flash(_("Subskrypcja zapisana."), "success")
         return redirect(url_for("finances_subscriptions"))
-    return render_template("finances/subscription_form.html", subscription=sub,
-                           cycles=BILLING_CYCLES, categories=EXPENSE_CATEGORIES)
+    return render_template(
+        "finances/subscription_form.html", subscription=sub, cycles=BILLING_CYCLES, categories=EXPENSE_CATEGORIES
+    )
 
 
 @app.route("/finances/subscriptions/<int:id>/delete", methods=["POST"])
@@ -305,6 +347,7 @@ def subscription_delete(id):
 
 # -- Internal Report --
 
+
 @app.route("/finances/report/internal")
 def finances_report_internal():
     today = date.today()
@@ -312,5 +355,4 @@ def finances_report_internal():
     month = _parse_int(request.args.get("month")) or today.month
     allocate = request.args.get("allocate_overhead", "1") == "1"
     balance = finance_helpers.monthly_balance(year, month, allocate_overhead=allocate)
-    return render_template("finances/report_internal.html", balance=balance, allocate=allocate,
-                           year=year, month=month)
+    return render_template("finances/report_internal.html", balance=balance, allocate=allocate, year=year, month=month)

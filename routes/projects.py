@@ -30,23 +30,27 @@ from models import (
 #  PROJEKTY
 # ═══════════════════════════════════════════════════════════════
 
+
 @app.route("/projects")
 def projects_list():
     status = request.args.get("status", "")
     q = Project.query
     if status in PROJECT_STATUSES:
         q = q.filter_by(status=status)
-    projects = q.order_by(Project.status, Project.deadline.asc().nullslast() if hasattr(Project.deadline.asc(), 'nullslast') else Project.deadline.asc()).all()
-    return render_template("projects/list.html", projects=projects, status=status,
-                           statuses=PROJECT_STATUSES)
+    projects = q.order_by(
+        Project.status,
+        Project.deadline.asc().nullslast() if hasattr(Project.deadline.asc(), "nullslast") else Project.deadline.asc(),
+    ).all()
+    return render_template("projects/list.html", projects=projects, status=status, statuses=PROJECT_STATUSES)
 
 
 @app.route("/projects/<int:id>")
 def project_detail(id):
     p = db.get_or_404(Project, id)
     tasks = Task.query.filter_by(project_id=p.id).order_by(Task.status, Task.order_hint, Task.id).all()
-    return render_template("projects/detail.html", project=p, tasks=tasks,
-                           priorities=TASK_PRIORITIES, statuses=TASK_STATUSES)
+    return render_template(
+        "projects/detail.html", project=p, tasks=tasks, priorities=TASK_PRIORITIES, statuses=TASK_STATUSES
+    )
 
 
 @app.route("/projects/new", methods=["GET", "POST"])
@@ -70,9 +74,14 @@ def project_new():
         flash(_("Projekt %(name)s dodany.", name=p.name), "success")
         return redirect(url_for("project_detail", id=p.id))
     companies = Company.query.order_by(Company.name).all()
-    return render_template("projects/form.html", project=None, companies=companies,
-                           kinds=PROJECT_KINDS, statuses=PROJECT_STATUSES,
-                           preset_company_id=_parse_int(request.args.get("company_id")))
+    return render_template(
+        "projects/form.html",
+        project=None,
+        companies=companies,
+        kinds=PROJECT_KINDS,
+        statuses=PROJECT_STATUSES,
+        preset_company_id=_parse_int(request.args.get("company_id")),
+    )
 
 
 @app.route("/projects/<int:id>/edit", methods=["GET", "POST"])
@@ -94,9 +103,14 @@ def project_edit(id):
         flash(_("Projekt zapisany."), "success")
         return redirect(url_for("project_detail", id=p.id))
     companies = Company.query.order_by(Company.name).all()
-    return render_template("projects/form.html", project=p, companies=companies,
-                           kinds=PROJECT_KINDS, statuses=PROJECT_STATUSES,
-                           preset_company_id=p.company_id)
+    return render_template(
+        "projects/form.html",
+        project=p,
+        companies=companies,
+        kinds=PROJECT_KINDS,
+        statuses=PROJECT_STATUSES,
+        preset_company_id=p.company_id,
+    )
 
 
 @app.route("/projects/<int:id>/delete", methods=["POST"])

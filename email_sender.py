@@ -78,8 +78,7 @@ def _truncate_body_for_log(body):
     return body[:_EMAIL_LOG_BODY_LIMIT] + f"\n...[przyciete, oryginal {len(body)} znakow]"
 
 
-def send_email(to_address, subject, body_html, cc=None, bcc=None,
-               company_id=None, template_key=""):
+def send_email(to_address, subject, body_html, cc=None, bcc=None, company_id=None, template_key=""):
     """
     Send an email via SMTP. Logs the attempt regardless of success.
     Returns (ok: bool, message: str).

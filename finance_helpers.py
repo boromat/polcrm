@@ -6,7 +6,12 @@ from collections import defaultdict
 
 import i18n
 from models import (
-    db, Company, Payment, Expense, Subscription, Settings,
+    db,
+    Company,
+    Payment,
+    Expense,
+    Subscription,
+    Settings,
 )
 
 
@@ -19,7 +24,9 @@ def retainer_title(month, year, company_name, lang=None):
     DEFAULT_LANGUAGE (not the language of whoever clicked): "Abonament Marzec 2026 - Firma"."""
     lang = lang or i18n.DEFAULT_LANGUAGE
     return i18n.gettext("Abonament %(month)s %(year)s - %(company)s", lang) % {
-        "month": i18n.month_name(month, lang), "year": year, "company": company_name,
+        "month": i18n.month_name(month, lang),
+        "year": year,
+        "company": company_name,
     }
 
 
@@ -28,10 +35,7 @@ def next_payment_number():
     year = date.today().year
     prefix = f"P-{year}-"
     last = (
-        Payment.query
-        .filter(Payment.payment_number.like(f"{prefix}%"))
-        .order_by(Payment.payment_number.desc())
-        .first()
+        Payment.query.filter(Payment.payment_number.like(f"{prefix}%")).order_by(Payment.payment_number.desc()).first()
     )
     if last and last.payment_number:
         try:
@@ -147,16 +151,16 @@ def monthly_balance(year, month, allocate_overhead=True):
     # Per-client revenue
     revenue_by_client = defaultdict(float)
     for p in revenues:
-        revenue_by_client[p.company_id] += (p.amount_net or 0)
+        revenue_by_client[p.company_id] += p.amount_net or 0
 
     # Per-client direct expenses
     direct_expense_by_client = defaultdict(float)
     unassigned_expenses = 0.0
     for e in expenses:
         if e.client_id:
-            direct_expense_by_client[e.client_id] += (e.amount_net or 0)
+            direct_expense_by_client[e.client_id] += e.amount_net or 0
         else:
-            unassigned_expenses += (e.amount_net or 0)
+            unassigned_expenses += e.amount_net or 0
 
     # Allocate unassigned expenses + subscriptions as overhead, proportional to revenue
     overhead_pool = unassigned_expenses + sub_alloc_total
@@ -170,15 +174,17 @@ def monthly_balance(year, month, allocate_overhead=True):
         total_cost = direct + overhead_share
         margin = rev - total_cost
         if rev > 0 or direct > 0:
-            per_client.append({
-                "company": company,
-                "revenue": round(rev, 2),
-                "direct_expenses": round(direct, 2),
-                "overhead_share": round(overhead_share, 2),
-                "total_cost": round(total_cost, 2),
-                "margin": round(margin, 2),
-                "margin_pct": round((margin / rev * 100) if rev else 0, 1),
-            })
+            per_client.append(
+                {
+                    "company": company,
+                    "revenue": round(rev, 2),
+                    "direct_expenses": round(direct, 2),
+                    "overhead_share": round(overhead_share, 2),
+                    "total_cost": round(total_cost, 2),
+                    "margin": round(margin, 2),
+                    "margin_pct": round((margin / rev * 100) if rev else 0, 1),
+                }
+            )
 
     balance = revenue_total - expense_total - sub_alloc_total
 
@@ -216,5 +222,5 @@ def expense_category_breakdown(year, month):
     ).all()
     buckets = defaultdict(float)
     for e in rows:
-        buckets[e.category] += (e.amount_net or 0)
+        buckets[e.category] += e.amount_net or 0
     return dict(buckets)

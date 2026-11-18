@@ -52,6 +52,7 @@ def _initials(name):
 
 # ── Logowanie hasłem ───────────────────────────────────────────
 
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if AUTH_MODE != "password":
@@ -77,8 +78,9 @@ def login():
             return redirect(_safe_next(request.form.get("next")))
         LOGIN_LIMITER.failed(ip, email)
         error = _("Nieprawidłowy e-mail lub hasło.")  # bez zdradzania, czy konto istnieje
-    return render_template("login.html", error=error, email=email,
-                           next=request.args.get("next", "")), (401 if error else 200)
+    return render_template("login.html", error=error, email=email, next=request.args.get("next", "")), (
+        401 if error else 200
+    )
 
 
 @app.route("/setup", methods=["GET", "POST"])
@@ -125,6 +127,7 @@ def logout_profile():
 
 # ── Własny profil i hasło ──────────────────────────────────────
 
+
 @app.route("/profil", methods=["POST"])
 def profile_update():
     user = get_current_user()
@@ -168,6 +171,7 @@ def profile_password():
 
 # ── Wybór profilu (tylko tryb demo AUTH_MODE=profile) ──────────
 
+
 @app.route("/kim-jestes")
 def choose_profile():
     if AUTH_MODE != "profile":
@@ -193,6 +197,7 @@ def set_profile(user_id):
 
 
 # ── Motyw ──────────────────────────────────────────────────────
+
 
 @app.route("/toggle-theme", methods=["POST"])
 def toggle_theme():
@@ -223,6 +228,7 @@ def set_default_theme():
 
 
 # ── Język interfejsu ───────────────────────────────────────────
+
 
 @app.route("/jezyk/<lang>", methods=["POST"])
 def set_ui_language(lang):

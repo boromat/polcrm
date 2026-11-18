@@ -15,9 +15,7 @@ def ensure_fonts():
     """DejaVu Sans (polskie znaki) leży w repozytorium, w static/fonts. Brak pliku = błąd instalacji."""
     missing = [p.name for p in (DEJAVU_REGULAR, DEJAVU_BOLD) if not p.is_file()]
     if missing:
-        raise FileNotFoundError(
-            f"Brak fontów {', '.join(missing)} w {FONTS_DIR} - przywróć je z repozytorium."
-        )
+        raise FileNotFoundError(f"Brak fontów {', '.join(missing)} w {FONTS_DIR} - przywróć je z repozytorium.")
 
 
 def register_fonts(pdf):

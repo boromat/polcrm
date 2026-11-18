@@ -26,13 +26,18 @@ from models import (
 )
 
 _ASSISTANT_MODELS = {
-    "Task": Task, "Company": Company, "Payment": Payment,
-    "Expense": Expense, "Note": Note, "Visit": Visit,
-    "ContentPost": ContentPost, "Project": Project,
+    "Task": Task,
+    "Company": Company,
+    "Payment": Payment,
+    "Expense": Expense,
+    "Note": Note,
+    "Visit": Visit,
+    "ContentPost": ContentPost,
+    "Project": Project,
 }
 
 
-_HISTORY_ENTRIES = 8          # 4 tury pytanie + odpowiedź
+_HISTORY_ENTRIES = 8  # 4 tury pytanie + odpowiedź
 _HISTORY_ENTRY_CHARS = 600
 
 
@@ -59,8 +64,15 @@ def api_assistant_chat():
     try:
         masker = ai_assistant.build_masker(s)
     except privacy.MaskingUnavailable as e:
-        return jsonify({"error": _("Maskowanie danych osobowych jest włączone, ale nie działa: %(error)s. "
-                                   "Nic nie zostało wysłane do AI.", error=e)}), 503
+        return jsonify(
+            {
+                "error": _(
+                    "Maskowanie danych osobowych jest włączone, ale nie działa: %(error)s. "
+                    "Nic nie zostało wysłane do AI.",
+                    error=e,
+                )
+            }
+        ), 503
 
     result = ai_assistant.run_conversation(
         user_message=message,
@@ -78,12 +90,14 @@ def api_assistant_chat():
     history.append({"role": "assistant", "content": (result["reply"] or "")[:_HISTORY_ENTRY_CHARS]})
     session["assistant_history"] = history[-_HISTORY_ENTRIES:]
 
-    return jsonify({
-        "reply": result["reply"],
-        "tools_called": [t["name"] for t in result["tools_called"]],
-        "error": result.get("error"),
-        "masked": result.get("masked", 0),
-    })
+    return jsonify(
+        {
+            "reply": result["reply"],
+            "tools_called": [t["name"] for t in result["tools_called"]],
+            "error": result.get("error"),
+            "masked": result.get("masked", 0),
+        }
+    )
 
 
 @app.route("/api/assistant/reset", methods=["POST"])
@@ -98,10 +112,12 @@ def api_assistant_status():
     has_key_db = bool(s.openrouter_api_key_encrypted)
     has_key_env = bool(os.environ.get("OPENROUTER_API_KEY", "").strip())
     configured = (has_key_db or has_key_env) and s.assistant_enabled
-    return jsonify({
-        "configured": configured,
-        "enabled": bool(s.assistant_enabled),
-        "has_key": has_key_db or has_key_env,
-        "model": s.assistant_model if configured else None,
-        "pii_masking": bool(s.pii_masking_enabled),
-    })
+    return jsonify(
+        {
+            "configured": configured,
+            "enabled": bool(s.assistant_enabled),
+            "has_key": has_key_db or has_key_env,
+            "model": s.assistant_model if configured else None,
+            "pii_masking": bool(s.pii_masking_enabled),
+        }
+    )

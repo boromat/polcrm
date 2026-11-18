@@ -46,6 +46,7 @@ def _legacy_db_key():
     try:
         from sqlalchemy import text
         from models import db
+
         with db.engine.connect() as conn:
             row = conn.execute(text("SELECT fernet_key FROM settings ORDER BY id LIMIT 1")).first()
         return (row[0] or "").strip() or None if row else None

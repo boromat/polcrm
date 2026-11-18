@@ -27,6 +27,7 @@ from models import LANGUAGES, ROLES, Settings, User, db
 
 # ── Settings ──────────────────────────────────────────────────
 
+
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
     s = Settings.get()
@@ -85,21 +86,28 @@ def settings():
     has_smtp_password = bool(s.smtp_password_encrypted)
     has_google_token = bool(s.gsc_refresh_token)
     has_openrouter_key = bool(s.openrouter_api_key_encrypted)
-    return render_template("settings.html", settings=s,
-                           polanon=privacy.polanon_status(),
-                           has_smtp_password=has_smtp_password,
-                           has_google_token=has_google_token,
-                           has_openrouter_key=has_openrouter_key,
-                           team=User.query.order_by(User.is_active.desc(), User.role, User.name).all(),
-                           roles=ROLES, languages=LANGUAGES, min_password_len=auth.MIN_PASSWORD_LENGTH)
+    return render_template(
+        "settings.html",
+        settings=s,
+        polanon=privacy.polanon_status(),
+        has_smtp_password=has_smtp_password,
+        has_google_token=has_google_token,
+        has_openrouter_key=has_openrouter_key,
+        team=User.query.order_by(User.is_active.desc(), User.role, User.name).all(),
+        roles=ROLES,
+        languages=LANGUAGES,
+        min_password_len=auth.MIN_PASSWORD_LENGTH,
+    )
 
 
 # ── Google OAuth ──────────────────────────────────────────────
+
 
 @app.route("/google-oauth/start")
 @admin_required
 def google_oauth_start():
     import google_sync
+
     redirect_uri = url_for("oauth2callback", _external=True)
     url, state = google_sync.get_authorization_url(redirect_uri)
     if not url:
@@ -112,6 +120,7 @@ def google_oauth_start():
 @app.route("/oauth2callback")
 def oauth2callback():
     import google_sync
+
     code = request.args.get("code")
     received_state = request.args.get("state", "")
     expected_state = session.pop("oauth_state", None)

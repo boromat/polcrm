@@ -96,8 +96,10 @@ def test_admin_adds_member_who_can_log_in_then_deactivates(seeded):
 
     admin = seeded.test_client()
     login(admin)
-    r = admin.post("/zespol/nowy", data={"name": "Kasia Testowa", "email": "kasia@example.com",
-                                         "role": "member", "password": "kasia-start-123"})
+    r = admin.post(
+        "/zespol/nowy",
+        data={"name": "Kasia Testowa", "email": "kasia@example.com", "role": "member", "password": "kasia-start-123"},
+    )
     assert r.status_code == 302
     with seeded.app_context():
         kasia = User.query.filter_by(email="kasia@example.com").one()
@@ -126,7 +128,9 @@ def test_last_admin_cannot_be_demoted(seeded):
         anna = User.query.filter_by(email="anna@example.com").one()
         others = User.query.filter(User.role == "admin", User.id != anna.id).count()
     assert others == 0
-    c.post(f"/zespol/{anna.id}", data={"name": "Anna", "email": "anna@example.com", "role": "member", "is_active": "on"})
+    c.post(
+        f"/zespol/{anna.id}", data={"name": "Anna", "email": "anna@example.com", "role": "member", "is_active": "on"}
+    )
     with seeded.app_context():
         assert User.query.filter_by(email="anna@example.com").one().role == "admin"
 
@@ -137,8 +141,14 @@ def test_password_change_logs_out_other_sessions(seeded):
     first, second = seeded.test_client(), seeded.test_client()
     login(first, "ola@example.com")
     login(second, "ola@example.com")
-    r = first.post("/profil/haslo", data={"current_password": DEMO_PASSWORD,
-                                          "new_password": "ola-new-password-1", "new_password2": "ola-new-password-1"})
+    r = first.post(
+        "/profil/haslo",
+        data={
+            "current_password": DEMO_PASSWORD,
+            "new_password": "ola-new-password-1",
+            "new_password2": "ola-new-password-1",
+        },
+    )
     assert r.status_code == 302
     assert first.get("/tasks").status_code == 200  # the session that changed it stays in
     assert "/login" in second.get("/tasks").headers["Location"]  # the other one is out
@@ -170,8 +180,15 @@ def test_setup_only_while_there_is_no_admin(seeded):
         db.session.commit()
     try:
         assert "/setup" in c.get("/").headers["Location"]
-        r = c.post("/setup", data={"name": "Nowa Admin", "email": "nowa@example.com",
-                                   "password": "nowa-admin-pass", "password2": "nowa-admin-pass"})
+        r = c.post(
+            "/setup",
+            data={
+                "name": "Nowa Admin",
+                "email": "nowa@example.com",
+                "password": "nowa-admin-pass",
+                "password2": "nowa-admin-pass",
+            },
+        )
         assert r.status_code == 302
         assert c.get("/").status_code == 200  # logged in right away
         assert c.get("/setup").status_code == 404  # closed once an admin exists

@@ -85,8 +85,7 @@ def polanon_status() -> dict[str, Any]:
     except Exception:  # broken install - report as missing rather than crash the settings page
         return info
     info["ner"] = (
-        importlib.util.find_spec("spacy") is not None
-        and importlib.util.find_spec("pl_core_news_md") is not None
+        importlib.util.find_spec("spacy") is not None and importlib.util.find_spec("pl_core_news_md") is not None
     )
     return info
 
@@ -101,9 +100,7 @@ def _get_anonymizer(with_ner: bool):
         try:
             from polanon import WELL_KNOWN_NAMES, Allowlist, Anonymizer, default_guards  # noqa: PLC0415
         except ImportError as exc:
-            raise MaskingUnavailable(
-                _("pakiet polanon nie jest zainstalowany (pip install polanon)")
-            ) from exc
+            raise MaskingUnavailable(_("pakiet polanon nie jest zainstalowany (pip install polanon)")) from exc
         try:
             guards = default_guards(with_ner=with_ner)
         except ModuleNotFoundError as exc:  # spaCy or the Polish model missing
@@ -188,8 +185,7 @@ def polanon_masker(with_ner: bool = False, terms=()) -> Masker:
         # DenylistGuard found them. A client of the agency is never "just public", so its words
         # are taken out of the allowlist for this request.
         client_words = {w.lower() for t in terms for w in t.split()}
-        allowlist = Allowlist([n for n in WELL_KNOWN_NAMES
-                               if not ({w.lower() for w in n.split()} & client_words)])
+        allowlist = Allowlist([n for n in WELL_KNOWN_NAMES if not ({w.lower() for w in n.split()} & client_words)])
         # Same guard instances (the spaCy model stays loaded), plus this request's known terms.
         anonymizer = Anonymizer([*anonymizer.guards, DenylistGuard(terms)], allowlist=allowlist)
 

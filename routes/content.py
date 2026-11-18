@@ -28,6 +28,7 @@ from models import (
 #  CONTENT CALENDAR
 # ═══════════════════════════════════════════════════════════════
 
+
 @app.route("/content")
 def content_list():
     status = request.args.get("status", "")
@@ -37,29 +38,44 @@ def content_list():
         q = q.filter_by(status=status)
     if company_id:
         q = q.filter_by(company_id=company_id)
-    posts = q.order_by(ContentPost.deadline.asc().nullslast() if hasattr(ContentPost.deadline.asc(), 'nullslast') else ContentPost.deadline.asc()).all()
+    posts = q.order_by(
+        ContentPost.deadline.asc().nullslast()
+        if hasattr(ContentPost.deadline.asc(), "nullslast")
+        else ContentPost.deadline.asc()
+    ).all()
     companies = Company.query.order_by(Company.name).all()
-    return render_template("content/list.html", posts=posts, status=status,
-                           selected_company_id=company_id, companies=companies,
-                           statuses=CONTENT_STATUSES, types=CONTENT_TYPES)
+    return render_template(
+        "content/list.html",
+        posts=posts,
+        status=status,
+        selected_company_id=company_id,
+        companies=companies,
+        statuses=CONTENT_STATUSES,
+        types=CONTENT_TYPES,
+    )
 
 
 @app.route("/content/calendar")
 def content_calendar():
     posts = ContentPost.query.filter(ContentPost.deadline != None).all()
     colors = {
-        "idea": "#6b7280", "writing": "#3b82f6", "review": "#f59e0b",
-        "approved": "#10b981", "published": "#8b5cf6",
+        "idea": "#6b7280",
+        "writing": "#3b82f6",
+        "review": "#f59e0b",
+        "approved": "#10b981",
+        "published": "#8b5cf6",
     }
     events = []
     for p in posts:
-        events.append({
-            "id": p.id,
-            "title": f"{p.company.name}: {p.title}",
-            "start": p.deadline.isoformat() if p.deadline else None,
-            "color": colors.get(p.status, "#6c5ce7"),
-            "url": url_for("content_edit", id=p.id),
-        })
+        events.append(
+            {
+                "id": p.id,
+                "title": f"{p.company.name}: {p.title}",
+                "start": p.deadline.isoformat() if p.deadline else None,
+                "color": colors.get(p.status, "#6c5ce7"),
+                "url": url_for("content_edit", id=p.id),
+            }
+        )
     return render_template("content/calendar.html", events=events)
 
 
@@ -83,9 +99,14 @@ def content_new():
         flash(_("Publikacja dodana do kalendarza."), "success")
         return redirect(url_for("content_list"))
     companies = Company.query.order_by(Company.name).all()
-    return render_template("content/form.html", post=None, companies=companies,
-                           statuses=CONTENT_STATUSES, types=CONTENT_TYPES,
-                           preset_company_id=_parse_int(request.args.get("company_id")))
+    return render_template(
+        "content/form.html",
+        post=None,
+        companies=companies,
+        statuses=CONTENT_STATUSES,
+        types=CONTENT_TYPES,
+        preset_company_id=_parse_int(request.args.get("company_id")),
+    )
 
 
 @app.route("/content/<int:id>/edit", methods=["GET", "POST"])
@@ -109,9 +130,14 @@ def content_edit(id):
         flash(_("Publikacja zapisana."), "success")
         return redirect(url_for("content_list"))
     companies = Company.query.order_by(Company.name).all()
-    return render_template("content/form.html", post=p, companies=companies,
-                           statuses=CONTENT_STATUSES, types=CONTENT_TYPES,
-                           preset_company_id=p.company_id)
+    return render_template(
+        "content/form.html",
+        post=p,
+        companies=companies,
+        statuses=CONTENT_STATUSES,
+        types=CONTENT_TYPES,
+        preset_company_id=p.company_id,
+    )
 
 
 @app.route("/content/<int:id>/delete", methods=["POST"])

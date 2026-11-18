@@ -39,11 +39,30 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import app  # noqa: E402
 from models import (
     utcnow,
-    db, Company, Package, Offer, Visit, Note,
-    Payment, Expense, Subscription, Task, Project, ContentPost,
-    KnowledgeArticle, ClientCredential, EmailLog,
-    GscSnapshot, GaSnapshot, Audit, Competitor, Whiteboard, WhiteboardStroke,
-    Mention, delete_company, delete_whiteboard,
+    db,
+    Company,
+    Package,
+    Offer,
+    Visit,
+    Note,
+    Payment,
+    Expense,
+    Subscription,
+    Task,
+    Project,
+    ContentPost,
+    KnowledgeArticle,
+    ClientCredential,
+    EmailLog,
+    GscSnapshot,
+    GaSnapshot,
+    Audit,
+    Competitor,
+    Whiteboard,
+    WhiteboardStroke,
+    Mention,
+    delete_company,
+    delete_whiteboard,
 )
 import finance_helpers
 
@@ -61,15 +80,24 @@ DEMO_USERS = [
 def seed_demo_users():
     """Trzy konta demo z hasłem - zespół większy niż dwie osoby. Istniejących kont nie nadpisuje."""
     from models import User
+
     for name, email, role, color, theme in DEMO_USERS:
         user = User.query.filter_by(email=email).first()
         if user is None:
-            user = User(name=name, email=email, role=role, initials=name[0], avatar_color=color,
-                        default_theme=theme, language="pl")
+            user = User(
+                name=name,
+                email=email,
+                role=role,
+                initials=name[0],
+                avatar_color=color,
+                default_theme=theme,
+                language="pl",
+            )
             db.session.add(user)
         if not user.has_password:
             user.set_password(DEMO_PASSWORD)
     db.session.commit()
+
 
 def _abonament(issued):
     """Tytuł płatności abonamentowej z miesiącem wystawienia (daty seeda są względne do dziś)."""
@@ -79,46 +107,95 @@ def _abonament(issued):
 def seed_demo_audit(company):
     """Gotowy audyt z wynikami i planem - tak, jak wygląda po auto-scoringu i uzupełnieniu checklist.
     Bez wywołań Google (auto-scoring w aplikacji pyta Places i PageSpeed)."""
-    audit = Audit(company_id=company.id, status="ready",
-                  score_visibility=3, score_offer=4, score_trust=4, score_conversion=2, score_analytics=2,
-                  pagespeed_mobile=48, pagespeed_desktop=81)
+    audit = Audit(
+        company_id=company.id,
+        status="ready",
+        score_visibility=3,
+        score_offer=4,
+        score_trust=4,
+        score_conversion=2,
+        score_analytics=2,
+        pagespeed_mobile=48,
+        pagespeed_desktop=81,
+    )
     audit.pagespeed_data = {"mobile_score": 48, "desktop_score": 81, "fcp": "2.9 s", "lcp": "4.8 s", "cls": "0.12"}
     audit.section_context = {
-        "auto_data": {"name": company.name, "address": company.address, "industry": company.industry,
-                      "category": company.primary_type, "rating": company.rating,
-                      "status": company.business_status},
+        "auto_data": {
+            "name": company.name,
+            "address": company.address,
+            "industry": company.industry,
+            "category": company.primary_type,
+            "rating": company.rating,
+            "status": company.business_status,
+        },
         "notes": "Gabinet chce więcej pacjentów na implanty i wybielanie.",
     }
     audit.section_website = {
         "auto_data": {"pagespeed_mobile": 48, "pagespeed_desktop": 81, "fcp": "2.9 s", "lcp": "4.8 s", "cls": "0.12"},
-        "checklist": {"mobile_responsive": True, "clear_offer": True, "visible_cta": False,
-                      "contact_form": True, "trust_elements": False, "fast_loading": False},
+        "checklist": {
+            "mobile_responsive": True,
+            "clear_offer": True,
+            "visible_cta": False,
+            "contact_form": True,
+            "trust_elements": False,
+            "fast_loading": False,
+        },
         "notes": "Strona wolna na telefonie, brak widocznego przycisku rezerwacji.",
     }
     audit.section_seo = {
-        "checklist": {"keywords_in_title": True, "keywords_in_headings": False, "keywords_in_content": True,
-                      "subpages_per_service": False, "subpages_per_location": False, "internal_linking": False,
-                      "meta_with_location": True, "schema_local_business": False, "https_active": True,
-                      "mobile_friendly": True},
+        "checklist": {
+            "keywords_in_title": True,
+            "keywords_in_headings": False,
+            "keywords_in_content": True,
+            "subpages_per_service": False,
+            "subpages_per_location": False,
+            "internal_linking": False,
+            "meta_with_location": True,
+            "schema_local_business": False,
+            "https_active": True,
+            "mobile_friendly": True,
+        },
         "notes": "Jedna podstrona na wszystkie usługi.",
     }
     audit.section_gbp = {
-        "auto_data": {"has_profile": True, "rating": company.rating, "reviews_count": company.user_ratings_total,
-                      "phone": company.phone, "address": company.address, "business_status": company.business_status},
-        "checklist": {"complete_data": True, "correct_categories": True, "current_hours": True,
-                      "photos_added": False, "posts_published": False, "reviews_responded": True,
-                      "qa_responded": False, "nap_consistent": True},
+        "auto_data": {
+            "has_profile": True,
+            "rating": company.rating,
+            "reviews_count": company.user_ratings_total,
+            "phone": company.phone,
+            "address": company.address,
+            "business_status": company.business_status,
+        },
+        "checklist": {
+            "complete_data": True,
+            "correct_categories": True,
+            "current_hours": True,
+            "photos_added": False,
+            "posts_published": False,
+            "reviews_responded": True,
+            "qa_responded": False,
+            "nap_consistent": True,
+        },
         "notes": "",
     }
     audit.section_directories = {
-        "checklist": {"panorama_firm": True, "pkt_pl": False, "yelp": False, "industry_directories": True,
-                      "nap_directories_consistent": False, "nap_google_consistent": True},
+        "checklist": {
+            "panorama_firm": True,
+            "pkt_pl": False,
+            "yelp": False,
+            "industry_directories": True,
+            "nap_directories_consistent": False,
+            "nap_google_consistent": True,
+        },
         "notes": "",
     }
     audit.section_competition = {"competitors": [], "notes": "Dwa gabinety w promieniu 1 km mają więcej opinii."}
     audit.section_plan90 = {
-        "actions": ["Podstrony usług: implanty, wybielanie, ortodoncja", "Przycisk rezerwacji i szybsza strona mobilna",
-                    "GA4 ze śledzeniem rezerwacji"],
+        "actions": [
+            "Podstrony usług: implanty, wybielanie, ortodoncja",
+            "Przycisk rezerwacji i szybsza strona mobilna",
+            "GA4 ze śledzeniem rezerwacji",
+        ],
         "notes": "",
     }
     audit.top_problems = ["Wolna strona na telefonie", "Brak śledzenia konwersji", "Mało zdjęć w wizytówce"]
@@ -131,16 +208,27 @@ def seed_demo_audit(company):
         (f"{TEST_PREFIX} Klinika Uśmiech", 4.8, 412, 5, 5, "Dużo opinii, osobne podstrony usług"),
         (f"{TEST_PREFIX} Stomatologia Centrum", 4.5, 268, 4, 4, "Rezerwacja online"),
     ]:
-        db.session.add(Competitor(audit_id=audit.id, name=name, address=company.address, rating=rating,
-                                  user_ratings_total=total, score_visibility=vis, score_trust=trust,
-                                  strengths=strengths, weaknesses="Brak bloga"))
+        db.session.add(
+            Competitor(
+                audit_id=audit.id,
+                name=name,
+                address=company.address,
+                rating=rating,
+                user_ratings_total=total,
+                score_visibility=vis,
+                score_trust=trust,
+                strengths=strengths,
+                weaknesses="Brak bloga",
+            )
+        )
     print("Dodano 1 audyt z 2 konkurentami.")
 
 
 def seed_demo_whiteboard(company):
     """Tablica z kilkoma karteczkami i strzałkami - plan kampanii."""
-    board = Whiteboard(name=f"{TEST_PREFIX} Plan kampanii - dentysta", company_id=company.id,
-                       description="Burza mózgów z klientem")
+    board = Whiteboard(
+        name=f"{TEST_PREFIX} Plan kampanii - dentysta", company_id=company.id, description="Burza mózgów z klientem"
+    )
     db.session.add(board)
     db.session.flush()
     # (tekst, x, y, kolor karteczki - pole `color` jest jej tłem)
@@ -152,19 +240,63 @@ def seed_demo_whiteboard(company):
         ("Raport dla klienta\nco miesiąc", 1320, 150, "#ddd6fe"),
     ]
     for order, (text, x, y, color) in enumerate(stickies):
-        db.session.add(WhiteboardStroke(whiteboard_id=board.id, tool="sticky", color=color,
-                                        points=[[x, y]], text=text, width_box=260, height_box=150, font_size=20,
-                                        stroke_order=order))
+        db.session.add(
+            WhiteboardStroke(
+                whiteboard_id=board.id,
+                tool="sticky",
+                color=color,
+                points=[[x, y]],
+                text=text,
+                width_box=260,
+                height_box=150,
+                font_size=20,
+                stroke_order=order,
+            )
+        )
     arrows = [((390, 225), (510, 225)), ((790, 225), (910, 225)), ((1190, 225), (1310, 225)), ((650, 310), (650, 420))]
     for order, (a, b) in enumerate(arrows):
-        db.session.add(WhiteboardStroke(whiteboard_id=board.id, tool="arrow", color="#6c5ce7", width=3,
-                                        points=[list(a), list(b)], stroke_order=10 + order))
-    db.session.add(WhiteboardStroke(whiteboard_id=board.id, tool="text", color="#111111", font_size=34,
-                                    points=[[120, 70]], text="Plan na 90 dni - Dentysta Kowalski", stroke_order=20))
-    db.session.add(WhiteboardStroke(whiteboard_id=board.id, tool="ellipse", color="#ef4444", width=3,
-                                    points=[[1300, 400], [1600, 560]], stroke_order=21))
-    db.session.add(WhiteboardStroke(whiteboard_id=board.id, tool="text", color="#ef4444", font_size=22,
-                                    points=[[1345, 462]], text="Cel: +30% rezerwacji", stroke_order=22))
+        db.session.add(
+            WhiteboardStroke(
+                whiteboard_id=board.id,
+                tool="arrow",
+                color="#6c5ce7",
+                width=3,
+                points=[list(a), list(b)],
+                stroke_order=10 + order,
+            )
+        )
+    db.session.add(
+        WhiteboardStroke(
+            whiteboard_id=board.id,
+            tool="text",
+            color="#111111",
+            font_size=34,
+            points=[[120, 70]],
+            text="Plan na 90 dni - Dentysta Kowalski",
+            stroke_order=20,
+        )
+    )
+    db.session.add(
+        WhiteboardStroke(
+            whiteboard_id=board.id,
+            tool="ellipse",
+            color="#ef4444",
+            width=3,
+            points=[[1300, 400], [1600, 560]],
+            stroke_order=21,
+        )
+    )
+    db.session.add(
+        WhiteboardStroke(
+            whiteboard_id=board.id,
+            tool="text",
+            color="#ef4444",
+            font_size=22,
+            points=[[1345, 462]],
+            text="Cel: +30% rezerwacji",
+            stroke_order=22,
+        )
+    )
     print("Dodano 1 tablicę z 12 elementami.")
 
 
@@ -176,8 +308,13 @@ def clean_test_data():
         test_ids = [c.id for c in Company.query.filter(Company.name.like(f"{TEST_PREFIX}%"))]
         count = len(test_ids)
         # Zadania przypięte do firm testowych poza projektami (delete_company tylko je odpina)
-        loose = Task.query.filter(Task.company_id.in_(test_ids), Task.project_id.is_(None),
-                                  Task.parent_task_id.is_(None)).all() if test_ids else []
+        loose = (
+            Task.query.filter(
+                Task.company_id.in_(test_ids), Task.project_id.is_(None), Task.parent_task_id.is_(None)
+            ).all()
+            if test_ids
+            else []
+        )
         if loose:
             Mention.query.filter(Mention.task_id.in_([t.id for t in loose])).delete(synchronize_session=False)
             for t in loose:
@@ -224,17 +361,39 @@ def seed():
 
         # ═══ SUBSKRYPCJE ═══════════════════════════════════════════
         subs_data = [
-            (f"{TEST_PREFIX} Ahrefs Standard", "Ahrefs Pte Ltd", 449, "monthly", today + timedelta(days=22), "seo_tools"),
+            (
+                f"{TEST_PREFIX} Ahrefs Standard",
+                "Ahrefs Pte Ltd",
+                449,
+                "monthly",
+                today + timedelta(days=22),
+                "seo_tools",
+            ),
             (f"{TEST_PREFIX} Senuto PRO", "Senuto Sp. z o.o.", 299, "monthly", today + timedelta(days=5), "seo_tools"),
-            (f"{TEST_PREFIX} Hostinger VPS", "Hostinger", 49, "monthly", today + timedelta(days=15), "office_transport"),
+            (
+                f"{TEST_PREFIX} Hostinger VPS",
+                "Hostinger",
+                49,
+                "monthly",
+                today + timedelta(days=15),
+                "office_transport",
+            ),
             (f"{TEST_PREFIX} Canva Pro", "Canva", 99, "yearly", today + timedelta(days=210), "marketing"),
             (f"{TEST_PREFIX} ChatGPT Team", "OpenAI", 100, "monthly", today + timedelta(days=8), "seo_tools"),
         ]
         subs_map = {}
         for name, vendor, amt, cycle, renewal, cat in subs_data:
-            s = Subscription(name=name, vendor=vendor, amount_net=amt, vat_rate=23,
-                             billing_cycle=cycle, renewal_date=renewal, category=cat,
-                             is_active=True, notes="Dane testowe")
+            s = Subscription(
+                name=name,
+                vendor=vendor,
+                amount_net=amt,
+                vat_rate=23,
+                billing_cycle=cycle,
+                renewal_date=renewal,
+                category=cat,
+                is_active=True,
+                notes="Dane testowe",
+            )
             db.session.add(s)
             db.session.flush()
             subs_map[name] = s
@@ -342,34 +501,120 @@ def seed():
         # ═══ PŁATNOŚCI (dla retainerów) ═════════════════════════════
         payments_data = [
             # Dentysta - 3 miesiące historii: 2 paid, 1 overdue
-            (c_dentist, _abonament(today - timedelta(days=80)), 1500, "retainer", "paid",
-             today - timedelta(days=80), today - timedelta(days=82), today - timedelta(days=78)),
-            (c_dentist, _abonament(today - timedelta(days=50)), 1500, "retainer", "paid",
-             today - timedelta(days=50), today - timedelta(days=52), today - timedelta(days=48)),
-            (c_dentist, _abonament(today - timedelta(days=20)), 1500, "retainer", "paid",
-             today - timedelta(days=20), today - timedelta(days=22), today - timedelta(days=18)),
-            (c_dentist, _abonament(today - timedelta(days=5)), 1500, "retainer", "unpaid",
-             today - timedelta(days=5), today + timedelta(days=5), None),
-            (c_dentist, "Sesja zdjęciowa GBP", 500, "addon", "paid",
-             today - timedelta(days=40), today - timedelta(days=40), today - timedelta(days=38)),
+            (
+                c_dentist,
+                _abonament(today - timedelta(days=80)),
+                1500,
+                "retainer",
+                "paid",
+                today - timedelta(days=80),
+                today - timedelta(days=82),
+                today - timedelta(days=78),
+            ),
+            (
+                c_dentist,
+                _abonament(today - timedelta(days=50)),
+                1500,
+                "retainer",
+                "paid",
+                today - timedelta(days=50),
+                today - timedelta(days=52),
+                today - timedelta(days=48),
+            ),
+            (
+                c_dentist,
+                _abonament(today - timedelta(days=20)),
+                1500,
+                "retainer",
+                "paid",
+                today - timedelta(days=20),
+                today - timedelta(days=22),
+                today - timedelta(days=18),
+            ),
+            (
+                c_dentist,
+                _abonament(today - timedelta(days=5)),
+                1500,
+                "retainer",
+                "unpaid",
+                today - timedelta(days=5),
+                today + timedelta(days=5),
+                None,
+            ),
+            (
+                c_dentist,
+                "Sesja zdjęciowa GBP",
+                500,
+                "addon",
+                "paid",
+                today - timedelta(days=40),
+                today - timedelta(days=40),
+                today - timedelta(days=38),
+            ),
             # Auto - 1 paid, 1 overdue, 1 unpaid
-            (c_auto, _abonament(today - timedelta(days=45)), 2200, "retainer", "paid",
-             today - timedelta(days=45), today - timedelta(days=47), today - timedelta(days=43)),
-            (c_auto, _abonament(today - timedelta(days=30)), 2200, "retainer", "overdue",
-             today - timedelta(days=30), today - timedelta(days=10), None),
-            (c_auto, _abonament(today - timedelta(days=1)), 2200, "retainer", "unpaid",
-             today - timedelta(days=1), today + timedelta(days=14), None),
-            (c_auto, "Dodatkowe 3 teksty blog", 900, "addon", "paid",
-             today - timedelta(days=20), today - timedelta(days=20), today - timedelta(days=15)),
+            (
+                c_auto,
+                _abonament(today - timedelta(days=45)),
+                2200,
+                "retainer",
+                "paid",
+                today - timedelta(days=45),
+                today - timedelta(days=47),
+                today - timedelta(days=43),
+            ),
+            (
+                c_auto,
+                _abonament(today - timedelta(days=30)),
+                2200,
+                "retainer",
+                "overdue",
+                today - timedelta(days=30),
+                today - timedelta(days=10),
+                None,
+            ),
+            (
+                c_auto,
+                _abonament(today - timedelta(days=1)),
+                2200,
+                "retainer",
+                "unpaid",
+                today - timedelta(days=1),
+                today + timedelta(days=14),
+                None,
+            ),
+            (
+                c_auto,
+                "Dodatkowe 3 teksty blog",
+                900,
+                "addon",
+                "paid",
+                today - timedelta(days=20),
+                today - timedelta(days=20),
+                today - timedelta(days=15),
+            ),
             # Kancelaria - etap projektu (jednorazowe)
-            (c_kancelaria, "Audyt SEO - 1. etap", 1000, "project_milestone", "paid",
-             today - timedelta(days=15), today - timedelta(days=15), today - timedelta(days=10)),
+            (
+                c_kancelaria,
+                "Audyt SEO - 1. etap",
+                1000,
+                "project_milestone",
+                "paid",
+                today - timedelta(days=15),
+                today - timedelta(days=15),
+                today - timedelta(days=10),
+            ),
         ]
         for company, title, amt, kind, status, issued, due, paid in payments_data:
             p = Payment(
-                company_id=company.id, title=title,
-                amount_net=amt, vat_rate=23, kind=kind, status=status,
-                issued_at=issued, due_at=due, paid_at=paid,
+                company_id=company.id,
+                title=title,
+                amount_net=amt,
+                vat_rate=23,
+                kind=kind,
+                status=status,
+                issued_at=issued,
+                due_at=due,
+                paid_at=paid,
                 period_year=today.year,
                 period_month=issued.month if issued else today.month,
                 payment_number=finance_helpers.next_payment_number(),
@@ -381,21 +626,106 @@ def seed():
 
         # ═══ KOSZTY ═════════════════════════════════════════════════
         expenses_data = [
-            ("seo_tools", "Ahrefs", f"{TEST_PREFIX} Ahrefs Standard (kwiecień)", 449, today - timedelta(days=5), subs_map.get(f"{TEST_PREFIX} Ahrefs Standard"), None),
-            ("seo_tools", "Senuto", f"{TEST_PREFIX} Senuto PRO (kwiecień)", 299, today - timedelta(days=8), subs_map.get(f"{TEST_PREFIX} Senuto PRO"), None),
-            ("subcontractor", "Copywriter", f"{TEST_PREFIX} 3 teksty blog - Anna N.", 900, today - timedelta(days=10), None, c_auto),
-            ("subcontractor", "Linkbuilder", f"{TEST_PREFIX} 5 guest postów", 1500, today - timedelta(days=20), None, c_dentist),
-            ("subcontractor", "Grafik", f"{TEST_PREFIX} Set kreacji social", 600, today - timedelta(days=15), None, None),
-            ("marketing", "Google Ads", f"{TEST_PREFIX} Kampania własna agencji", 400, today - timedelta(days=12), None, None),
-            ("marketing", "Canva", f"{TEST_PREFIX} Canva Pro (rocznie)", 99, today - timedelta(days=30), subs_map.get(f"{TEST_PREFIX} Canva Pro"), None),
-            ("office_transport", "Hostinger", f"{TEST_PREFIX} Hostinger VPS (kwiecień)", 49, today - timedelta(days=7), subs_map.get(f"{TEST_PREFIX} Hostinger VPS"), None),
-            ("office_transport", "Paliwo", f"{TEST_PREFIX} Dojazd do klientów - wizyty", 220, today - timedelta(days=3), None, None),
-            ("office_transport", "Internet biuro", f"{TEST_PREFIX} Abonament LTE", 89, today - timedelta(days=14), None, None),
+            (
+                "seo_tools",
+                "Ahrefs",
+                f"{TEST_PREFIX} Ahrefs Standard (kwiecień)",
+                449,
+                today - timedelta(days=5),
+                subs_map.get(f"{TEST_PREFIX} Ahrefs Standard"),
+                None,
+            ),
+            (
+                "seo_tools",
+                "Senuto",
+                f"{TEST_PREFIX} Senuto PRO (kwiecień)",
+                299,
+                today - timedelta(days=8),
+                subs_map.get(f"{TEST_PREFIX} Senuto PRO"),
+                None,
+            ),
+            (
+                "subcontractor",
+                "Copywriter",
+                f"{TEST_PREFIX} 3 teksty blog - Anna N.",
+                900,
+                today - timedelta(days=10),
+                None,
+                c_auto,
+            ),
+            (
+                "subcontractor",
+                "Linkbuilder",
+                f"{TEST_PREFIX} 5 guest postów",
+                1500,
+                today - timedelta(days=20),
+                None,
+                c_dentist,
+            ),
+            (
+                "subcontractor",
+                "Grafik",
+                f"{TEST_PREFIX} Set kreacji social",
+                600,
+                today - timedelta(days=15),
+                None,
+                None,
+            ),
+            (
+                "marketing",
+                "Google Ads",
+                f"{TEST_PREFIX} Kampania własna agencji",
+                400,
+                today - timedelta(days=12),
+                None,
+                None,
+            ),
+            (
+                "marketing",
+                "Canva",
+                f"{TEST_PREFIX} Canva Pro (rocznie)",
+                99,
+                today - timedelta(days=30),
+                subs_map.get(f"{TEST_PREFIX} Canva Pro"),
+                None,
+            ),
+            (
+                "office_transport",
+                "Hostinger",
+                f"{TEST_PREFIX} Hostinger VPS (kwiecień)",
+                49,
+                today - timedelta(days=7),
+                subs_map.get(f"{TEST_PREFIX} Hostinger VPS"),
+                None,
+            ),
+            (
+                "office_transport",
+                "Paliwo",
+                f"{TEST_PREFIX} Dojazd do klientów - wizyty",
+                220,
+                today - timedelta(days=3),
+                None,
+                None,
+            ),
+            (
+                "office_transport",
+                "Internet biuro",
+                f"{TEST_PREFIX} Abonament LTE",
+                89,
+                today - timedelta(days=14),
+                None,
+                None,
+            ),
         ]
         for cat, subcat, title, amt, pay_date, sub, client in expenses_data:
             e = Expense(
-                category=cat, subcategory=subcat, title=title, vendor=subcat,
-                amount_net=amt, vat_rate=23, payment_date=pay_date,
+                category=cat,
+                subcategory=subcat,
+                title=title,
+                vendor=subcat,
+                amount_net=amt,
+                vat_rate=23,
+                payment_date=pay_date,
                 subscription_id=sub.id if sub else None,
                 client_id=client.id if client else None,
             )
@@ -410,9 +740,30 @@ def seed():
             ("Wygenerować raport miesięczny Dentysta", "high", "in_progress", today, c_dentist.id, None),
             (f"{TEST_PREFIX} Zaktualizować własną stronę agencji", "medium", "todo", today, None, None),
             # Jutro / ten tydzień
-            ("Przygotować ofertę PREMIUM dla Kancelarii", "high", "todo", today + timedelta(days=1), c_kancelaria.id, None),
-            ("Publikacja 2 tekstów na bloga Auto Nowak", "medium", "in_progress", today + timedelta(days=3), c_auto.id, None),
-            ("Odpowiedzieć na 8 opinii GBP - Dentysta", "medium", "todo", today + timedelta(days=4), c_dentist.id, None),
+            (
+                "Przygotować ofertę PREMIUM dla Kancelarii",
+                "high",
+                "todo",
+                today + timedelta(days=1),
+                c_kancelaria.id,
+                None,
+            ),
+            (
+                "Publikacja 2 tekstów na bloga Auto Nowak",
+                "medium",
+                "in_progress",
+                today + timedelta(days=3),
+                c_auto.id,
+                None,
+            ),
+            (
+                "Odpowiedzieć na 8 opinii GBP - Dentysta",
+                "medium",
+                "todo",
+                today + timedelta(days=4),
+                c_dentist.id,
+                None,
+            ),
             # Przeterminowane
             ("Follow-up po wizycie - Pizzeria Bella", "high", "todo", today - timedelta(days=3), c_pizza.id, None),
             ("Sprawdzić nowe linki dla Auto Nowak", "low", "todo", today - timedelta(days=1), c_auto.id, None),
@@ -422,12 +773,23 @@ def seed():
             ("Audyt SEO dla Kancelarii", "high", "done", today - timedelta(days=10), c_kancelaria.id, None),
             ("Onboarding kliencki - Dentysta", "medium", "done", today - timedelta(days=85), c_dentist.id, None),
             # W blokadzie
-            ("Publikacja landing page Pizzerii - czekamy na brief", "medium", "blocked", today + timedelta(days=7), c_pizza.id, None),
+            (
+                "Publikacja landing page Pizzerii - czekamy na brief",
+                "medium",
+                "blocked",
+                today + timedelta(days=7),
+                c_pizza.id,
+                None,
+            ),
         ]
         for title, prio, status, deadline, company_id, project_id in tasks_data:
             t = Task(
-                title=title, priority=prio, status=status, deadline=deadline,
-                company_id=company_id, project_id=project_id,
+                title=title,
+                priority=prio,
+                status=status,
+                deadline=deadline,
+                company_id=company_id,
+                project_id=project_id,
                 done_at=now if status == "done" else None,
             )
             db.session.add(t)
@@ -435,16 +797,56 @@ def seed():
 
         # ═══ PROJEKTY ══════════════════════════════════════════════
         projects_data = [
-            (c_pizza, "Strona WWW + zamawianie online", "website", "pizzabella.example", "WordPress", "Hostinger", 8500, "active", today - timedelta(days=20), today + timedelta(days=30)),
-            (c_dentist, "Kampania content Q2 2026", "content_campaign", "", "", "", 3000, "active", today - timedelta(days=5), today + timedelta(days=85)),
-            (c_kancelaria, "Nowa strona kancelarii", "website", "kancelaria-wisniewska.example", "WordPress", "OVH", 12000, "planning", today + timedelta(days=7), today + timedelta(days=60)),
+            (
+                c_pizza,
+                "Strona WWW + zamawianie online",
+                "website",
+                "pizzabella.example",
+                "WordPress",
+                "Hostinger",
+                8500,
+                "active",
+                today - timedelta(days=20),
+                today + timedelta(days=30),
+            ),
+            (
+                c_dentist,
+                "Kampania content Q2 2026",
+                "content_campaign",
+                "",
+                "",
+                "",
+                3000,
+                "active",
+                today - timedelta(days=5),
+                today + timedelta(days=85),
+            ),
+            (
+                c_kancelaria,
+                "Nowa strona kancelarii",
+                "website",
+                "kancelaria-wisniewska.example",
+                "WordPress",
+                "OVH",
+                12000,
+                "planning",
+                today + timedelta(days=7),
+                today + timedelta(days=60),
+            ),
         ]
         projects = []
         for company, name, kind, domain, cms, host, budget, status, start, dl in projects_data:
             p = Project(
-                company_id=company.id, name=name, kind=kind, domain=domain,
-                cms=cms, hosting=host, budget_net=budget, status=status,
-                started_at=start, deadline=dl,
+                company_id=company.id,
+                name=name,
+                kind=kind,
+                domain=domain,
+                cms=cms,
+                hosting=host,
+                budget_net=budget,
+                status=status,
+                started_at=start,
+                deadline=dl,
                 notes="Projekt testowy - dane wygenerowane seederem.",
             )
             db.session.add(p)
@@ -463,26 +865,84 @@ def seed():
             ("Testy i wdrożenie", "urgent", "todo", today + timedelta(days=28)),
         ]
         for title, prio, status, dl in pizza_tasks:
-            db.session.add(Task(
-                title=title, priority=prio, status=status, deadline=dl,
-                company_id=c_pizza.id, project_id=proj_pizza.id,
-                done_at=now if status == "done" else None,
-            ))
+            db.session.add(
+                Task(
+                    title=title,
+                    priority=prio,
+                    status=status,
+                    deadline=dl,
+                    company_id=c_pizza.id,
+                    project_id=proj_pizza.id,
+                    done_at=now if status == "done" else None,
+                )
+            )
         print(f"Dodano {len(pizza_tasks)} zadań dla projektu Pizza.")
 
         # ═══ CONTENT POSTS ══════════════════════════════════════════
         content_data = [
-            (c_dentist, "10 powodów dlaczego warto wybielać zęby u dentysty", ["wybielanie zębów warszawa", "stomatolog"], "blog", "published", today - timedelta(days=30), "Anna Kowalczyk"),
-            (c_dentist, "Jak wygląda implant zęba - krok po kroku", ["implanty zębowe", "dentysta"], "blog", "approved", today + timedelta(days=5), "Anna Kowalczyk"),
-            (c_dentist, "Ortodoncja dla dorosłych", ["ortodonta warszawa", "aparat ortodontyczny"], "blog", "writing", today + timedelta(days=12), "Anna Kowalczyk"),
-            (c_auto, "Kiedy wymienić rozrząd?", ["rozrząd", "serwis samochodowy"], "blog", "published", today - timedelta(days=10), "Tomek Biuro"),
-            (c_auto, "Przygotowanie samochodu na lato", ["klimatyzacja", "opony letnie"], "blog", "review", today + timedelta(days=2), "Tomek Biuro"),
-            (c_pizza, "Landing: zamów online z dowozem", ["pizza warszawa dowóz"], "landing", "idea", today + timedelta(days=14), ""),
+            (
+                c_dentist,
+                "10 powodów dlaczego warto wybielać zęby u dentysty",
+                ["wybielanie zębów warszawa", "stomatolog"],
+                "blog",
+                "published",
+                today - timedelta(days=30),
+                "Anna Kowalczyk",
+            ),
+            (
+                c_dentist,
+                "Jak wygląda implant zęba - krok po kroku",
+                ["implanty zębowe", "dentysta"],
+                "blog",
+                "approved",
+                today + timedelta(days=5),
+                "Anna Kowalczyk",
+            ),
+            (
+                c_dentist,
+                "Ortodoncja dla dorosłych",
+                ["ortodonta warszawa", "aparat ortodontyczny"],
+                "blog",
+                "writing",
+                today + timedelta(days=12),
+                "Anna Kowalczyk",
+            ),
+            (
+                c_auto,
+                "Kiedy wymienić rozrząd?",
+                ["rozrząd", "serwis samochodowy"],
+                "blog",
+                "published",
+                today - timedelta(days=10),
+                "Tomek Biuro",
+            ),
+            (
+                c_auto,
+                "Przygotowanie samochodu na lato",
+                ["klimatyzacja", "opony letnie"],
+                "blog",
+                "review",
+                today + timedelta(days=2),
+                "Tomek Biuro",
+            ),
+            (
+                c_pizza,
+                "Landing: zamów online z dowozem",
+                ["pizza warszawa dowóz"],
+                "landing",
+                "idea",
+                today + timedelta(days=14),
+                "",
+            ),
         ]
         for company, title, keywords, ctype, status, deadline, writer in content_data:
             cp = ContentPost(
-                company_id=company.id, title=title, content_type=ctype,
-                status=status, deadline=deadline, writer_name=writer,
+                company_id=company.id,
+                title=title,
+                content_type=ctype,
+                status=status,
+                deadline=deadline,
+                writer_name=writer,
                 brief="Brief testowy wygenerowany seederem.",
                 published_at=now - timedelta(days=5) if status == "published" else None,
             )
@@ -492,41 +952,157 @@ def seed():
 
         # ═══ DOSTĘPY (credentials) ══════════════════════════════════
         creds_data = [
-            (c_dentist, "WordPress admin", "https://dentysta-kowalski.example/wp-admin", "admin-agencja", "bitwarden://item?id=abc-123"),
-            (c_dentist, "Google Search Console", "https://search.google.com/search-console", "seo@agencja.example", "bitwarden://item?id=gsc-dentist"),
-            (c_dentist, "Google Analytics 4", "https://analytics.google.com", "seo@agencja.example", "bitwarden://item?id=ga-dentist"),
-            (c_dentist, "Google Business Profile", "https://business.google.com", "manager", "bitwarden://item?id=gbp-dentist"),
-            (c_auto, "WordPress admin", "https://auto-nowak.example/wp-admin", "admin", "onepassword://vault/main/item/auto-wp"),
-            (c_auto, "Hosting cPanel", "https://cpanel.hostinger.com", "auto_nowak", "onepassword://vault/main/item/auto-host"),
-            (c_auto, "Domena (rejestrator)", "https://nazwa.pl", "piotr@auto-nowak.example", "onepassword://vault/main/item/auto-dns"),
-            (c_pizza, "WordPress admin (developing)", "https://stg.pizzabella.example/wp-admin", "dev", "bitwarden://item?id=pizza-stg"),
+            (
+                c_dentist,
+                "WordPress admin",
+                "https://dentysta-kowalski.example/wp-admin",
+                "admin-agencja",
+                "bitwarden://item?id=abc-123",
+            ),
+            (
+                c_dentist,
+                "Google Search Console",
+                "https://search.google.com/search-console",
+                "seo@agencja.example",
+                "bitwarden://item?id=gsc-dentist",
+            ),
+            (
+                c_dentist,
+                "Google Analytics 4",
+                "https://analytics.google.com",
+                "seo@agencja.example",
+                "bitwarden://item?id=ga-dentist",
+            ),
+            (
+                c_dentist,
+                "Google Business Profile",
+                "https://business.google.com",
+                "manager",
+                "bitwarden://item?id=gbp-dentist",
+            ),
+            (
+                c_auto,
+                "WordPress admin",
+                "https://auto-nowak.example/wp-admin",
+                "admin",
+                "onepassword://vault/main/item/auto-wp",
+            ),
+            (
+                c_auto,
+                "Hosting cPanel",
+                "https://cpanel.hostinger.com",
+                "auto_nowak",
+                "onepassword://vault/main/item/auto-host",
+            ),
+            (
+                c_auto,
+                "Domena (rejestrator)",
+                "https://nazwa.pl",
+                "piotr@auto-nowak.example",
+                "onepassword://vault/main/item/auto-dns",
+            ),
+            (
+                c_pizza,
+                "WordPress admin (developing)",
+                "https://stg.pizzabella.example/wp-admin",
+                "dev",
+                "bitwarden://item?id=pizza-stg",
+            ),
         ]
         for company, label, url, username, vault in creds_data:
-            db.session.add(ClientCredential(
-                company_id=company.id, label=label, login_url=url,
-                username_hint=username, vault_link=vault,
-                notes="Dane testowe - to nie są prawdziwe linki do sejfu.",
-            ))
+            db.session.add(
+                ClientCredential(
+                    company_id=company.id,
+                    label=label,
+                    login_url=url,
+                    username_hint=username,
+                    vault_link=vault,
+                    notes="Dane testowe - to nie są prawdziwe linki do sejfu.",
+                )
+            )
         print(f"Dodano {len(creds_data)} dostępów testowych.")
 
         # ═══ NOTATKI ════════════════════════════════════════════════
         notes_data = [
             # Osobiste
-            (None, None, "personal", "general", "Pomysł na content", f"{TEST_PREFIX} Pomysł: seria tekstów Jak zweryfikować agencję SEO - dobra do pozyskania B2B leadów.", True),
-            (None, None, "personal", "todo", "", f"{TEST_PREFIX} Zaktualizować cennik pakietów. Ostatnia zmiana 6 miesięcy temu.", False),
-            (None, None, "personal", "idea", "", f"{TEST_PREFIX} Rozważyć wprowadzenie pakietu STARTER 800 zł/mc dla mikrofirm.", False),
+            (
+                None,
+                None,
+                "personal",
+                "general",
+                "Pomysł na content",
+                f"{TEST_PREFIX} Pomysł: seria tekstów Jak zweryfikować agencję SEO - dobra do pozyskania B2B leadów.",
+                True,
+            ),
+            (
+                None,
+                None,
+                "personal",
+                "todo",
+                "",
+                f"{TEST_PREFIX} Zaktualizować cennik pakietów. Ostatnia zmiana 6 miesięcy temu.",
+                False,
+            ),
+            (
+                None,
+                None,
+                "personal",
+                "idea",
+                "",
+                f"{TEST_PREFIX} Rozważyć wprowadzenie pakietu STARTER 800 zł/mc dla mikrofirm.",
+                False,
+            ),
             # Firmowe
-            (c_dentist.id, None, "company", "call", "Rozmowa z Kowalskim 14.04", "Jan dopytywał o bloga. Wolałby krótsze teksty (600-800 słów zamiast 1200). Przekazać Annie.", False),
-            (c_auto.id, None, "company", "meeting", "Spotkanie 08.04", "Omówiliśmy plan na Q2: 6 tekstów, 10 linków, odpowiedzi na opinie 2x/tydzień. Piotr akceptuje budżet +900 na content.", True),
+            (
+                c_dentist.id,
+                None,
+                "company",
+                "call",
+                "Rozmowa z Kowalskim 14.04",
+                "Jan dopytywał o bloga. Wolałby krótsze teksty (600-800 słów zamiast 1200). Przekazać Annie.",
+                False,
+            ),
+            (
+                c_auto.id,
+                None,
+                "company",
+                "meeting",
+                "Spotkanie 08.04",
+                "Omówiliśmy plan na Q2: 6 tekstów, 10 linków, odpowiedzi na opinie 2x/tydzień. Piotr akceptuje budżet +900 na content.",
+                True,
+            ),
             # Projektowe
-            (c_pizza.id, proj_pizza.id if proj_pizza else None, "project", "general", "Brief Pizzy", "Makieta Figma: link w plikach firmy. Szef chce sekcję 'Sala eventowa' na końcu home page.", False),
-            (c_kancelaria.id, proj_kanc.id if proj_kanc else None, "project", "follow_up", "Warunki kancelarii", "Czekamy na feedback Wiśniewskiej ws. kolorystyki (czerń/gold vs. granat/biel).", False),
+            (
+                c_pizza.id,
+                proj_pizza.id if proj_pizza else None,
+                "project",
+                "general",
+                "Brief Pizzy",
+                "Makieta Figma: link w plikach firmy. Szef chce sekcję 'Sala eventowa' na końcu home page.",
+                False,
+            ),
+            (
+                c_kancelaria.id,
+                proj_kanc.id if proj_kanc else None,
+                "project",
+                "follow_up",
+                "Warunki kancelarii",
+                "Czekamy na feedback Wiśniewskiej ws. kolorystyki (czerń/gold vs. granat/biel).",
+                False,
+            ),
         ]
         for cid, pid, scope, ntype, title, content, pinned in notes_data:
-            db.session.add(Note(
-                company_id=cid, project_id=pid, scope=scope, note_type=ntype,
-                title=title, content=content, pinned=pinned,
-            ))
+            db.session.add(
+                Note(
+                    company_id=cid,
+                    project_id=pid,
+                    scope=scope,
+                    note_type=ntype,
+                    title=title,
+                    content=content,
+                    pinned=pinned,
+                )
+            )
         print(f"Dodano {len(notes_data)} notatek testowych.")
 
         # ═══ OFERTY ════════════════════════════════════════════════
@@ -540,8 +1116,10 @@ def seed():
             ]
             for company, pkg, custom_price, notes, status in offers_data:
                 o = Offer(
-                    company_id=company.id, package_id=pkg.id,
-                    custom_price=custom_price, custom_notes=notes,
+                    company_id=company.id,
+                    package_id=pkg.id,
+                    custom_price=custom_price,
+                    custom_notes=notes,
                     status=status,
                     sent_at=now if status in ("sent", "accepted") else None,
                 )
@@ -555,12 +1133,17 @@ def seed():
             (c_dentist, now - timedelta(days=20, hours=4), 60, "follow_up", "completed"),
         ]
         for company, when, duration, vtype, status in visits_data:
-            db.session.add(Visit(
-                company_id=company.id, scheduled_at=when,
-                duration_minutes=duration, visit_type=vtype, status=status,
-                notes=f"Notatki wizyty (testowe) - {vtype}",
-                outcome="Klient pozytywnie nastawiony" if status == "completed" else "",
-            ))
+            db.session.add(
+                Visit(
+                    company_id=company.id,
+                    scheduled_at=when,
+                    duration_minutes=duration,
+                    visit_type=vtype,
+                    status=status,
+                    notes=f"Notatki wizyty (testowe) - {vtype}",
+                    outcome="Klient pozytywnie nastawiony" if status == "completed" else "",
+                )
+            )
         print(f"Dodano {len(visits_data)} wizyt testowych.")
 
         # ═══ GSC / GA snapshots (mock) ═════════════════════════════
@@ -568,13 +1151,27 @@ def seed():
             company_id=c_dentist.id,
             date_range_start=today - timedelta(days=30),
             date_range_end=today - timedelta(days=2),
-            total_clicks=1248, total_impressions=34567,
-            avg_ctr=3.61, avg_position=12.4,
+            total_clicks=1248,
+            total_impressions=34567,
+            avg_ctr=3.61,
+            avg_position=12.4,
         )
         gsc.top_queries = [
             {"query": "dentysta warszawa piękna", "clicks": 180, "impressions": 2100, "ctr": 8.57, "position": 4.2},
-            {"query": "stomatolog warszawa śródmieście", "clicks": 120, "impressions": 3400, "ctr": 3.53, "position": 8.1},
-            {"query": "wybielanie zębów warszawa cena", "clicks": 89, "impressions": 1200, "ctr": 7.42, "position": 6.8},
+            {
+                "query": "stomatolog warszawa śródmieście",
+                "clicks": 120,
+                "impressions": 3400,
+                "ctr": 3.53,
+                "position": 8.1,
+            },
+            {
+                "query": "wybielanie zębów warszawa cena",
+                "clicks": 89,
+                "impressions": 1200,
+                "ctr": 7.42,
+                "position": 6.8,
+            },
             {"query": "implanty zębowe warszawa", "clicks": 67, "impressions": 890, "ctr": 7.53, "position": 5.4},
             {"query": "dobry dentysta warszawa", "clicks": 56, "impressions": 2340, "ctr": 2.39, "position": 14.2},
         ]
@@ -589,8 +1186,11 @@ def seed():
             company_id=c_dentist.id,
             date_range_start=today - timedelta(days=30),
             date_range_end=today,
-            users=2340, sessions=3120, engaged_sessions=2100,
-            conversions=78, avg_engagement_time=142.5,
+            users=2340,
+            sessions=3120,
+            engaged_sessions=2100,
+            conversions=78,
+            avg_engagement_time=142.5,
         )
         ga.top_sources = [
             {"source": "Organic Search", "sessions": 1840},
@@ -610,20 +1210,52 @@ def seed():
 
         # ═══ EMAIL LOG ══════════════════════════════════════════════
         logs_data = [
-            (c_dentist, "welcome", c_dentist.contact_email, "Witamy w agencji - kolejne kroki",
-             "<p>Dzień dobry Janie, dziękujemy za zaufanie...</p>", "sent", now - timedelta(days=89)),
-            (c_dentist, "payment_reminder", c_dentist.contact_email, "Przypomnienie P-2026-0004",
-             "<p>Przypominamy o płatności abonamentu kwiecień 2026.</p>", "sent", now - timedelta(days=2)),
-            (c_kancelaria, "audit_delivery", c_kancelaria.contact_email, "Audyt - Kancelaria Wiśniewska",
-             "<p>W załączeniu audyt marketingowy.</p>", "sent", now - timedelta(days=9)),
-            (c_pizza, "follow_up_after_visit", "marco@pizzabella.example", "Podsumowanie naszego spotkania",
-             "<p>Dziękujemy za spotkanie...</p>", "failed", now - timedelta(days=15)),
+            (
+                c_dentist,
+                "welcome",
+                c_dentist.contact_email,
+                "Witamy w agencji - kolejne kroki",
+                "<p>Dzień dobry Janie, dziękujemy za zaufanie...</p>",
+                "sent",
+                now - timedelta(days=89),
+            ),
+            (
+                c_dentist,
+                "payment_reminder",
+                c_dentist.contact_email,
+                "Przypomnienie P-2026-0004",
+                "<p>Przypominamy o płatności abonamentu kwiecień 2026.</p>",
+                "sent",
+                now - timedelta(days=2),
+            ),
+            (
+                c_kancelaria,
+                "audit_delivery",
+                c_kancelaria.contact_email,
+                "Audyt - Kancelaria Wiśniewska",
+                "<p>W załączeniu audyt marketingowy.</p>",
+                "sent",
+                now - timedelta(days=9),
+            ),
+            (
+                c_pizza,
+                "follow_up_after_visit",
+                "marco@pizzabella.example",
+                "Podsumowanie naszego spotkania",
+                "<p>Dziękujemy za spotkanie...</p>",
+                "failed",
+                now - timedelta(days=15),
+            ),
         ]
         for company, tpl_key, to_addr, subj, body, status, sent_at in logs_data:
             log = EmailLog(
-                company_id=company.id, template_key=tpl_key,
-                to_address=to_addr, subject_rendered=subj,
-                body_rendered=body, status=status, sent_at=sent_at,
+                company_id=company.id,
+                template_key=tpl_key,
+                to_address=to_addr,
+                subject_rendered=subj,
+                body_rendered=body,
+                status=status,
+                sent_at=sent_at,
                 error_message="Adres odbiorcy nie istnieje" if status == "failed" else "",
             )
             db.session.add(log)
@@ -631,14 +1263,20 @@ def seed():
 
         # ═══ ARTYKUŁY WIEDZY DODATKOWE ═════════════════════════════
         extra_kb = [
-            (f"{TEST_PREFIX} Cennik usług - matryca decyzyjna",
-             "Sprzedaż",
-             "# Jak wyceniać?\n\n## Stawki orientacyjne\n- **START** 1500 zł/mc - mikrofirmy (1-5 osób)\n- **GROWTH** 3500 zł/mc - SMB (6-20 osób)\n- **PREMIUM** 5000+ zł/mc - większe marki\n\n## Czynniki modyfikujące\n- Konkurencyjność branży (+20% dla TOP 5 trudnych)\n- Budżet klienta (LTV > 50k = możliwa nizsza marża startowa)\n- Trudny temat / niszowa wiedza (+15%)\n",
-             ["cennik", "sprzedaż"], False),
-            (f"{TEST_PREFIX} Checklist: pierwsze 48h po podpisaniu umowy",
-             "Onboarding",
-             "# Pierwsze 48h\n\n- [ ] Email powitalny wysłany\n- [ ] Umowa RODO podpisana\n- [ ] Dostępy: GBP, GSC, GA4\n- [ ] Folder Dropbox utworzony\n- [ ] Faktura proforma wystawiona\n- [ ] Slack/WhatsApp grupa utworzona\n- [ ] Kickoff call zaplanowany (do 7 dni)\n",
-             ["onboarding", "checklist"], True),
+            (
+                f"{TEST_PREFIX} Cennik usług - matryca decyzyjna",
+                "Sprzedaż",
+                "# Jak wyceniać?\n\n## Stawki orientacyjne\n- **START** 1500 zł/mc - mikrofirmy (1-5 osób)\n- **GROWTH** 3500 zł/mc - SMB (6-20 osób)\n- **PREMIUM** 5000+ zł/mc - większe marki\n\n## Czynniki modyfikujące\n- Konkurencyjność branży (+20% dla TOP 5 trudnych)\n- Budżet klienta (LTV > 50k = możliwa nizsza marża startowa)\n- Trudny temat / niszowa wiedza (+15%)\n",
+                ["cennik", "sprzedaż"],
+                False,
+            ),
+            (
+                f"{TEST_PREFIX} Checklist: pierwsze 48h po podpisaniu umowy",
+                "Onboarding",
+                "# Pierwsze 48h\n\n- [ ] Email powitalny wysłany\n- [ ] Umowa RODO podpisana\n- [ ] Dostępy: GBP, GSC, GA4\n- [ ] Folder Dropbox utworzony\n- [ ] Faktura proforma wystawiona\n- [ ] Slack/WhatsApp grupa utworzona\n- [ ] Kickoff call zaplanowany (do 7 dni)\n",
+                ["onboarding", "checklist"],
+                True,
+            ),
         ]
         for title, cat, body, tags, pinned in extra_kb:
             a = KnowledgeArticle(title=title, category=cat, body=body, pinned=pinned)

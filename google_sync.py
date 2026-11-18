@@ -15,6 +15,7 @@ SCOPES = [
 def _load_oauth_flow(redirect_uri):
     """Build a google_auth_oauthlib Flow. Lazy import to avoid hard dep."""
     from google_auth_oauthlib.flow import Flow
+
     s = Settings.get()
     if not s.google_oauth_client_id or not s.google_oauth_client_secret:
         return None
@@ -56,6 +57,7 @@ def exchange_code(redirect_uri, code):
 
 def _build_credentials():
     from google.oauth2.credentials import Credentials
+
     s = Settings.get()
     if not s.gsc_refresh_token or not s.google_oauth_client_id:
         return None
@@ -187,11 +189,13 @@ def sync_ga(company_id, days=28):
         resp = service.properties().runReport(property=property_name, body=totals_body).execute()
         row = resp.get("rows", [{}])[0] if resp.get("rows") else {}
         vals = row.get("metricValues", [])
+
         def _g(i):
             try:
                 return vals[i].get("value", "0")
             except IndexError:
                 return "0"
+
         users = int(float(_g(0)))
         sessions = int(float(_g(1)))
         engaged = int(float(_g(2)))

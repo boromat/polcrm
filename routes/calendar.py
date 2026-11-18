@@ -30,6 +30,7 @@ from models import (
 
 # ── Calendar / Visits ─────────────────────────────────────────
 
+
 @app.route("/calendar")
 def calendar():
     # Enabled event types (toggle via query params)
@@ -44,17 +45,19 @@ def calendar():
     # 1) Wizyty - cyjan
     if show_visits:
         for v in visits:
-            events.append({
-                "id": f"visit-{v.id}",
-                "title": f"🤝 {v.company.name} - {v.type_label}",
-                "start": v.scheduled_at.isoformat(),
-                "end": (v.scheduled_at + timedelta(minutes=v.duration_minutes)).isoformat(),
-                "backgroundColor": "#22d3ee",
-                "borderColor": "#22d3ee",
-                "url": url_for("visit_detail", id=v.id),
-                "classNames": ["cal-ev-visit"],
-                "extendedProps": {"type": "visit"},
-            })
+            events.append(
+                {
+                    "id": f"visit-{v.id}",
+                    "title": f"🤝 {v.company.name} - {v.type_label}",
+                    "start": v.scheduled_at.isoformat(),
+                    "end": (v.scheduled_at + timedelta(minutes=v.duration_minutes)).isoformat(),
+                    "backgroundColor": "#22d3ee",
+                    "borderColor": "#22d3ee",
+                    "url": url_for("visit_detail", id=v.id),
+                    "classNames": ["cal-ev-visit"],
+                    "extendedProps": {"type": "visit"},
+                }
+            )
 
     # 2) Task deadliny - amber (urgent=red, overdue=red, done=emerald)
     if show_tasks:
@@ -69,17 +72,19 @@ def calendar():
                 color = "#f87171"
             else:
                 color = "#fbbf24"  # amber warning
-            events.append({
-                "id": f"task-{t.id}",
-                "title": f"✓ {t.title}",
-                "start": t.deadline.isoformat(),
-                "allDay": True,
-                "backgroundColor": color,
-                "borderColor": color,
-                "url": url_for("task_detail", id=t.id),
-                "classNames": ["cal-ev-task"],
-                "extendedProps": {"type": "task"},
-            })
+            events.append(
+                {
+                    "id": f"task-{t.id}",
+                    "title": f"✓ {t.title}",
+                    "start": t.deadline.isoformat(),
+                    "allDay": True,
+                    "backgroundColor": color,
+                    "borderColor": color,
+                    "url": url_for("task_detail", id=t.id),
+                    "classNames": ["cal-ev-task"],
+                    "extendedProps": {"type": "task"},
+                }
+            )
 
     # 3) Content deadliny - pink
     if show_content_deadlines:
@@ -88,33 +93,37 @@ def calendar():
             ContentPost.status != "published",
         ).all()
         for p in posts_dl:
-            events.append({
-                "id": f"content-dl-{p.id}",
-                "title": f"📝 {p.title}",
-                "start": p.deadline.isoformat(),
-                "allDay": True,
-                "backgroundColor": "#ec4899",
-                "borderColor": "#ec4899",
-                "url": url_for("content_edit", id=p.id),
-                "classNames": ["cal-ev-content-dl"],
-                "extendedProps": {"type": "content_deadline"},
-            })
+            events.append(
+                {
+                    "id": f"content-dl-{p.id}",
+                    "title": f"📝 {p.title}",
+                    "start": p.deadline.isoformat(),
+                    "allDay": True,
+                    "backgroundColor": "#ec4899",
+                    "borderColor": "#ec4899",
+                    "url": url_for("content_edit", id=p.id),
+                    "classNames": ["cal-ev-content-dl"],
+                    "extendedProps": {"type": "content_deadline"},
+                }
+            )
 
     # 4) Content publikacje - zielony
     if show_content_pub:
         posts_pub = ContentPost.query.filter(ContentPost.published_at != None).all()
         for p in posts_pub:
-            events.append({
-                "id": f"content-pub-{p.id}",
-                "title": f"✨ {p.title}",
-                "start": p.published_at.isoformat(),
-                "allDay": False,
-                "backgroundColor": "#10b981",
-                "borderColor": "#10b981",
-                "url": url_for("content_edit", id=p.id),
-                "classNames": ["cal-ev-content-pub"],
-                "extendedProps": {"type": "content_publish"},
-            })
+            events.append(
+                {
+                    "id": f"content-pub-{p.id}",
+                    "title": f"✨ {p.title}",
+                    "start": p.published_at.isoformat(),
+                    "allDay": False,
+                    "backgroundColor": "#10b981",
+                    "borderColor": "#10b981",
+                    "url": url_for("content_edit", id=p.id),
+                    "classNames": ["cal-ev-content-pub"],
+                    "extendedProps": {"type": "content_publish"},
+                }
+            )
 
     filters = {
         "visits": show_visits,
@@ -173,6 +182,7 @@ def visit_guide():
 
 
 # ── CSV Download (legacy) ─────────────────────────────────────
+
 
 @app.route("/download/<path:filename>")
 def download(filename):

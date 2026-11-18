@@ -23,6 +23,7 @@ from models import (
 
 # ── Notes ─────────────────────────────────────────────────────
 
+
 @app.route("/companies/<int:company_id>/notes", methods=["POST"])
 def note_add(company_id):
     db.get_or_404(Company, company_id)
@@ -74,8 +75,14 @@ def note_new():
 
     companies = Company.query.order_by(Company.name).all()
     projects = Project.query.order_by(Project.name).all()
-    return render_template("notes/form.html", note=None, companies=companies, projects=projects,
-                           scopes=NOTE_SCOPES, preset_scope=request.args.get("scope", "personal"))
+    return render_template(
+        "notes/form.html",
+        note=None,
+        companies=companies,
+        projects=projects,
+        scopes=NOTE_SCOPES,
+        preset_scope=request.args.get("scope", "personal"),
+    )
 
 
 @app.route("/notes/<int:id>/edit", methods=["GET", "POST"])
@@ -91,8 +98,9 @@ def note_edit(id):
         return redirect(url_for("notes_list", scope=n.scope))
     companies = Company.query.order_by(Company.name).all()
     projects = Project.query.order_by(Project.name).all()
-    return render_template("notes/form.html", note=n, companies=companies, projects=projects,
-                           scopes=NOTE_SCOPES, preset_scope=n.scope)
+    return render_template(
+        "notes/form.html", note=n, companies=companies, projects=projects, scopes=NOTE_SCOPES, preset_scope=n.scope
+    )
 
 
 @app.route("/notes/<int:id>/delete", methods=["POST"])
