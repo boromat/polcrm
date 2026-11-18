@@ -9,6 +9,7 @@ from flask import (
 )
 
 from core import (
+    _form_record_id,
     _parse_date,
     _parse_int,
     _safe_referrer,
@@ -84,7 +85,7 @@ def content_new():
     if request.method == "POST":
         kws = [k.strip() for k in request.form.get("keywords", "").split(",") if k.strip()]
         p = ContentPost(
-            company_id=int(request.form.get("company_id")),
+            company_id=_form_record_id("company_id", Company),
             title=request.form.get("title", "").strip(),
             content_type=request.form.get("content_type", "blog"),
             status=request.form.get("status", "idea"),
@@ -114,7 +115,7 @@ def content_edit(id):
     p = db.get_or_404(ContentPost, id)
     if request.method == "POST":
         kws = [k.strip() for k in request.form.get("keywords", "").split(",") if k.strip()]
-        p.company_id = int(request.form.get("company_id"))
+        p.company_id = _form_record_id("company_id", Company)
         p.title = request.form.get("title", p.title).strip()
         p.content_type = request.form.get("content_type", p.content_type)
         new_status = request.form.get("status", p.status)

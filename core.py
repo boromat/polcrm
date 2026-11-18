@@ -504,6 +504,15 @@ def _parse_int(s):
         return None
 
 
+def _form_record_id(field, model):
+    """Id rekordu wybranego w formularzu (firma, pakiet). Brak pola, wartość, która nie jest liczbą,
+    albo rekord, którego nie ma w bazie, to 400 - wcześniej int(None) albo klucz obcy dawały 500."""
+    value = _parse_int(request.form.get(field))
+    if value is None or db.session.get(model, value) is None:
+        abort(400)
+    return value
+
+
 # ── Attribution + audit helpers ────────────────────────────────
 
 

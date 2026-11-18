@@ -9,6 +9,7 @@ from flask import (
 )
 
 from core import (
+    _form_record_id,
     _parse_date,
     _parse_float,
     _parse_int,
@@ -57,7 +58,7 @@ def project_detail(id):
 def project_new():
     if request.method == "POST":
         p = Project(
-            company_id=int(request.form.get("company_id")),
+            company_id=_form_record_id("company_id", Company),
             name=request.form.get("name", "").strip(),
             kind=request.form.get("kind", "website"),
             domain=request.form.get("domain", "").strip(),
@@ -88,7 +89,7 @@ def project_new():
 def project_edit(id):
     p = db.get_or_404(Project, id)
     if request.method == "POST":
-        p.company_id = int(request.form.get("company_id"))
+        p.company_id = _form_record_id("company_id", Company)
         p.name = request.form.get("name", p.name).strip()
         p.kind = request.form.get("kind", p.kind)
         p.domain = request.form.get("domain", "").strip()
