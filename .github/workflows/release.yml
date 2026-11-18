@@ -84,9 +84,13 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Cała historia z tagami, żeby znaleźć poprzednie wydanie do linku z porównaniem.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
-      # Sekcja wersji z CHANGELOG.md, bez nagłówka, aż do następnego "## ".
+      # Sekcja wersji z CHANGELOG.md, bez nagłówka, aż do następnego "## ", a pod nią link do zmian
+      # od poprzedniego wydania, jak w dotychczasowych wydaniach.
       - name: Opis z CHANGELOG.md
         run: |
           python - "${GITHUB_REF_NAME#v}" > notes.md <<'PY'
@@ -100,8 +104,14 @@ jobs:
           )
           print(section.group(1).strip())
           PY
+          previous=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          if [ -n "$previous" ]; then
+            printf '\n**Full changelog**: %s/%s/compare/%s...%s\n' \
+              "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$previous" "$GITHUB_REF_NAME" >> notes.md
+          fi
 
+      # Tytuł jak w dotychczasowych wydaniach: "PolCRM 1.0.1".
       - name: Publikacja
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+        run: gh release create "$GITHUB_REF_NAME" --title "PolCRM ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag
