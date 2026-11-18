@@ -40,6 +40,7 @@ from i18n import _
 #  UMOWY I PLIKI
 # ═══════════════════════════════════════════════════════════════
 
+
 @app.route("/contracts/templates")
 def contracts_templates_list():
     templates = ContractTemplate.query.order_by(ContractTemplate.name).all()
@@ -64,6 +65,7 @@ def contract_new(company_id):
     company = db.get_or_404(Company, company_id)
     if request.method == "POST":
         from contract_pdf import generate_contract_pdf
+
         template_key = request.form.get("template_key", "").strip()
         tmpl = ContractTemplate.query.filter_by(key=template_key).first()
         if not tmpl:
@@ -73,7 +75,7 @@ def contract_new(company_id):
         extra = {
             "today": date.today().strftime("%d.%m.%Y"),
             "monthly_fee_net": request.form.get("monthly_fee_net", "")
-                               or (f"{company.monthly_fee_net:.2f}" if company.monthly_fee_net else "-"),
+            or (f"{company.monthly_fee_net:.2f}" if company.monthly_fee_net else "-"),
             "monthly_fee_gross": request.form.get("monthly_fee_gross", ""),
             "billing_day": request.form.get("billing_day", str(company.billing_day or 1)),
             "extra_clauses": request.form.get("extra_clauses", "").strip(),
@@ -143,8 +145,12 @@ def contract_new(company_id):
         return redirect(url_for("company_detail", id=company_id) + "#contracts")
 
     templates = ContractTemplate.query.order_by(ContractTemplate.name).all()
-    return render_template("contracts/new.html", company=company, templates=templates,
-                           preset_template_key=request.args.get("template_key", ""))
+    return render_template(
+        "contracts/new.html",
+        company=company,
+        templates=templates,
+        preset_template_key=request.args.get("template_key", ""),
+    )
 
 
 @app.route("/contracts/<int:id>/status", methods=["POST"])
@@ -171,6 +177,7 @@ def contract_delete(id):
 
 # -- Files (upload/download/versioning) --
 
+
 @app.route("/companies/<int:company_id>/files/upload", methods=["POST"])
 def file_upload(company_id):
     db.get_or_404(Company, company_id)
@@ -184,8 +191,7 @@ def file_upload(company_id):
 
     # Versioning
     existing = (
-        ClientFile.query.filter_by(company_id=company_id, label=label)
-        .order_by(ClientFile.version.desc()).first()
+        ClientFile.query.filter_by(company_id=company_id, label=label).order_by(ClientFile.version.desc()).first()
     )
     version = (existing.version + 1) if existing else 1
     parent_id = existing.id if existing else None
@@ -228,9 +234,7 @@ def file_download(id):
         abort(404)
     # Download name tez przez secure_filename, zeby zla nazwa w DB nie zrobila
     # content-disposition injection
-    return send_file(path, as_attachment=True,
-                     download_name=secure_filename(cf.filename) or "plik",
-                     mimetype=cf.mime)
+    return send_file(path, as_attachment=True, download_name=secure_filename(cf.filename) or "plik", mimetype=cf.mime)
 
 
 @app.route("/files/<int:id>/delete", methods=["POST"])

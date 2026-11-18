@@ -17,6 +17,7 @@ if __name__ == "__main__":
     if IS_PRODUCTION:
         # Produkcja: waitress (stabilny WSGI, dziala natywnie na Windows)
         from waitress import serve
+
         print(f"[PRODUKCJA] waitress na http://{host}:{port}")
         print("[PRODUKCJA] Ekspozycja przez Cloudflare Tunnel - nie otwieraj portu na zewnatrz.")
         serve(app, host=host, port=port, threads=8)

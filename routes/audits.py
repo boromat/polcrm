@@ -28,6 +28,7 @@ from scoring import calculate_all_scores, score_competitor
 
 # ── Audits ────────────────────────────────────────────────────
 
+
 @app.route("/audits")
 def audits_list():
     audits = Audit.query.join(Company).order_by(Audit.created_at.desc()).all()
@@ -56,9 +57,12 @@ def audit_new(company_id):
 
         audit.section_context = {
             "auto_data": {
-                "name": company.name, "address": company.address,
-                "industry": company.industry, "category": company.primary_type,
-                "rating": company.rating, "status": company.business_status,
+                "name": company.name,
+                "address": company.address,
+                "industry": company.industry,
+                "category": company.primary_type,
+                "rating": company.rating,
+                "status": company.business_status,
             },
             "notes": "",
         }
@@ -68,11 +72,17 @@ def audit_new(company_id):
                 "auto_data": {
                     "pagespeed_mobile": ps.get("mobile_score"),
                     "pagespeed_desktop": ps.get("desktop_score"),
-                    "fcp": ps.get("fcp", ""), "lcp": ps.get("lcp", ""), "cls": ps.get("cls", ""),
+                    "fcp": ps.get("fcp", ""),
+                    "lcp": ps.get("lcp", ""),
+                    "cls": ps.get("cls", ""),
                 },
                 "checklist": {
-                    "mobile_responsive": False, "clear_offer": False, "visible_cta": False,
-                    "contact_form": False, "trust_elements": False, "fast_loading": False,
+                    "mobile_responsive": False,
+                    "clear_offer": False,
+                    "visible_cta": False,
+                    "contact_form": False,
+                    "trust_elements": False,
+                    "fast_loading": False,
                 },
                 "notes": "",
             }
@@ -85,33 +95,49 @@ def audit_new(company_id):
 
         audit.section_seo = {
             "checklist": {
-                "keywords_in_title": False, "keywords_in_headings": False,
-                "keywords_in_content": False, "subpages_per_service": False,
-                "subpages_per_location": False, "internal_linking": False,
-                "meta_with_location": False, "schema_local_business": False,
-                "https_active": False, "mobile_friendly": False,
+                "keywords_in_title": False,
+                "keywords_in_headings": False,
+                "keywords_in_content": False,
+                "subpages_per_service": False,
+                "subpages_per_location": False,
+                "internal_linking": False,
+                "meta_with_location": False,
+                "schema_local_business": False,
+                "https_active": False,
+                "mobile_friendly": False,
             },
             "notes": "" if company.website else _("Brak strony - SEO nie dotyczy."),
         }
 
         audit.section_gbp = {
             "auto_data": {
-                "has_profile": bool(company.place_id), "rating": company.rating,
-                "reviews_count": company.user_ratings_total, "phone": company.phone,
-                "address": company.address, "business_status": company.business_status,
+                "has_profile": bool(company.place_id),
+                "rating": company.rating,
+                "reviews_count": company.user_ratings_total,
+                "phone": company.phone,
+                "address": company.address,
+                "business_status": company.business_status,
             },
             "checklist": {
-                "complete_data": False, "correct_categories": False, "current_hours": False,
-                "photos_added": False, "posts_published": False, "reviews_responded": False,
-                "qa_responded": False, "nap_consistent": False,
+                "complete_data": False,
+                "correct_categories": False,
+                "current_hours": False,
+                "photos_added": False,
+                "posts_published": False,
+                "reviews_responded": False,
+                "qa_responded": False,
+                "nap_consistent": False,
             },
             "notes": "",
         }
 
         audit.section_directories = {
             "checklist": {
-                "panorama_firm": False, "pkt_pl": False, "yelp": False,
-                "industry_directories": False, "nap_directories_consistent": False,
+                "panorama_firm": False,
+                "pkt_pl": False,
+                "yelp": False,
+                "industry_directories": False,
+                "nap_directories_consistent": False,
                 "nap_google_consistent": False,
             },
             "notes": "",
@@ -200,8 +226,11 @@ def audit_edit(id):
 
     competitors = Competitor.query.filter_by(audit_id=audit.id).all()
     return render_template(
-        "audit/form.html", audit=audit, company=company,
-        competitors=competitors, api_key=get_api_key(),
+        "audit/form.html",
+        audit=audit,
+        company=company,
+        competitors=competitors,
+        api_key=get_api_key(),
     )
 
 
@@ -212,24 +241,33 @@ def audit_report(id):
     competitors = Competitor.query.filter_by(audit_id=audit.id).all()
     s = Settings.get()
     return render_template(
-        "audit/report.html", audit=audit, company=company,
-        competitors=competitors, settings=s,
+        "audit/report.html",
+        audit=audit,
+        company=company,
+        competitors=competitors,
+        settings=s,
     )
 
 
 @app.route("/audits/<int:id>/pdf")
 def audit_pdf(id):
     from pdf_report import generate_audit_pdf
+
     audit = db.get_or_404(Audit, id)
     company = audit.company
     competitors = Competitor.query.filter_by(audit_id=audit.id).all()
     s = Settings.get()
     pdf_path = generate_audit_pdf(audit, company, competitors, s)
-    return send_file(pdf_path, mimetype="application/pdf", as_attachment=True,
-                     download_name=_("audyt_%(name)s.pdf", name=company.name.replace(" ", "_")))
+    return send_file(
+        pdf_path,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=_("audyt_%(name)s.pdf", name=company.name.replace(" ", "_")),
+    )
 
 
 # ── Competitor API ────────────────────────────────────────────
+
 
 @app.route("/api/search_competitor", methods=["POST"])
 def api_search_competitor():
@@ -244,15 +282,22 @@ def api_search_competitor():
 
     try:
         resp = gmaps.places_nearby(
-            location=(lat, lng), radius=5000, keyword=keyword, language=i18n.DEFAULT_LANGUAGE,
+            location=(lat, lng),
+            radius=5000,
+            keyword=keyword,
+            language=i18n.DEFAULT_LANGUAGE,
         )
         results = []
         for p in resp.get("results", [])[:10]:
-            results.append({
-                "place_id": p.get("place_id"), "name": p.get("name"),
-                "address": p.get("vicinity", ""), "rating": p.get("rating"),
-                "user_ratings_total": p.get("user_ratings_total"),
-            })
+            results.append(
+                {
+                    "place_id": p.get("place_id"),
+                    "name": p.get("name"),
+                    "address": p.get("vicinity", ""),
+                    "rating": p.get("rating"),
+                    "user_ratings_total": p.get("user_ratings_total"),
+                }
+            )
         return jsonify({"results": results})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
@@ -277,19 +322,28 @@ def api_add_competitor():
             pass
 
     comp = Competitor(
-        audit_id=audit_id, name=data.get("name", ""), place_id=place_id or "",
-        address=data.get("address", ""), website=website,
-        rating=data.get("rating"), user_ratings_total=data.get("user_ratings_total"),
+        audit_id=audit_id,
+        name=data.get("name", ""),
+        place_id=place_id or "",
+        address=data.get("address", ""),
+        website=website,
+        rating=data.get("rating"),
+        user_ratings_total=data.get("user_ratings_total"),
     )
     vis, trust = score_competitor(comp)
     comp.score_visibility = vis
     comp.score_trust = trust
     db.session.add(comp)
     db.session.commit()
-    return jsonify({
-        "ok": True, "id": comp.id, "website": website,
-        "score_visibility": vis, "score_trust": trust,
-    })
+    return jsonify(
+        {
+            "ok": True,
+            "id": comp.id,
+            "website": website,
+            "score_visibility": vis,
+            "score_trust": trust,
+        }
+    )
 
 
 @app.route("/api/delete_competitor/<int:id>", methods=["POST"])

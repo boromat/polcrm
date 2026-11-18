@@ -44,6 +44,7 @@ from models import (
 #  ZADANIA
 # ═══════════════════════════════════════════════════════════════
 
+
 @app.route("/tasks")
 def tasks_list():
     scope = request.args.get("scope", "")  # today | week | overdue | all
@@ -59,8 +60,12 @@ def tasks_list():
     if scope == "today":
         q = q.filter(Task.status != "done", Task.deadline == today)
     elif scope == "week":
-        q = q.filter(Task.status != "done", Task.deadline != None,
-                     Task.deadline >= today, Task.deadline <= today + timedelta(days=7))
+        q = q.filter(
+            Task.status != "done",
+            Task.deadline != None,
+            Task.deadline >= today,
+            Task.deadline <= today + timedelta(days=7),
+        )
     elif scope == "overdue":
         q = q.filter(Task.status != "done", Task.deadline != None, Task.deadline < today)
     if priority in TASK_PRIORITIES:
@@ -70,7 +75,10 @@ def tasks_list():
     if company_id:
         q = q.filter_by(company_id=company_id)
 
-    tasks = q.order_by(Task.status.asc(), Task.deadline.asc().nullslast() if hasattr(Task.deadline.asc(), 'nullslast') else Task.deadline.asc()).all()
+    tasks = q.order_by(
+        Task.status.asc(),
+        Task.deadline.asc().nullslast() if hasattr(Task.deadline.asc(), "nullslast") else Task.deadline.asc(),
+    ).all()
     companies = Company.query.order_by(Company.name).all()
 
     # Kanban pre-grouping (used when filters are off = "wszystkie")
@@ -105,20 +113,31 @@ def tasks_list():
                 color = "#fbbf24"
             elif t.priority == "medium":
                 color = "#a29bfe"
-            calendar_events.append({
-                "id": t.id,
-                "title": t.title,
-                "start": t.deadline.isoformat(),
-                "url": f"/tasks/{t.id}",
-                "backgroundColor": color,
-                "borderColor": color,
-            })
+            calendar_events.append(
+                {
+                    "id": t.id,
+                    "title": t.title,
+                    "start": t.deadline.isoformat(),
+                    "url": f"/tasks/{t.id}",
+                    "backgroundColor": color,
+                    "borderColor": color,
+                }
+            )
 
-    return render_template("tasks/list.html", tasks=tasks, scope=scope, priority=priority,
-                           status=status, selected_company_id=company_id,
-                           priorities=TASK_PRIORITIES, statuses=TASK_STATUSES,
-                           companies=companies, kb=kb,
-                           view=view, calendar_events=calendar_events)
+    return render_template(
+        "tasks/list.html",
+        tasks=tasks,
+        scope=scope,
+        priority=priority,
+        status=status,
+        selected_company_id=company_id,
+        priorities=TASK_PRIORITIES,
+        statuses=TASK_STATUSES,
+        companies=companies,
+        kb=kb,
+        view=view,
+        calendar_events=calendar_events,
+    )
 
 
 @app.route("/tasks/new", methods=["GET", "POST"])
@@ -143,10 +162,16 @@ def task_new():
         return redirect(url_for("tasks_list"))
     companies = Company.query.order_by(Company.name).all()
     projects = Project.query.order_by(Project.name).all()
-    return render_template("tasks/form.html", task=None, companies=companies, projects=projects,
-                           priorities=TASK_PRIORITIES, statuses=TASK_STATUSES,
-                           preset_company_id=_parse_int(request.args.get("company_id")),
-                           preset_project_id=_parse_int(request.args.get("project_id")))
+    return render_template(
+        "tasks/form.html",
+        task=None,
+        companies=companies,
+        projects=projects,
+        priorities=TASK_PRIORITIES,
+        statuses=TASK_STATUSES,
+        preset_company_id=_parse_int(request.args.get("company_id")),
+        preset_project_id=_parse_int(request.args.get("project_id")),
+    )
 
 
 @app.route("/tasks/<int:id>/edit", methods=["GET", "POST"])
@@ -169,9 +194,16 @@ def task_edit(id):
         return redirect(url_for("tasks_list"))
     companies = Company.query.order_by(Company.name).all()
     projects = Project.query.order_by(Project.name).all()
-    return render_template("tasks/form.html", task=t, companies=companies, projects=projects,
-                           priorities=TASK_PRIORITIES, statuses=TASK_STATUSES,
-                           preset_company_id=t.company_id, preset_project_id=t.project_id)
+    return render_template(
+        "tasks/form.html",
+        task=t,
+        companies=companies,
+        projects=projects,
+        priorities=TASK_PRIORITIES,
+        statuses=TASK_STATUSES,
+        preset_company_id=t.company_id,
+        preset_project_id=t.project_id,
+    )
 
 
 @app.route("/tasks/<int:id>/status", methods=["POST"])
@@ -235,6 +267,7 @@ def api_task_move():
 
 # ── Task detail (rich editor, subtaski, komentarze, timeline) ──
 
+
 @app.route("/tasks/<int:id>", methods=["GET", "POST"])
 def task_detail(id):
     t = db.get_or_404(Task, id)
@@ -264,14 +297,18 @@ def task_detail(id):
         if t.priority != old_priority:
             _log_audit("tasks", t.id, "update", "priority", old_priority, t.priority)
         if t.deadline != old_deadline:
-            _log_audit("tasks", t.id, "update", "deadline",
-                       old_deadline.isoformat() if old_deadline else "",
-                       t.deadline.isoformat() if t.deadline else "")
+            _log_audit(
+                "tasks",
+                t.id,
+                "update",
+                "deadline",
+                old_deadline.isoformat() if old_deadline else "",
+                t.deadline.isoformat() if t.deadline else "",
+            )
         if (t.description or "") != old_description:
             _log_audit("tasks", t.id, "update", "description", "", _("(zmieniono opis)"))
             # Extract new mentions from description
-            _find_mentions(t.description, "task_description", t.id, task_id=t.id,
-                           snippet=t.title)
+            _find_mentions(t.description, "task_description", t.id, task_id=t.id, snippet=t.title)
 
         db.session.commit()
         flash(_("Zadanie zaktualizowane."), "success")
@@ -280,13 +317,20 @@ def task_detail(id):
     companies = Company.query.order_by(Company.name).all()
     projects = Project.query.order_by(Project.name).all()
     comments = TaskComment.query.filter_by(task_id=t.id).order_by(TaskComment.created_at).all()
-    audit_entries = AuditLog.query.filter_by(table_name="tasks", record_id=t.id)\
-        .order_by(AuditLog.created_at.desc()).limit(50).all()
+    audit_entries = (
+        AuditLog.query.filter_by(table_name="tasks", record_id=t.id)
+        .order_by(AuditLog.created_at.desc())
+        .limit(50)
+        .all()
+    )
     description_html = _render_markdown(t.description or "")
     return render_template(
         "tasks/detail.html",
-        task=t, companies=companies, projects=projects,
-        priorities=TASK_PRIORITIES, statuses=TASK_STATUSES,
+        task=t,
+        companies=companies,
+        projects=projects,
+        priorities=TASK_PRIORITIES,
+        statuses=TASK_STATUSES,
         comments=comments,
         audit_entries=audit_entries,
         description_html=description_html,
@@ -368,6 +412,7 @@ def task_comment_delete(cid):
 
 # ── Task files (upload / download / delete) ──
 
+
 @app.route("/tasks/<int:id>/upload", methods=["POST"])
 def task_file_upload(id):
     t = db.get_or_404(Task, id)
@@ -398,8 +443,9 @@ def task_file_upload(id):
     )
     db.session.add(cf)
     db.session.flush()
-    _log_audit("tasks", t.id, "update", "files", "", f"+{f.filename}",
-               note=_("Wgrano plik (%(size)s)", size=cf.size_human))
+    _log_audit(
+        "tasks", t.id, "update", "files", "", f"+{f.filename}", note=_("Wgrano plik (%(size)s)", size=cf.size_human)
+    )
     db.session.commit()
     flash(_("Wgrano plik: %(name)s", name=f.filename), "success")
     return redirect(url_for("task_detail", id=id))
@@ -407,13 +453,13 @@ def task_file_upload(id):
 
 # ── Inbox (skrzynka mention) ──
 
+
 @app.route("/inbox")
 def inbox():
     user = get_current_user()
     if not user:
         return redirect(url_for("choose_profile"))
-    mentions = Mention.query.filter_by(mentioned_user_id=user.id)\
-        .order_by(Mention.created_at.desc()).limit(100).all()
+    mentions = Mention.query.filter_by(mentioned_user_id=user.id).order_by(Mention.created_at.desc()).limit(100).all()
     return render_template("inbox.html", mentions=mentions)
 
 
@@ -434,7 +480,6 @@ def inbox_mark_read(mid):
 def inbox_read_all():
     user = get_current_user()
     if user:
-        Mention.query.filter_by(mentioned_user_id=user.id, read_at=None)\
-            .update({"read_at": utcnow()})
+        Mention.query.filter_by(mentioned_user_id=user.id, read_at=None).update({"read_at": utcnow()})
         db.session.commit()
     return redirect(url_for("inbox"))

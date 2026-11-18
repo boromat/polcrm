@@ -6,10 +6,17 @@ from datetime import date, timedelta
 def test_company_create_and_delete(client, seeded):
     from models import Company, db
 
-    r = client.post("/companies/new", data={
-        "name": "Testowa Kwiaciarnia", "industry": "kwiaciarnia", "pipeline_stage": "lead",
-        "phone": "+48 500 000 009", "website": "kwiaciarnia.example", "contact_email": "biuro@kwiaciarnia.example",
-    })
+    r = client.post(
+        "/companies/new",
+        data={
+            "name": "Testowa Kwiaciarnia",
+            "industry": "kwiaciarnia",
+            "pipeline_stage": "lead",
+            "phone": "+48 500 000 009",
+            "website": "kwiaciarnia.example",
+            "contact_email": "biuro@kwiaciarnia.example",
+        },
+    )
     assert r.status_code == 302
     with seeded.app_context():
         c = Company.query.filter_by(name="Testowa Kwiaciarnia").one()
@@ -26,8 +33,10 @@ def test_task_create_and_mark_done(client, seeded):
     from models import Task, db
 
     deadline = (date.today() + timedelta(days=3)).isoformat()
-    r = client.post("/tasks/new", data={"title": "Przygotować ofertę testową", "priority": "high",
-                                        "status": "todo", "deadline": deadline})
+    r = client.post(
+        "/tasks/new",
+        data={"title": "Przygotować ofertę testową", "priority": "high", "status": "todo", "deadline": deadline},
+    )
     assert r.status_code == 302
     with seeded.app_context():
         t = Task.query.filter_by(title="Przygotować ofertę testową").one()
@@ -45,11 +54,19 @@ def test_payment_create_computes_gross(client, seeded):
 
     with seeded.app_context():
         cid = Company.query.first().id
-    r = client.post("/finances/payments/new", data={
-        "company_id": str(cid), "title": "Audyt SEO - test", "amount_net": "1000", "vat_rate": "23",
-        "kind": "one_time", "status": "unpaid", "issued_at": date.today().isoformat(),
-        "due_at": (date.today() + timedelta(days=14)).isoformat(),
-    })
+    r = client.post(
+        "/finances/payments/new",
+        data={
+            "company_id": str(cid),
+            "title": "Audyt SEO - test",
+            "amount_net": "1000",
+            "vat_rate": "23",
+            "kind": "one_time",
+            "status": "unpaid",
+            "issued_at": date.today().isoformat(),
+            "due_at": (date.today() + timedelta(days=14)).isoformat(),
+        },
+    )
     assert r.status_code == 302
     with seeded.app_context():
         p = Payment.query.filter_by(title="Audyt SEO - test").one()
@@ -60,8 +77,15 @@ def test_payment_create_computes_gross(client, seeded):
 def test_note_with_html_is_stored_but_rendered_safely(client, seeded):
     from models import Note
 
-    r = client.post("/notes/new", data={"title": "Notatka XSS", "content": "**ważne** <script>alert(1)</script>",
-                                        "scope": "personal", "note_type": "general"})
+    r = client.post(
+        "/notes/new",
+        data={
+            "title": "Notatka XSS",
+            "content": "**ważne** <script>alert(1)</script>",
+            "scope": "personal",
+            "note_type": "general",
+        },
+    )
     assert r.status_code == 302
     with seeded.app_context():
         assert Note.query.filter_by(title="Notatka XSS").one()

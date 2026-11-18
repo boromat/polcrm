@@ -42,6 +42,7 @@ from models import (
 
 # ── Companies ─────────────────────────────────────────────────
 
+
 @app.route("/companies")
 def companies_list():
     q = request.args.get("q", "").strip()
@@ -50,9 +51,7 @@ def companies_list():
 
     query = Company.query
     if q:
-        query = query.filter(
-            Company.name.ilike(f"%{q}%") | Company.address.ilike(f"%{q}%")
-        )
+        query = query.filter(Company.name.ilike(f"%{q}%") | Company.address.ilike(f"%{q}%"))
     if stage:
         query = query.filter_by(pipeline_stage=stage)
     if industry:
@@ -65,7 +64,9 @@ def companies_list():
         companies=companies,
         stages=PIPELINE_STAGES,
         industries=[i[0] for i in industries],
-        q=q, stage=stage, industry_filter=industry,
+        q=q,
+        stage=stage,
+        industry_filter=industry,
     )
 
 
@@ -147,7 +148,15 @@ def company_detail(id):
     packages = Package.query.filter_by(is_active=True).all()
     payments = Payment.query.filter_by(company_id=c.id).order_by(Payment.issued_at.desc()).all()
     projects = Project.query.filter_by(company_id=c.id).order_by(Project.created_at.desc()).all()
-    content_posts = ContentPost.query.filter_by(company_id=c.id).order_by(ContentPost.deadline.desc().nullslast() if hasattr(ContentPost.deadline.desc(), 'nullslast') else ContentPost.deadline.desc()).all()
+    content_posts = (
+        ContentPost.query.filter_by(company_id=c.id)
+        .order_by(
+            ContentPost.deadline.desc().nullslast()
+            if hasattr(ContentPost.deadline.desc(), "nullslast")
+            else ContentPost.deadline.desc()
+        )
+        .all()
+    )
     credentials = ClientCredential.query.filter_by(company_id=c.id).order_by(ClientCredential.label).all()
     contracts = Contract.query.filter_by(company_id=c.id).order_by(Contract.created_at.desc()).all()
     files = ClientFile.query.filter_by(company_id=c.id).order_by(ClientFile.uploaded_at.desc()).all()
@@ -160,13 +169,25 @@ def company_detail(id):
 
     return render_template(
         "companies/detail.html",
-        company=c, is_new=False, notes=notes, audits=audits,
-        offers=offers, visits=visits, stages=PIPELINE_STAGES,
+        company=c,
+        is_new=False,
+        notes=notes,
+        audits=audits,
+        offers=offers,
+        visits=visits,
+        stages=PIPELINE_STAGES,
         packages=packages,
-        payments=payments, projects=projects, content_posts=content_posts,
-        credentials=credentials, contracts=contracts, files=files,
-        email_log=email_log, gsc_snapshot=gsc_snapshot, ga_snapshot=ga_snapshot,
-        tasks=tasks, email_templates=email_templates,
+        payments=payments,
+        projects=projects,
+        content_posts=content_posts,
+        credentials=credentials,
+        contracts=contracts,
+        files=files,
+        email_log=email_log,
+        gsc_snapshot=gsc_snapshot,
+        ga_snapshot=ga_snapshot,
+        tasks=tasks,
+        email_templates=email_templates,
         whiteboards=whiteboards,
     )
 
@@ -183,14 +204,19 @@ def company_delete(id):
 
 # ── Pipeline ──────────────────────────────────────────────────
 
+
 @app.route("/pipeline")
 def pipeline():
     columns = {}
     for stage in PIPELINE_STAGES:
         columns[stage] = Company.query.filter_by(pipeline_stage=stage).order_by(Company.updated_at.desc()).all()
     labels = {
-        "lead": _("Lead"), "audit": _("Audyt"), "contact": _("Kontakt"),
-        "visit": _("Wizyta"), "offer": _("Oferta"), "client": _("Klient"),
+        "lead": _("Lead"),
+        "audit": _("Audyt"),
+        "contact": _("Kontakt"),
+        "visit": _("Wizyta"),
+        "offer": _("Oferta"),
+        "client": _("Klient"),
     }
     return render_template("pipeline.html", columns=columns, stages=PIPELINE_STAGES, labels=labels)
 

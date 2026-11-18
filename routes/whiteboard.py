@@ -38,6 +38,7 @@ from models import (
 #  TABLICA (whiteboard) - wspoldzielone rysunki zespolu
 # ═══════════════════════════════════════════════════════════════
 
+
 def _stroke_to_dict(s):
     return {
         "id": s.id,
@@ -63,8 +64,7 @@ def _validate_points(points):
     if not isinstance(points, list) or not points:
         return None
     try:
-        return [[float(p[0]), float(p[1])] for p in points
-                if isinstance(p, (list, tuple)) and len(p) == 2]
+        return [[float(p[0]), float(p[1])] for p in points if isinstance(p, (list, tuple)) and len(p) == 2]
     except (ValueError, TypeError):
         return None
 
@@ -77,8 +77,7 @@ def whiteboard_list():
         q = q.filter_by(company_id=company_id)
     boards = q.order_by(Whiteboard.updated_at.desc()).all()
     companies = Company.query.order_by(Company.name).all()
-    return render_template("whiteboard/list.html", boards=boards,
-                           companies=companies, company_filter=company_id)
+    return render_template("whiteboard/list.html", boards=boards, companies=companies, company_filter=company_id)
 
 
 @app.route("/tablica/nowa", methods=["GET", "POST"])
@@ -91,15 +90,13 @@ def whiteboard_new():
         if bg_color not in ("#ffffff", "#0f0f1a", "#fef3c7"):
             bg_color = "#ffffff"
         company_id = _parse_int(request.form.get("company_id"))
-        b = Whiteboard(name=name, description=description, bg_color=bg_color,
-                       company_id=company_id)
+        b = Whiteboard(name=name, description=description, bg_color=bg_color, company_id=company_id)
         db.session.add(b)
         db.session.commit()
         flash(_("Utworzono tablice: %(name)s", name=b.name), "success")
         return redirect(url_for("whiteboard_detail", id=b.id))
     companies = Company.query.order_by(Company.name).all()
-    return render_template("whiteboard/form.html", board=None, companies=companies,
-                           preset_company_id=preset_company_id)
+    return render_template("whiteboard/form.html", board=None, companies=companies, preset_company_id=preset_company_id)
 
 
 @app.route("/tablica/<int:id>", methods=["GET", "POST"])
@@ -164,6 +161,7 @@ def whiteboard_duplicate(id):
 
 # ── API endpointy (JSON) ──────────────────────────────────────
 
+
 @app.route("/api/tablica/<int:id>/stroke", methods=["POST"])
 def api_whiteboard_add_stroke(id):
     """Dodaj stroke dowolnego typu."""
@@ -181,8 +179,9 @@ def api_whiteboard_add_stroke(id):
     user = get_current_user()
 
     # Oblicz stroke_order - nastepny po maksymalnym
-    max_order = db.session.query(db.func.max(WhiteboardStroke.stroke_order))\
-        .filter_by(whiteboard_id=b.id).scalar() or 0.0
+    max_order = (
+        db.session.query(db.func.max(WhiteboardStroke.stroke_order)).filter_by(whiteboard_id=b.id).scalar() or 0.0
+    )
     new_order = max_order + 1.0
 
     stroke = WhiteboardStroke(
@@ -205,13 +204,15 @@ def api_whiteboard_add_stroke(id):
     b.updated_at = utcnow()
     db.session.commit()
 
-    return jsonify({
-        "ok": True,
-        "id": stroke.id,
-        "stroke_order": new_order,
-        "author": user.name if user else None,
-        "author_color": user.avatar_color if user else "#6c5ce7",
-    })
+    return jsonify(
+        {
+            "ok": True,
+            "id": stroke.id,
+            "stroke_order": new_order,
+            "author": user.name if user else None,
+            "author_color": user.avatar_color if user else "#6c5ce7",
+        }
+    )
 
 
 @app.route("/api/tablica/<int:id>/state")
@@ -224,16 +225,19 @@ def api_whiteboard_state(id):
     q = WhiteboardStroke.query.filter_by(whiteboard_id=b.id, deleted=False)
     if since > 0:
         # zwroc strokes ktore sa nowe LUB zostaly zmienione
-        q = q.filter(db.or_(
-            WhiteboardStroke.id > since,
-            WhiteboardStroke.updated_at > utcnow().replace(second=0, microsecond=0) - timedelta(seconds=2)
-        ))
+        q = q.filter(
+            db.or_(
+                WhiteboardStroke.id > since,
+                WhiteboardStroke.updated_at > utcnow().replace(second=0, microsecond=0) - timedelta(seconds=2),
+            )
+        )
     strokes = q.order_by(WhiteboardStroke.stroke_order, WhiteboardStroke.id).all()
 
-    deletions = WhiteboardDeletion.query.filter(
-        WhiteboardDeletion.whiteboard_id == b.id,
-        WhiteboardDeletion.id > del_since
-    ).order_by(WhiteboardDeletion.id).all()
+    deletions = (
+        WhiteboardDeletion.query.filter(WhiteboardDeletion.whiteboard_id == b.id, WhiteboardDeletion.id > del_since)
+        .order_by(WhiteboardDeletion.id)
+        .all()
+    )
 
     # Aktywne kursory (nowsze niz 3 sekundy)
     cutoff = utcnow() - timedelta(seconds=3)
@@ -242,42 +246,51 @@ def api_whiteboard_state(id):
         WhiteboardCursor.updated_at > cutoff,
     ).all()
     current_user = get_current_user()
-    cursors = [{
-        "user_id": c.user_id,
-        "name": c.user.name if c.user else "?",
-        "initials": c.user.initials if c.user else "?",
-        "color": c.user.avatar_color if c.user else "#6c5ce7",
-        "x": c.x, "y": c.y,
-    } for c in active_cursors if (not current_user or c.user_id != current_user.id)]
+    cursors = [
+        {
+            "user_id": c.user_id,
+            "name": c.user.name if c.user else "?",
+            "initials": c.user.initials if c.user else "?",
+            "color": c.user.avatar_color if c.user else "#6c5ce7",
+            "x": c.x,
+            "y": c.y,
+        }
+        for c in active_cursors
+        if (not current_user or c.user_id != current_user.id)
+    ]
 
-    max_stroke_id = db.session.query(db.func.max(WhiteboardStroke.id))\
-        .filter_by(whiteboard_id=b.id).scalar() or 0
-    max_del_id = db.session.query(db.func.max(WhiteboardDeletion.id))\
-        .filter_by(whiteboard_id=b.id).scalar() or 0
+    max_stroke_id = db.session.query(db.func.max(WhiteboardStroke.id)).filter_by(whiteboard_id=b.id).scalar() or 0
+    max_del_id = db.session.query(db.func.max(WhiteboardDeletion.id)).filter_by(whiteboard_id=b.id).scalar() or 0
 
-    return jsonify({
-        "strokes": [_stroke_to_dict(s) for s in strokes],
-        "deletions": [d.stroke_id for d in deletions],
-        "cursors": cursors,
-        "latest_id": max_stroke_id,
-        "latest_del_id": max_del_id,
-    })
+    return jsonify(
+        {
+            "strokes": [_stroke_to_dict(s) for s in strokes],
+            "deletions": [d.stroke_id for d in deletions],
+            "cursors": cursors,
+            "latest_id": max_stroke_id,
+            "latest_del_id": max_del_id,
+        }
+    )
 
 
 @app.route("/api/tablica/<int:id>/strokes")
 def api_whiteboard_strokes_legacy(id):
     """Legacy endpoint - zachowany dla kompatybilnosci (pierwszy load)."""
     b = db.get_or_404(Whiteboard, id)
-    strokes = WhiteboardStroke.query.filter_by(whiteboard_id=b.id, deleted=False)\
-        .order_by(WhiteboardStroke.stroke_order, WhiteboardStroke.id).all()
+    strokes = (
+        WhiteboardStroke.query.filter_by(whiteboard_id=b.id, deleted=False)
+        .order_by(WhiteboardStroke.stroke_order, WhiteboardStroke.id)
+        .all()
+    )
     max_id = strokes[-1].id if strokes else 0
-    max_del = db.session.query(db.func.max(WhiteboardDeletion.id))\
-        .filter_by(whiteboard_id=b.id).scalar() or 0
-    return jsonify({
-        "strokes": [_stroke_to_dict(s) for s in strokes],
-        "latest_id": max_id,
-        "latest_del_id": max_del,
-    })
+    max_del = db.session.query(db.func.max(WhiteboardDeletion.id)).filter_by(whiteboard_id=b.id).scalar() or 0
+    return jsonify(
+        {
+            "strokes": [_stroke_to_dict(s) for s in strokes],
+            "latest_id": max_id,
+            "latest_del_id": max_del,
+        }
+    )
 
 
 @app.route("/api/tablica/<int:id>/stroke/<int:sid>", methods=["PATCH", "POST"])
@@ -311,14 +324,20 @@ def api_whiteboard_update_stroke(id, sid):
     if "text" in data:
         s.text = str(data["text"])[:2000]
     if "width_box" in data:
-        try: s.width_box = float(data["width_box"])
-        except (ValueError, TypeError): pass
+        try:
+            s.width_box = float(data["width_box"])
+        except (ValueError, TypeError):
+            pass
     if "height_box" in data:
-        try: s.height_box = float(data["height_box"])
-        except (ValueError, TypeError): pass
+        try:
+            s.height_box = float(data["height_box"])
+        except (ValueError, TypeError):
+            pass
     if "stroke_order" in data:
-        try: s.stroke_order = float(data["stroke_order"])
-        except (ValueError, TypeError): pass
+        try:
+            s.stroke_order = float(data["stroke_order"])
+        except (ValueError, TypeError):
+            pass
 
     if "points" in data:
         pts = _validate_points(data["points"])
@@ -353,12 +372,14 @@ def api_whiteboard_layer(id, sid):
     action = data.get("action")
 
     if action == "front":
-        max_order = db.session.query(db.func.max(WhiteboardStroke.stroke_order))\
-            .filter_by(whiteboard_id=b.id).scalar() or 0
+        max_order = (
+            db.session.query(db.func.max(WhiteboardStroke.stroke_order)).filter_by(whiteboard_id=b.id).scalar() or 0
+        )
         s.stroke_order = max_order + 1.0
     elif action == "back":
-        min_order = db.session.query(db.func.min(WhiteboardStroke.stroke_order))\
-            .filter_by(whiteboard_id=b.id).scalar() or 0
+        min_order = (
+            db.session.query(db.func.min(WhiteboardStroke.stroke_order)).filter_by(whiteboard_id=b.id).scalar() or 0
+        )
         s.stroke_order = min_order - 1.0
     else:
         return jsonify({"error": "invalid action"}), 400
@@ -375,10 +396,11 @@ def api_whiteboard_undo(id):
     user = get_current_user()
     if not user:
         return jsonify({"error": _("brak uzytkownika")}), 401
-    last = (WhiteboardStroke.query
-            .filter_by(whiteboard_id=b.id, author_user_id=user.id, deleted=False)
-            .order_by(WhiteboardStroke.id.desc())
-            .first())
+    last = (
+        WhiteboardStroke.query.filter_by(whiteboard_id=b.id, author_user_id=user.id, deleted=False)
+        .order_by(WhiteboardStroke.id.desc())
+        .first()
+    )
     if not last:
         return jsonify({"ok": True, "removed_id": None})
     last.deleted = True
@@ -443,11 +465,15 @@ def api_whiteboard_paste_image(id):
     if ":" in header and ";" in header:
         mime = header.split(":", 1)[1].split(";", 1)[0]
     ext = "png"
-    if "jpeg" in mime or "jpg" in mime: ext = "jpg"
-    elif "gif" in mime: ext = "gif"
-    elif "webp" in mime: ext = "webp"
+    if "jpeg" in mime or "jpg" in mime:
+        ext = "jpg"
+    elif "gif" in mime:
+        ext = "gif"
+    elif "webp" in mime:
+        ext = "webp"
 
     import base64 as _b64
+
     try:
         img_bytes = _b64.b64decode(encoded)
     except Exception:
@@ -475,8 +501,9 @@ def api_whiteboard_paste_image(id):
     except (ValueError, TypeError):
         x, y, w, h = 100, 100, 400, 300
 
-    max_order = db.session.query(db.func.max(WhiteboardStroke.stroke_order))\
-        .filter_by(whiteboard_id=b.id).scalar() or 0.0
+    max_order = (
+        db.session.query(db.func.max(WhiteboardStroke.stroke_order)).filter_by(whiteboard_id=b.id).scalar() or 0.0
+    )
 
     stroke = WhiteboardStroke(
         whiteboard_id=b.id,
@@ -492,11 +519,13 @@ def api_whiteboard_paste_image(id):
     b.updated_at = utcnow()
     db.session.commit()
 
-    return jsonify({
-        "ok": True,
-        "stroke": _stroke_to_dict(stroke),
-        "url": url_for("whiteboard_image", wid=b.id, filename=filename),
-    })
+    return jsonify(
+        {
+            "ok": True,
+            "stroke": _stroke_to_dict(stroke),
+            "url": url_for("whiteboard_image", wid=b.id, filename=filename),
+        }
+    )
 
 
 @app.route("/tablica/<int:wid>/img/<filename>")

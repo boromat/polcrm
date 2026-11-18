@@ -41,27 +41,30 @@ def web_manifest():
         ("Pipeline", "Pipeline", "/pipeline"),
         (_("Finanse"), _("Finanse"), "/finances"),
     ]
-    resp = jsonify({
-        "name": "PolCRM",
-        "short_name": "PolCRM",
-        "description": _("CRM, finanse i content dla agencji marketingowej."),
-        "start_url": "/",
-        "scope": "/",
-        "display": "standalone",
-        "orientation": "any",
-        "background_color": "#0a0a14",
-        "theme_color": "#6c5ce7",
-        "lang": i18n.current_language(),
-        "dir": "ltr",
-        "categories": ["business", "productivity"],
-        "icons": [{**icon, "type": "image/svg+xml", "purpose": "any"}],
-        "shortcuts": [{"name": n, "short_name": s, "url": u, "icons": [icon]} for n, s, u in shortcuts],
-    })
+    resp = jsonify(
+        {
+            "name": "PolCRM",
+            "short_name": "PolCRM",
+            "description": _("CRM, finanse i content dla agencji marketingowej."),
+            "start_url": "/",
+            "scope": "/",
+            "display": "standalone",
+            "orientation": "any",
+            "background_color": "#0a0a14",
+            "theme_color": "#6c5ce7",
+            "lang": i18n.current_language(),
+            "dir": "ltr",
+            "categories": ["business", "productivity"],
+            "icons": [{**icon, "type": "image/svg+xml", "purpose": "any"}],
+            "shortcuts": [{"name": n, "short_name": s, "url": u, "icons": [icon]} for n, s, u in shortcuts],
+        }
+    )
     resp.mimetype = "application/manifest+json"
     return resp
 
 
 # ── Dashboard ─────────────────────────────────────────────────
+
 
 @app.route("/")
 def dashboard():
@@ -70,26 +73,41 @@ def dashboard():
     now_dt = utcnow()
 
     # Tasks - grouped for kanban
-    tasks_today = Task.query.filter(
-        Task.status != "done",
-        db.or_(
-            Task.deadline == today,
-            db.and_(Task.deadline == None, Task.priority == "urgent"),
-        ),
-    ).order_by(Task.priority.desc()).limit(10).all()
+    tasks_today = (
+        Task.query.filter(
+            Task.status != "done",
+            db.or_(
+                Task.deadline == today,
+                db.and_(Task.deadline == None, Task.priority == "urgent"),
+            ),
+        )
+        .order_by(Task.priority.desc())
+        .limit(10)
+        .all()
+    )
 
-    tasks_overdue = Task.query.filter(
-        Task.status != "done",
-        Task.deadline != None,
-        Task.deadline < today,
-    ).order_by(Task.deadline).limit(10).all()
+    tasks_overdue = (
+        Task.query.filter(
+            Task.status != "done",
+            Task.deadline != None,
+            Task.deadline < today,
+        )
+        .order_by(Task.deadline)
+        .limit(10)
+        .all()
+    )
 
-    tasks_week = Task.query.filter(
-        Task.status != "done",
-        Task.deadline != None,
-        Task.deadline > today,
-        Task.deadline <= week_end,
-    ).order_by(Task.deadline).limit(10).all()
+    tasks_week = (
+        Task.query.filter(
+            Task.status != "done",
+            Task.deadline != None,
+            Task.deadline > today,
+            Task.deadline <= week_end,
+        )
+        .order_by(Task.deadline)
+        .limit(10)
+        .all()
+    )
 
     # Core stats
     total_companies = Company.query.count()
@@ -101,22 +119,25 @@ def dashboard():
 
     # Upcoming visits + content (for kanban upcoming column + bottom bento)
     upcoming_visits = (
-        Visit.query
-        .filter(Visit.scheduled_at >= utcnow(), Visit.status == "planned")
+        Visit.query.filter(Visit.scheduled_at >= utcnow(), Visit.status == "planned")
         .order_by(Visit.scheduled_at)
         .limit(5)
         .all()
     )
-    upcoming_content = ContentPost.query.filter(
-        ContentPost.status != "published",
-        ContentPost.deadline != None,
-        ContentPost.deadline <= week_end,
-    ).order_by(ContentPost.deadline).limit(6).all()
+    upcoming_content = (
+        ContentPost.query.filter(
+            ContentPost.status != "published",
+            ContentPost.deadline != None,
+            ContentPost.deadline <= week_end,
+        )
+        .order_by(ContentPost.deadline)
+        .limit(6)
+        .all()
+    )
 
     # Attention
     attention = (
-        Company.query
-        .filter(
+        Company.query.filter(
             Company.next_action_date != None,
             Company.next_action_date <= today,
             Company.next_action != "",
@@ -127,22 +148,20 @@ def dashboard():
     )
 
     # Recent personal notes
-    recent_personal_notes = (
-        Note.query.filter_by(scope="personal")
-        .order_by(Note.created_at.desc())
-        .limit(5)
-        .all()
-    )
+    recent_personal_notes = Note.query.filter_by(scope="personal").order_by(Note.created_at.desc()).limit(5).all()
 
     # Pipeline counts
-    stage_totals = dict(db.session.query(Company.pipeline_stage, db.func.count(Company.id))
-                        .group_by(Company.pipeline_stage).all())
+    stage_totals = dict(
+        db.session.query(Company.pipeline_stage, db.func.count(Company.id)).group_by(Company.pipeline_stage).all()
+    )
     pipeline_counts = {stage: stage_totals.get(stage, 0) for stage in PIPELINE_STAGES}
 
     # Extended metrics (MRR / projects / content pipeline)
     mrr_total = float(
         db.session.query(db.func.coalesce(db.func.sum(Company.monthly_fee_net), 0))
-        .filter(Company.is_retainer == True).scalar() or 0
+        .filter(Company.is_retainer == True)
+        .scalar()
+        or 0
     )
     mrr_count = Company.query.filter(Company.is_retainer == True, Company.monthly_fee_net > 0).count()
     active_projects = Project.query.filter_by(status="active").count()
@@ -175,7 +194,8 @@ def dashboard():
     for h in range(23):
         s = hour_totals[h] + hour_totals[h + 1]
         if s > peak_best:
-            peak_best = s; peak_start = h
+            peak_best = s
+            peak_start = h
     heatmap_peak = f"{peak_start:02d}-{peak_start + 2:02d}" if peak_best > 0 else "-"
 
     avg_daily_activity = sum(hour_totals) / 7.0
@@ -190,19 +210,29 @@ def dashboard():
 
     # Optymalizacja: zamiast osobnego zapytania na każdy dzień (7 + 7 + do 60 zapytań)
     # pobieramy dane raz i liczymy w Pythonie. Wyniki są identyczne.
-    open_deadlines = [row[0] for row in db.session.query(Task.deadline).filter(
-        Task.status != "done",
-        Task.deadline != None,
-        Task.deadline < today,
-    ).all()]
+    open_deadlines = [
+        row[0]
+        for row in db.session.query(Task.deadline)
+        .filter(
+            Task.status != "done",
+            Task.deadline != None,
+            Task.deadline < today,
+        )
+        .all()
+    ]
     spark_overdue = _daily_counts(lambda d: sum(1 for dl in open_deadlines if dl < d))
 
     done_per_day = {}
-    for (day, n) in db.session.query(db.func.date(Task.done_at), db.func.count(Task.id)).filter(
-        Task.status == "done",
-        Task.done_at != None,
-        Task.done_at >= datetime.combine(today - timedelta(days=61), datetime.min.time()),
-    ).group_by(db.func.date(Task.done_at)).all():
+    for day, n in (
+        db.session.query(db.func.date(Task.done_at), db.func.count(Task.id))
+        .filter(
+            Task.status == "done",
+            Task.done_at != None,
+            Task.done_at >= datetime.combine(today - timedelta(days=61), datetime.min.time()),
+        )
+        .group_by(db.func.date(Task.done_at))
+        .all()
+    ):
         done_per_day[str(day)[:10]] = n
     spark_week_done = _daily_counts(lambda d: done_per_day.get(d.isoformat(), 0))
 
@@ -230,7 +260,7 @@ def dashboard():
         Task.status == "done",
         Task.done_at != None,
         Task.done_at >= datetime.combine(prev_week_start, datetime.min.time()),
-        Task.done_at <  datetime.combine(prev_week_end,   datetime.min.time()),
+        Task.done_at < datetime.combine(prev_week_end, datetime.min.time()),
     ).count()
     weekly_goal = max(completed_last_week + 5, 20)
 
@@ -241,38 +271,53 @@ def dashboard():
     user_list = User.query.filter_by(is_active=True).order_by(User.id).all()
     if cu is not None:
         user_list.sort(key=lambda u: u.id != cu.id)
-    open_tasks = db.session.query(Task.created_by_user_id, Task.updated_by_user_id, Task.deadline).filter(
-        Task.status != "done").all()
-    last_seen_by_user = dict(db.session.query(AuditLog.user_id, db.func.max(AuditLog.created_at))
-                             .filter(AuditLog.user_id != None).group_by(AuditLog.user_id).all())
+    open_tasks = (
+        db.session.query(Task.created_by_user_id, Task.updated_by_user_id, Task.deadline)
+        .filter(Task.status != "done")
+        .all()
+    )
+    last_seen_by_user = dict(
+        db.session.query(AuditLog.user_id, db.func.max(AuditLog.created_at))
+        .filter(AuditLog.user_id != None)
+        .group_by(AuditLog.user_id)
+        .all()
+    )
     for u in user_list:
         mine = [t for t in open_tasks if u.id in (t.created_by_user_id, t.updated_by_user_id)]
         active_count = len(mine)
         overdue_count = sum(1 for t in mine if t.deadline is not None and t.deadline < today)
         last_seen = last_seen_by_user.get(u.id)
         online = last_seen is not None and (now_dt - last_seen).total_seconds() < 30 * 60
-        pulse_users.append({
-            "user": u,
-            "active": active_count,
-            "overdue": overdue_count,
-            "online": online,
-            "last_seen": last_seen,
-            "load_pct": min(100, active_count * 10),
-            "is_me": (cu is not None and cu.id == u.id),
-        })
+        pulse_users.append(
+            {
+                "user": u,
+                "active": active_count,
+                "overdue": overdue_count,
+                "online": online,
+                "last_seen": last_seen,
+                "load_pct": min(100, active_count * 10),
+                "is_me": (cu is not None and cu.id == u.id),
+            }
+        )
 
     # Firmy + ich "zdrowie" (prosty heurystyczny score 0..1)
-    firm_rows = (Company.query
-                 .order_by(Company.updated_at.desc() if hasattr(Company, 'updated_at') else Company.id.desc())
-                 .limit(6).all())
+    firm_rows = (
+        Company.query.order_by(Company.updated_at.desc() if hasattr(Company, "updated_at") else Company.id.desc())
+        .limit(6)
+        .all()
+    )
     firms_health = []
     for c in firm_rows:
         open_tasks = Task.query.filter_by(company_id=c.id).filter(Task.status != "done").count()
-        overdue_tasks = Task.query.filter_by(company_id=c.id).filter(
-            Task.status != "done",
-            Task.deadline != None,
-            Task.deadline < today,
-        ).count()
+        overdue_tasks = (
+            Task.query.filter_by(company_id=c.id)
+            .filter(
+                Task.status != "done",
+                Task.deadline != None,
+                Task.deadline < today,
+            )
+            .count()
+        )
         score = 0.9
         if overdue_tasks:
             score -= min(0.5, 0.1 * overdue_tasks)
@@ -281,12 +326,14 @@ def dashboard():
         if c.is_retainer:
             score += 0.05
         score = max(0.15, min(1.0, score))
-        firms_health.append({
-            "company": c,
-            "health": score,
-            "tasks": open_tasks,
-            "overdue": overdue_tasks,
-        })
+        firms_health.append(
+            {
+                "company": c,
+                "health": score,
+                "tasks": open_tasks,
+                "overdue": overdue_tasks,
+            }
+        )
 
     # Miesieczne serie bilansu - ostatnie 6 miesiecy (income, balance)
     finance_trend = []
@@ -294,14 +341,17 @@ def dashboard():
         y = today.year
         m = today.month - offset
         while m <= 0:
-            m += 12; y -= 1
+            m += 12
+            y -= 1
         b = finance_helpers.monthly_balance(y, m, allocate_overhead=False)
-        finance_trend.append({
-            "label": f"{m:02d}",
-            "income": float(b.get("revenue_total", 0) or 0),
-            "costs": float(b.get("expense_total", 0) or 0),
-            "balance": float(b.get("balance", 0) or 0),
-        })
+        finance_trend.append(
+            {
+                "label": f"{m:02d}",
+                "income": float(b.get("revenue_total", 0) or 0),
+                "costs": float(b.get("expense_total", 0) or 0),
+                "balance": float(b.get("balance", 0) or 0),
+            }
+        )
 
     return render_template(
         "dashboard.html",

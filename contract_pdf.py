@@ -26,8 +26,12 @@ class ContractPDF(FPDF):
         self.set_y(-12)
         self.set_font("dejavu", "", 7)
         self.set_text_color(150, 150, 150)
-        self.cell(0, 5, i18n.gettext("Strona %(page)s/%(total)s", self.lang)
-                  % {"page": self.page_no(), "total": "{nb}"}, align="C")
+        self.cell(
+            0,
+            5,
+            i18n.gettext("Strona %(page)s/%(total)s", self.lang) % {"page": self.page_no(), "total": "{nb}"},
+            align="C",
+        )
 
 
 def generate_contract_pdf(title, rendered_text, output_path, agency_name="", lang=None):

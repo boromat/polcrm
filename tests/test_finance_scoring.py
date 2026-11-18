@@ -8,6 +8,7 @@ import scoring
 
 # ── scoring ─────────────────────────────────────────────────────
 
+
 def _company(**kw):
     from models import Company
 
@@ -24,14 +25,21 @@ def test_scores_stay_in_range_for_an_empty_company(seeded):
 def test_visibility_rewards_a_complete_google_profile(seeded):
     with seeded.app_context():
         weak = scoring.score_visibility(_company())
-        strong = scoring.score_visibility(_company(
-            place_id="abc", website="firma.example", rating=4.7, user_ratings_total=120,
-            business_status="OPERATIONAL"))
+        strong = scoring.score_visibility(
+            _company(
+                place_id="abc",
+                website="firma.example",
+                rating=4.7,
+                user_ratings_total=120,
+                business_status="OPERATIONAL",
+            )
+        )
     assert weak == 1
     assert strong == 5
 
 
 # ── finance helpers ─────────────────────────────────────────────
+
 
 def test_month_bounds_handles_leap_years():
     assert fh.month_bounds(2028, 2) == (date(2028, 2, 1), date(2028, 2, 29))
@@ -69,9 +77,16 @@ def test_mark_overdue_payments(seeded):
 
     with seeded.app_context():
         company = Company.query.first()
-        p = Payment(company_id=company.id, title="Test zaległości", amount_net=100, vat_rate=23,
-                    kind="one_time", status="unpaid", issued_at=date.today() - timedelta(days=30),
-                    due_at=date.today() - timedelta(days=1))
+        p = Payment(
+            company_id=company.id,
+            title="Test zaległości",
+            amount_net=100,
+            vat_rate=23,
+            kind="one_time",
+            status="unpaid",
+            issued_at=date.today() - timedelta(days=30),
+            due_at=date.today() - timedelta(days=1),
+        )
         p.recompute_gross()
         db.session.add(p)
         db.session.commit()
@@ -87,12 +102,27 @@ def test_monthly_balance_counts_paid_revenue_and_expenses_in_the_month(seeded):
     with seeded.app_context():
         before = fh.monthly_balance(2031, 3)
         company = Company.query.first()
-        paid = Payment(company_id=company.id, title="Wdrożenie", amount_net=1000, vat_rate=23,
-                       kind="one_time", status="paid", issued_at=date(2031, 3, 1),
-                       due_at=date(2031, 3, 14), paid_at=date(2031, 3, 10))
-        unpaid = Payment(company_id=company.id, title="Nieopłacone", amount_net=500, vat_rate=23,
-                         kind="one_time", status="unpaid", issued_at=date(2031, 3, 1),
-                         due_at=date(2031, 3, 30))
+        paid = Payment(
+            company_id=company.id,
+            title="Wdrożenie",
+            amount_net=1000,
+            vat_rate=23,
+            kind="one_time",
+            status="paid",
+            issued_at=date(2031, 3, 1),
+            due_at=date(2031, 3, 14),
+            paid_at=date(2031, 3, 10),
+        )
+        unpaid = Payment(
+            company_id=company.id,
+            title="Nieopłacone",
+            amount_net=500,
+            vat_rate=23,
+            kind="one_time",
+            status="unpaid",
+            issued_at=date(2031, 3, 1),
+            due_at=date(2031, 3, 30),
+        )
         cost = Expense(category="software", amount_net=200, vat_rate=23, payment_date=date(2031, 3, 5))
         for row in (paid, unpaid, cost):
             if hasattr(row, "recompute_gross"):
@@ -104,7 +134,8 @@ def test_monthly_balance_counts_paid_revenue_and_expenses_in_the_month(seeded):
         assert after["revenue_total"] - before["revenue_total"] == 1000  # unpaid does not count
         assert after["expense_total"] - before["expense_total"] == 200
         assert after["balance"] == round(
-            after["revenue_total"] - after["expense_total"] - after["subscription_allocation"], 2)
+            after["revenue_total"] - after["expense_total"] - after["subscription_allocation"], 2
+        )
         assert after["month_label"] == "Marzec"
 
 

@@ -38,6 +38,7 @@ def calculate_all_scores(company, api_key=None):
 
 # ── Individual score functions ────────────────────────────────
 
+
 def score_visibility(company):
     """Widoczność online (1-5)."""
     pts = 0
@@ -120,6 +121,7 @@ def score_analytics(company, pagespeed=None):
 
 # ── PageSpeed Insights ────────────────────────────────────────
 
+
 def fetch_pagespeed(url, api_key):
     """
     Call Google PageSpeed Insights API v5.
@@ -178,6 +180,7 @@ def fetch_pagespeed(url, api_key):
 
 
 # ── Competitor scoring ────────────────────────────────────────
+
 
 def score_competitor(competitor):
     """Quick score for a competitor (visibility + trust only)."""

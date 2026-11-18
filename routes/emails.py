@@ -26,6 +26,7 @@ from i18n import _
 #  EMAIL (SZABLONY, WYSYŁKA, LOG)
 # ═══════════════════════════════════════════════════════════════
 
+
 @app.route("/emails/templates")
 def emails_templates_list():
     templates = EmailTemplate.query.order_by(EmailTemplate.name).all()
@@ -94,8 +95,13 @@ def email_compose(company_id):
             flash(_("Adresat, temat i treść są wymagane."), "danger")
             return redirect(url_for("email_compose", company_id=company_id, template=template_key))
         ok, msg = email_sender.send_email(
-            to_address=to, subject=subject, body_html=body,
-            cc=cc, bcc=bcc, company_id=company_id, template_key=template_key,
+            to_address=to,
+            subject=subject,
+            body_html=body,
+            cc=cc,
+            bcc=bcc,
+            company_id=company_id,
+            template_key=template_key,
         )
         if ok:
             flash(_("Wiadomość wysłana do %(to)s.", to=to), "success")
@@ -110,9 +116,16 @@ def email_compose(company_id):
         subject, body = email_sender.render_email_template(template_key, ctx)
     templates = EmailTemplate.query.order_by(EmailTemplate.name).all()
     payments = Payment.query.filter_by(company_id=company_id).order_by(Payment.issued_at.desc()).all()
-    return render_template("emails/compose.html", company=company, templates=templates,
-                           template_key=template_key, subject=subject or "", body=body or "",
-                           payments=payments, payment_id=payment_id)
+    return render_template(
+        "emails/compose.html",
+        company=company,
+        templates=templates,
+        template_key=template_key,
+        subject=subject or "",
+        body=body or "",
+        payments=payments,
+        payment_id=payment_id,
+    )
 
 
 @app.route("/emails/log")

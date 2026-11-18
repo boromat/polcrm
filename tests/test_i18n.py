@@ -29,8 +29,14 @@ def _python_messages():
     for path in files:
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
-            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_"
-                    and node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str)):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "_"
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+            ):
                 out.setdefault(node.args[0].value, str(path.relative_to(ROOT)))
     return out
 
@@ -46,8 +52,11 @@ def _js_messages():
 
 def test_every_marked_string_has_an_english_translation():
     catalog = i18n.load_catalog("en")
-    missing = [f"{where}: {msg!r}" for msg, where in {**_template_messages(), **_python_messages()}.items()
-               if msg not in catalog]
+    missing = [
+        f"{where}: {msg!r}"
+        for msg, where in {**_template_messages(), **_python_messages()}.items()
+        if msg not in catalog
+    ]
     assert not missing, f"{len(missing)} without translation:\n" + "\n".join(sorted(missing)[:60])
 
 
@@ -135,8 +144,15 @@ def test_first_admin_keeps_the_setup_language(seeded):
         c = seeded.test_client()
         c.set_cookie(i18n.LANG_COOKIE, "en")
         assert "Create administrator account" in c.get("/setup").get_data(as_text=True)
-        c.post("/setup", data={"name": "First Admin", "email": "first@example.com",
-                               "password": "first-admin-pass", "password2": "first-admin-pass"})
+        c.post(
+            "/setup",
+            data={
+                "name": "First Admin",
+                "email": "first@example.com",
+                "password": "first-admin-pass",
+                "password2": "first-admin-pass",
+            },
+        )
         with seeded.app_context():
             assert User.query.filter_by(email="first@example.com").one().language == "en"
         assert '<html lang="en"' in c.get("/").get_data(as_text=True)
@@ -163,8 +179,16 @@ def test_activity_shows_labels_not_codes(client, seeded):
 
     with seeded.app_context():
         task = Task.query.first()
-        db.session.add(AuditLog(table_name="tasks", record_id=task.id, action="status_change", field="status",
-                                old_value="todo", new_value="in_progress"))
+        db.session.add(
+            AuditLog(
+                table_name="tasks",
+                record_id=task.id,
+                action="status_change",
+                field="status",
+                old_value="todo",
+                new_value="in_progress",
+            )
+        )
         db.session.commit()
         task_id = task.id
     html = client.get(f"/tasks/{task_id}").get_data(as_text=True)

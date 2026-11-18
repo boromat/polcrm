@@ -9,9 +9,31 @@ from datetime import date, datetime
 
 def _rich_company(seeded):
     """A company with one of every related record, plus records outside it that point into it."""
-    from models import (Audit, ClientCredential, ClientFile, Company, Competitor, ContentPost, Contract,
-                        EmailLog, Expense, GscSnapshot, Mention, Note, Offer, Package, Payment, Project, Task,
-                        TaskComment, User, Visit, Whiteboard, WhiteboardStroke, db)
+    from models import (
+        Audit,
+        ClientCredential,
+        ClientFile,
+        Company,
+        Competitor,
+        ContentPost,
+        Contract,
+        EmailLog,
+        Expense,
+        GscSnapshot,
+        Mention,
+        Note,
+        Offer,
+        Package,
+        Payment,
+        Project,
+        Task,
+        TaskComment,
+        User,
+        Visit,
+        Whiteboard,
+        WhiteboardStroke,
+        db,
+    )
 
     with seeded.app_context():
         anna = User.query.filter_by(email="anna@example.com").one()
@@ -24,8 +46,9 @@ def _rich_company(seeded):
         post = ContentPost(company_id=c.id, title="Wpis do usunięcia")
         db.session.add(post)
         db.session.flush()
-        project_task = Task(title="Zadanie w projekcie", company_id=c.id, project_id=project.id,
-                            content_post_id=post.id)
+        project_task = Task(
+            title="Zadanie w projekcie", company_id=c.id, project_id=project.id, content_post_id=post.id
+        )
         loose_task = Task(title="Zadanie przypięte do firmy", company_id=c.id)
         db.session.add_all([project_task, loose_task])
         db.session.flush()
@@ -35,14 +58,33 @@ def _rich_company(seeded):
         comment = TaskComment(task_id=project_task.id, user_id=anna.id, body="@Anna zerknij")
         db.session.add(comment)
         db.session.flush()
-        db.session.add(Mention(mentioned_user_id=anna.id, author_user_id=anna.id, source_type="task_comment",
-                               source_id=comment.id, task_id=project_task.id))
-        pdf = ClientFile(company_id=c.id, project_id=project.id, task_id=project_task.id,
-                         filename="umowa.pdf", stored_path="uploads/none/umowa.pdf")
+        db.session.add(
+            Mention(
+                mentioned_user_id=anna.id,
+                author_user_id=anna.id,
+                source_type="task_comment",
+                source_id=comment.id,
+                task_id=project_task.id,
+            )
+        )
+        pdf = ClientFile(
+            company_id=c.id,
+            project_id=project.id,
+            task_id=project_task.id,
+            filename="umowa.pdf",
+            stored_path="uploads/none/umowa.pdf",
+        )
         db.session.add(pdf)
         db.session.flush()
-        db.session.add(ClientFile(company_id=c.id, filename="umowa-v2.pdf", stored_path="uploads/none/umowa-v2.pdf",
-                                  version=2, parent_file_id=pdf.id))
+        db.session.add(
+            ClientFile(
+                company_id=c.id,
+                filename="umowa-v2.pdf",
+                stored_path="uploads/none/umowa-v2.pdf",
+                version=2,
+                parent_file_id=pdf.id,
+            )
+        )
         db.session.add(Contract(company_id=c.id, name="Umowa", generated_pdf_file_id=pdf.id))
         expense = Expense(title="Koszt na klienta", client_id=c.id, amount_net=100, attachment_file_id=pdf.id)
         db.session.add(expense)
@@ -53,26 +95,45 @@ def _rich_company(seeded):
         db.session.flush()
         db.session.add(Competitor(audit_id=audit.id, name="Konkurent"))
         db.session.add(Offer(company_id=c.id, package_id=Package.query.first().id, audit_id=audit.id))
-        db.session.add_all([
-            Note(company_id=c.id, project_id=project.id, content="Notatka", scope="company"),
-            Payment(company_id=c.id, title="Abonament", amount_net=1000),
-            Visit(company_id=c.id, scheduled_at=datetime(2026, 5, 4, 10, 0)),
-            ClientCredential(company_id=c.id, label="WordPress"),
-            GscSnapshot(company_id=c.id, date_range_start=date(2026, 4, 1), date_range_end=date(2026, 4, 30)),
-            EmailLog(company_id=c.id, to_address="kontakt@example.com", subject_rendered="Oferta"),
-        ])
+        db.session.add_all(
+            [
+                Note(company_id=c.id, project_id=project.id, content="Notatka", scope="company"),
+                Payment(company_id=c.id, title="Abonament", amount_net=1000),
+                Visit(company_id=c.id, scheduled_at=datetime(2026, 5, 4, 10, 0)),
+                ClientCredential(company_id=c.id, label="WordPress"),
+                GscSnapshot(company_id=c.id, date_range_start=date(2026, 4, 1), date_range_end=date(2026, 4, 30)),
+                EmailLog(company_id=c.id, to_address="kontakt@example.com", subject_rendered="Oferta"),
+            ]
+        )
         board = Whiteboard(name="Tablica firmy", company_id=c.id)
         db.session.add(board)
         db.session.flush()
         db.session.add(WhiteboardStroke(whiteboard_id=board.id, tool="pen", points=[[0, 0], [5, 5]]))
         db.session.commit()
-        return {"company": c.id, "loose_task": loose_task.id, "expense": expense.id, "board": board.id,
-                "project_task": project_task.id, "subtask": subtask.id}
+        return {
+            "company": c.id,
+            "loose_task": loose_task.id,
+            "expense": expense.id,
+            "board": board.id,
+            "project_task": project_task.id,
+            "subtask": subtask.id,
+        }
 
 
 def test_company_delete_removes_its_data_and_detaches_the_rest(client, seeded):
-    from models import (Audit, ClientFile, Company, ContentPost, EmailLog, Expense, Mention, Project, Task,
-                        Whiteboard, db)
+    from models import (
+        Audit,
+        ClientFile,
+        Company,
+        ContentPost,
+        EmailLog,
+        Expense,
+        Mention,
+        Project,
+        Task,
+        Whiteboard,
+        db,
+    )
 
     ids = _rich_company(seeded)
     r = client.post(f"/companies/{ids['company']}/delete")
@@ -104,11 +165,13 @@ def test_whiteboard_delete_includes_erased_elements(client, seeded):
         board = Whiteboard(name="Tablica z wymazanymi")
         db.session.add(board)
         db.session.flush()
-        db.session.add_all([
-            WhiteboardStroke(whiteboard_id=board.id, tool="pen", points=[[0, 0], [1, 1]]),
-            WhiteboardStroke(whiteboard_id=board.id, tool="pen", points=[[2, 2], [3, 3]], deleted=True),
-            WhiteboardDeletion(whiteboard_id=board.id, stroke_id=0),
-        ])
+        db.session.add_all(
+            [
+                WhiteboardStroke(whiteboard_id=board.id, tool="pen", points=[[0, 0], [1, 1]]),
+                WhiteboardStroke(whiteboard_id=board.id, tool="pen", points=[[2, 2], [3, 3]], deleted=True),
+                WhiteboardDeletion(whiteboard_id=board.id, stroke_id=0),
+            ]
+        )
         db.session.commit()
         board_id = board.id
     assert client.post(f"/tablica/{board_id}/delete").status_code == 302

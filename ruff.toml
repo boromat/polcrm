@@ -1,3 +1,6 @@
 # Lint: tylko reguły pyflakes (prawdziwe błędy: niezdefiniowane nazwy, nieużywane importy), bez reguł stylu.
+# Format: ruff format, linie do 120 znaków (CI sprawdza ruff format --check).
+line-length = 120
+
 [lint]
 select = ["F"]

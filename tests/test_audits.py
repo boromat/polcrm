@@ -55,10 +55,16 @@ def test_audit_edit_saves_checklist_and_plan(client, audit_id, seeded):
     """Unticked boxes are saved as False, empty list fields are dropped, the overall score is the mean."""
     from models import Audit, db
 
-    r = client.post(f"/audits/{audit_id}/edit", data={
-        "ws_visible_cta": "on", "problem_1": "Brak rezerwacji online", "problem_2": "",
-        "action_1": "Przycisk rezerwacji", "status": "ready",
-    })
+    r = client.post(
+        f"/audits/{audit_id}/edit",
+        data={
+            "ws_visible_cta": "on",
+            "problem_1": "Brak rezerwacji online",
+            "problem_2": "",
+            "action_1": "Przycisk rezerwacji",
+            "status": "ready",
+        },
+    )
     assert r.status_code == 302
     with seeded.app_context():
         audit = db.session.get(Audit, audit_id)

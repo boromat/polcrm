@@ -20,16 +20,96 @@ import sys
 from html.parser import HTMLParser
 
 POLISH_LETTERS = re.compile(r"[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]")
-POLISH_WORDS = re.compile(r"\b(" + "|".join([
-    "zapisz", "usun", "dodaj", "edytuj", "anuluj", "brak", "nowy", "nowa", "nowe", "wszystkie", "szukaj",
-    "firmy", "firma", "zadania", "zadanie", "ustawienia", "kalendarz", "notatki", "notatka", "finanse",
-    "koszty", "termin", "opis", "status zadania", "wyloguj", "zaloguj", "jutro", "klient", "klienci", "projekt",
-    "projekty", "wizyta", "wizyty", "oferta", "oferty", "pakiet", "pakiety", "umowa", "umowy", "szablon",
-    "szablony", "raport", "bilans", "pilne", "wysoki", "niski", "zrobione", "do zrobienia", "pokaz", "wiecej",
-    "zamknij", "filtruj", "szczegoly", "skrzynka", "tablica", "przeglad", "uwaga", "albo", "oraz", "jest",
-    "nie ma", "kliknij", "wpisz", "wybierz", "zobacz", "otworz", "pobierz", "wyslij", "zadan", "firm",
-    "lub", "tylko", "przez", "jesli", "jeszcze", "bez", "dla", "przy", "tutaj", "teraz", "dzis",
-]) + r")\b", re.IGNORECASE)
+POLISH_WORDS = re.compile(
+    r"\b("
+    + "|".join(
+        [
+            "zapisz",
+            "usun",
+            "dodaj",
+            "edytuj",
+            "anuluj",
+            "brak",
+            "nowy",
+            "nowa",
+            "nowe",
+            "wszystkie",
+            "szukaj",
+            "firmy",
+            "firma",
+            "zadania",
+            "zadanie",
+            "ustawienia",
+            "kalendarz",
+            "notatki",
+            "notatka",
+            "finanse",
+            "koszty",
+            "termin",
+            "opis",
+            "status zadania",
+            "wyloguj",
+            "zaloguj",
+            "jutro",
+            "klient",
+            "klienci",
+            "projekt",
+            "projekty",
+            "wizyta",
+            "wizyty",
+            "oferta",
+            "oferty",
+            "pakiet",
+            "pakiety",
+            "umowa",
+            "umowy",
+            "szablon",
+            "szablony",
+            "raport",
+            "bilans",
+            "pilne",
+            "wysoki",
+            "niski",
+            "zrobione",
+            "do zrobienia",
+            "pokaz",
+            "wiecej",
+            "zamknij",
+            "filtruj",
+            "szczegoly",
+            "skrzynka",
+            "tablica",
+            "przeglad",
+            "uwaga",
+            "albo",
+            "oraz",
+            "jest",
+            "nie ma",
+            "kliknij",
+            "wpisz",
+            "wybierz",
+            "zobacz",
+            "otworz",
+            "pobierz",
+            "wyslij",
+            "zadan",
+            "firm",
+            "lub",
+            "tylko",
+            "przez",
+            "jesli",
+            "jeszcze",
+            "bez",
+            "dla",
+            "przy",
+            "tutaj",
+            "teraz",
+            "dzis",
+        ]
+    )
+    + r")\b",
+    re.IGNORECASE,
+)
 # Allowed in the English UI: currency, brand, names of Polish services (business directories)
 ALLOWED = re.compile(r"\bzł\b|PolCRM|\bPLN\b|Panorama Firm")
 
@@ -204,6 +284,7 @@ def main():
         db.session.commit()
     client = app.test_client()
     import core
+
     core.LOGIN_LIMITER.reset()
     client.post("/login", data={"email": "anna@example.com", "password": seed_test_data.DEMO_PASSWORD})
     report = find_leftovers(app, client, sys.argv[1] if len(sys.argv) > 1 else "")

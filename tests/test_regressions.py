@@ -16,8 +16,9 @@ def test_knowledge_article_html_is_sanitised(client, seeded):
     from models import KnowledgeArticle, db
 
     with seeded.app_context():
-        a = KnowledgeArticle(title="XSS", category="Test",
-                             body="**ok** <script>alert(1)</script> <img src=x onerror=alert(2)>")
+        a = KnowledgeArticle(
+            title="XSS", category="Test", body="**ok** <script>alert(1)</script> <img src=x onerror=alert(2)>"
+        )
         db.session.add(a)
         db.session.commit()
         aid = a.id
@@ -31,13 +32,13 @@ def test_settings_tabs_do_not_overwrite_each_other(client, seeded):
     """'Ogólne' and 'Finanse' used to post the same section, so saving one blanked the other."""
     from models import Settings
 
-    client.post("/settings", data={"section": "general", "google_api_key": "AIza-test-not-real",
-                                   "agency_name": "Agencja Testowa"})
-    client.post("/settings", data={"section": "finance", "agency_nip": "1234567890",
-                                   "default_vat_rate": "0"})
+    client.post(
+        "/settings",
+        data={"section": "general", "google_api_key": "AIza-test-not-real", "agency_name": "Agencja Testowa"},
+    )
+    client.post("/settings", data={"section": "finance", "agency_nip": "1234567890", "default_vat_rate": "0"})
     # an empty secret field keeps the saved key (the page no longer prints it)
-    client.post("/settings", data={"section": "general", "google_api_key": "",
-                                   "agency_name": "Agencja Testowa"})
+    client.post("/settings", data={"section": "general", "google_api_key": "", "agency_name": "Agencja Testowa"})
     with seeded.app_context():
         s = Settings.get()
         assert s.google_api_key == "AIza-test-not-real"
@@ -75,8 +76,9 @@ def test_contract_pdf_with_polish_characters(tmp_path):
     from contract_pdf import generate_contract_pdf
 
     out = tmp_path / "umowa.pdf"
-    generate_contract_pdf("Umowa o świadczenie usług", "§ 1. Zażółć gęślą jaźń.\n\n§ 2. Płatność.",
-                          str(out), agency_name="Agencja")
+    generate_contract_pdf(
+        "Umowa o świadczenie usług", "§ 1. Zażółć gęślą jaźń.\n\n§ 2. Płatność.", str(out), agency_name="Agencja"
+    )
     assert out.read_bytes()[:5] == b"%PDF-"
 
 
@@ -86,8 +88,15 @@ def test_audit_pdf(seeded):
 
     with seeded.app_context():
         company = Company.query.first()
-        audit = Audit(company_id=company.id, score_visibility=4, score_offer=3, score_trust=5,
-                      score_conversion=2, score_analytics=3, score_overall=3.4)
+        audit = Audit(
+            company_id=company.id,
+            score_visibility=4,
+            score_offer=3,
+            score_trust=5,
+            score_conversion=2,
+            score_analytics=3,
+            score_overall=3.4,
+        )
         db.session.add(audit)
         db.session.commit()
         path = generate_audit_pdf(audit, company, [], Settings.get())
@@ -116,8 +125,14 @@ def test_query_indexes_exist_and_are_used(seeded):
         names = {ix["name"] for table in ("tasks", "payments", "companies") for ix in insp.get_indexes(table)}
         assert {"ix_tasks_deadline", "ix_payments_status_due_at", "ix_companies_pipeline_stage"} <= names
         if db.engine.dialect.name == "sqlite":  # query plans are engine specific
-            plan = " ".join(r[3] for r in db.session.execute(text(
-                "EXPLAIN QUERY PLAN SELECT * FROM tasks WHERE deadline IS NOT NULL AND deadline < '2026-01-01'")))
+            plan = " ".join(
+                r[3]
+                for r in db.session.execute(
+                    text(
+                        "EXPLAIN QUERY PLAN SELECT * FROM tasks WHERE deadline IS NOT NULL AND deadline < '2026-01-01'"
+                    )
+                )
+            )
             assert "ix_tasks_deadline" in plan
 
 
@@ -142,8 +157,12 @@ def test_call_model_uses_configured_endpoint(monkeypatch):
     monkeypatch.setattr(ai_assistant.requests, "post", fake_post)
     out = ai_assistant.call_model([{"role": "user", "content": "hej"}], model="test/model", api_key="test-key-not-real")
     assert out["choices"][0]["message"]["content"] == "ok"
-    assert seen == {"url": "http://127.0.0.1:4000/v1/chat/completions", "model": "test/model",
-                    "tools": 12, "auth": "Bearer test-key-not-real"}
+    assert seen == {
+        "url": "http://127.0.0.1:4000/v1/chat/completions",
+        "model": "test/model",
+        "tools": 12,
+        "auth": "Bearer test-key-not-real",
+    }
 
 
 def test_settings_form_shows_saved_zero_vat(client, seeded):

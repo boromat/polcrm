@@ -31,12 +31,8 @@ log = logging.getLogger(__name__)
 
 # Domyślnie OpenRouter. Można wskazać inną bramkę z API zgodnym z OpenAI (np. LiteLLM albo
 # lokalny model), wtedy dane w ogóle nie wychodzą do zewnętrznego dostawcy.
-OPENROUTER_URL = os.environ.get(
-    "OPENROUTER_URL", "https://openrouter.ai/api/v1/chat/completions"
-).strip()
-DEFAULT_MODEL = os.environ.get(
-    "ASSISTANT_MODEL", "google/gemini-3.1-flash-lite-preview"
-).strip()
+OPENROUTER_URL = os.environ.get("OPENROUTER_URL", "https://openrouter.ai/api/v1/chat/completions").strip()
+DEFAULT_MODEL = os.environ.get("ASSISTANT_MODEL", "google/gemini-3.1-flash-lite-preview").strip()
 
 SYSTEM_PROMPT = """Jesteś asystentem biznesowym agencji marketingowej w aplikacji PolCRM.
 Masz dostęp do bazy: firm (CRM), zadań, finansów (faktury/koszty/subskrypcje), kalendarza, notatek.
@@ -290,15 +286,19 @@ TOOLS = [
 # Argumenty przychodzą już odmaskowane (privacy.Masker.restore_data), a wynik jest maskowany
 # przed wysłaniem do modelu - same narzędzia nie muszą wiedzieć o polanonie.
 
+
 def _parse_deadline(s):
     """Termin z argumentu modelu: 'YYYY-MM-DD', 'today', 'tomorrow' albo 'next_week' -> date albo None."""
     if not s:
         return None
     s = s.strip().lower()
     today = date.today()
-    if s == "today": return today
-    if s == "tomorrow": return today + timedelta(days=1)
-    if s == "next_week": return today + timedelta(days=7)
+    if s == "today":
+        return today
+    if s == "tomorrow":
+        return today + timedelta(days=1)
+    if s == "next_week":
+        return today + timedelta(days=7)
     try:
         return datetime.strptime(s, "%Y-%m-%d").date()
     except ValueError:
@@ -328,8 +328,12 @@ def tool_list_tasks(args, models, db):
     if scope == "today":
         q = q.filter(Task.status != "done", Task.deadline == today)
     elif scope == "week":
-        q = q.filter(Task.status != "done", Task.deadline != None,
-                     Task.deadline >= today, Task.deadline <= today + timedelta(days=7))
+        q = q.filter(
+            Task.status != "done",
+            Task.deadline != None,
+            Task.deadline >= today,
+            Task.deadline <= today + timedelta(days=7),
+        )
     elif scope == "overdue":
         q = q.filter(Task.status != "done", Task.deadline != None, Task.deadline < today)
     else:
@@ -358,8 +362,7 @@ def tool_create_task(args, models, db, user_id=None):
         t.created_by_user_id = user_id
     db.session.add(t)
     db.session.commit()
-    return {"ok": True, "task_id": t.id, "url": f"/tasks/{t.id}",
-            "message": f"Utworzono zadanie #{t.id}: {t.title}"}
+    return {"ok": True, "task_id": t.id, "url": f"/tasks/{t.id}", "message": f"Utworzono zadanie #{t.id}: {t.title}"}
 
 
 def tool_move_task(args, models, db):
@@ -371,14 +374,20 @@ def tool_move_task(args, models, db):
     col = args["column"]
     today = date.today()
     if col == "done":
-        t.status = "done"; t.done_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        t.status = "done"
+        t.done_at = datetime.now(timezone.utc).replace(tzinfo=None)
     else:
         if t.status == "done":
-            t.status = "todo"; t.done_at = None
-        if col == "overdue": t.deadline = today - timedelta(days=1)
-        elif col == "today": t.deadline = today
-        elif col == "week": t.deadline = today + timedelta(days=3)
-        elif col == "later": t.deadline = today + timedelta(days=14)
+            t.status = "todo"
+            t.done_at = None
+        if col == "overdue":
+            t.deadline = today - timedelta(days=1)
+        elif col == "today":
+            t.deadline = today
+        elif col == "week":
+            t.deadline = today + timedelta(days=3)
+        elif col == "later":
+            t.deadline = today + timedelta(days=14)
     db.session.commit()
     return {"ok": True, "status": t.status, "deadline": t.deadline.isoformat() if t.deadline else None}
 
@@ -398,12 +407,15 @@ def tool_list_companies(args, models, db):
         "count": len(rows),
         "companies": [
             {
-                "id": c.id, "name": c.name, "industry": c.industry,
+                "id": c.id,
+                "name": c.name,
+                "industry": c.industry,
                 "pipeline_stage": c.pipeline_stage,
                 "is_retainer": c.is_retainer,
                 "monthly_fee_net": c.monthly_fee_net,
                 "url": f"/companies/{c.id}",
-            } for c in rows
+            }
+            for c in rows
         ],
     }
 
@@ -422,12 +434,19 @@ def tool_get_company(args, models, db):
     recent_payments = []
     if hasattr(c, "payments"):
         for p in sorted(c.payments, key=lambda p: p.issued_at or date.min, reverse=True)[:5]:
-            recent_payments.append({
-                "id": p.id, "title": p.title, "status": p.status,
-                "amount_gross": p.amount_gross, "due_at": p.due_at.isoformat() if p.due_at else None,
-            })
+            recent_payments.append(
+                {
+                    "id": p.id,
+                    "title": p.title,
+                    "status": p.status,
+                    "amount_gross": p.amount_gross,
+                    "due_at": p.due_at.isoformat() if p.due_at else None,
+                }
+            )
     return {
-        "id": c.id, "name": c.name, "industry": c.industry,
+        "id": c.id,
+        "name": c.name,
+        "industry": c.industry,
         "contact_email": getattr(c, "contact_email", None),
         "phone": getattr(c, "phone", None),
         "website": getattr(c, "website", None),
@@ -463,7 +482,9 @@ def tool_get_finances_summary(args, models, db, finance_helpers):
     overdue = finance_helpers.overdue_payments_summary()
     cat = finance_helpers.expense_category_breakdown(year, month)
     return {
-        "year": year, "month": month, "month_label": bal["month_label"],
+        "year": year,
+        "month": month,
+        "month_label": bal["month_label"],
         "revenue_total": bal["revenue_total"],
         "expense_total": bal["expense_total"],
         "subscription_allocation": bal["subscription_allocation"],
@@ -483,13 +504,16 @@ def tool_list_overdue_payments(args, models, db):
         "total_gross": sum(p.amount_gross or 0 for p in rows),
         "payments": [
             {
-                "id": p.id, "payment_number": p.payment_number, "title": p.title,
+                "id": p.id,
+                "payment_number": p.payment_number,
+                "title": p.title,
                 "company_id": p.company_id,
                 "company_name": p.company.name if p.company else None,
                 "amount_gross": p.amount_gross,
                 "due_at": p.due_at.isoformat() if p.due_at else None,
                 "url": f"/finances/payments/{p.id}/edit",
-            } for p in rows
+            }
+            for p in rows
         ],
     }
 
@@ -513,10 +537,14 @@ def tool_create_payment(args, models, db, finance_helpers, user_id=None):
         p.created_by_user_id = user_id
     db.session.add(p)
     db.session.commit()
-    return {"ok": True, "payment_id": p.id, "payment_number": p.payment_number,
-            "amount_gross": p.amount_gross,
-            "url": f"/finances/payments/{p.id}/edit",
-            "message": f"Utworzono płatność {p.payment_number}"}
+    return {
+        "ok": True,
+        "payment_id": p.id,
+        "payment_number": p.payment_number,
+        "amount_gross": p.amount_gross,
+        "url": f"/finances/payments/{p.id}/edit",
+        "message": f"Utworzono płatność {p.payment_number}",
+    }
 
 
 def tool_add_note(args, models, db, user_id=None):
@@ -534,9 +562,12 @@ def tool_add_note(args, models, db, user_id=None):
         n.scope = "company" if args.get("company_id") else "personal"
     db.session.add(n)
     db.session.commit()
-    return {"ok": True, "note_id": n.id,
-            "url": f"/notes/{n.id}/edit" if not args.get("company_id") else f"/companies/{args['company_id']}",
-            "message": "Dodano notatkę"}
+    return {
+        "ok": True,
+        "note_id": n.id,
+        "url": f"/notes/{n.id}/edit" if not args.get("company_id") else f"/companies/{args['company_id']}",
+        "message": "Dodano notatkę",
+    }
 
 
 def tool_search_global(args, models, db):
@@ -545,7 +576,9 @@ def tool_search_global(args, models, db):
     if not q:
         return {"results": []}
     like = f"%{q}%"
-    Company = models["Company"]; Task = models["Task"]; Note = models["Note"]
+    Company = models["Company"]
+    Task = models["Task"]
+    Note = models["Note"]
     results = []
     for c in Company.query.filter(Company.name.ilike(like)).limit(5).all():
         results.append({"type": "company", "id": c.id, "title": c.name, "url": f"/companies/{c.id}"})
@@ -566,28 +599,44 @@ def tool_list_calendar(args, models, db):
     visits = []
     content = []
     if Visit:
-        rows = Visit.query.filter(
-            Visit.scheduled_at >= datetime.combine(today, datetime.min.time()),
-            Visit.scheduled_at <= datetime.combine(end, datetime.max.time()),
-        ).order_by(Visit.scheduled_at).all()
+        rows = (
+            Visit.query.filter(
+                Visit.scheduled_at >= datetime.combine(today, datetime.min.time()),
+                Visit.scheduled_at <= datetime.combine(end, datetime.max.time()),
+            )
+            .order_by(Visit.scheduled_at)
+            .all()
+        )
         for v in rows:
-            visits.append({
-                "id": v.id, "company_name": v.company.name if v.company else None,
-                "scheduled_at": v.scheduled_at.isoformat(),
-                "type_label": getattr(v, "type_label", None),
-                "url": f"/visits/{v.id}",
-            })
+            visits.append(
+                {
+                    "id": v.id,
+                    "company_name": v.company.name if v.company else None,
+                    "scheduled_at": v.scheduled_at.isoformat(),
+                    "type_label": getattr(v, "type_label", None),
+                    "url": f"/visits/{v.id}",
+                }
+            )
     if ContentPost:
-        rows = ContentPost.query.filter(
-            ContentPost.deadline >= today, ContentPost.deadline <= end,
-        ).order_by(ContentPost.deadline).all()
+        rows = (
+            ContentPost.query.filter(
+                ContentPost.deadline >= today,
+                ContentPost.deadline <= end,
+            )
+            .order_by(ContentPost.deadline)
+            .all()
+        )
         for p in rows:
-            content.append({
-                "id": p.id, "title": p.title, "deadline": p.deadline.isoformat(),
-                "company_name": p.company.name if p.company else None,
-                "status": p.status,
-                "url": f"/content/{p.id}/edit",
-            })
+            content.append(
+                {
+                    "id": p.id,
+                    "title": p.title,
+                    "deadline": p.deadline.isoformat(),
+                    "company_name": p.company.name if p.company else None,
+                    "status": p.status,
+                    "url": f"/content/{p.id}/edit",
+                }
+            )
     return {"visits": visits, "content_posts": content}
 
 
@@ -595,23 +644,36 @@ def tool_list_calendar(args, models, db):
 #  DISPATCH
 # ═══════════════════════════════════════════════════════════════════
 
+
 def execute_tool(name, args, models, db, finance_helpers, user_id=None):
     """Wywołaj narzędzie po nazwie. Zawsze zwraca dict gotowy do json.dumps;
     błąd narzędzia wraca do modelu jako {"error": ...}, a nie jako wyjątek, żeby pętla
     mogła kontynuować (model zwykle poprawia argumenty w kolejnym kroku)."""
     try:
-        if name == "list_tasks": return tool_list_tasks(args, models, db)
-        if name == "create_task": return tool_create_task(args, models, db, user_id)
-        if name == "move_task": return tool_move_task(args, models, db)
-        if name == "list_companies": return tool_list_companies(args, models, db)
-        if name == "get_company": return tool_get_company(args, models, db)
-        if name == "update_pipeline_stage": return tool_update_pipeline_stage(args, models, db)
-        if name == "get_finances_summary": return tool_get_finances_summary(args, models, db, finance_helpers)
-        if name == "list_overdue_payments": return tool_list_overdue_payments(args, models, db)
-        if name == "create_payment": return tool_create_payment(args, models, db, finance_helpers, user_id)
-        if name == "add_note": return tool_add_note(args, models, db, user_id)
-        if name == "search_global": return tool_search_global(args, models, db)
-        if name == "list_calendar": return tool_list_calendar(args, models, db)
+        if name == "list_tasks":
+            return tool_list_tasks(args, models, db)
+        if name == "create_task":
+            return tool_create_task(args, models, db, user_id)
+        if name == "move_task":
+            return tool_move_task(args, models, db)
+        if name == "list_companies":
+            return tool_list_companies(args, models, db)
+        if name == "get_company":
+            return tool_get_company(args, models, db)
+        if name == "update_pipeline_stage":
+            return tool_update_pipeline_stage(args, models, db)
+        if name == "get_finances_summary":
+            return tool_get_finances_summary(args, models, db, finance_helpers)
+        if name == "list_overdue_payments":
+            return tool_list_overdue_payments(args, models, db)
+        if name == "create_payment":
+            return tool_create_payment(args, models, db, finance_helpers, user_id)
+        if name == "add_note":
+            return tool_add_note(args, models, db, user_id)
+        if name == "search_global":
+            return tool_search_global(args, models, db)
+        if name == "list_calendar":
+            return tool_list_calendar(args, models, db)
         return {"error": f"Nieznane narzędzie: {name}"}
     except Exception as e:
         return {"error": f"Błąd wykonania {name}: {str(e)}"}
@@ -620,6 +682,7 @@ def execute_tool(name, args, models, db, finance_helpers, user_id=None):
 # ═══════════════════════════════════════════════════════════════════
 #  CHAT (OpenRouter, odpowiedź bez streamingu)
 # ═══════════════════════════════════════════════════════════════════
+
 
 def _build_context_prefix(lang=None):
     """Szybki kontekst - dzisiejsza data, dzień tygodnia (po polsku albo po angielsku)."""
@@ -636,6 +699,7 @@ def _resolve_api_key():
     try:
         from models import Settings
         from email_sender import decrypt_password
+
         s = Settings.get()
         if s.openrouter_api_key_encrypted:
             try:
@@ -654,6 +718,7 @@ def _resolve_model():
     """Model w kolejnosci: Settings.assistant_model -> ENV -> default."""
     try:
         from models import Settings
+
         s = Settings.get()
         if s.assistant_model:
             return s.assistant_model
@@ -697,18 +762,21 @@ def build_masker(settings=None):
     """
     if settings is None:
         from models import Settings
+
         settings = Settings.get()
     if not getattr(settings, "pii_masking_enabled", False):
         return None
     with_ner = bool(getattr(settings, "pii_masking_ner", False))
     privacy.ensure_available(with_ner)  # najpierw polanon: bez niego nie ma po co czytać bazy
     from models import Company
+
     terms = privacy.client_terms(Company.query.with_entities(Company.name, Company.client_legal_name).all())
     return privacy.polanon_masker(with_ner=with_ner, terms=terms)
 
 
-def run_conversation(user_message, history, models, db, finance_helpers, user_id=None,
-                     max_iterations=6, masker=None, call=None):
+def run_conversation(
+    user_message, history, models, db, finance_helpers, user_id=None, max_iterations=6, masker=None, call=None
+):
     """
     Pełny cykl: wywołuje model, wykonuje tools, zwraca finalną odpowiedź tekstową.
 
@@ -723,23 +791,26 @@ def run_conversation(user_message, history, models, db, finance_helpers, user_id
     call = call or call_model
     tools_called = []
     try:
-        return _run(user_message, history, models, db, finance_helpers, user_id,
-                    max_iterations, masker, call, tools_called)
+        return _run(
+            user_message, history, models, db, finance_helpers, user_id, max_iterations, masker, call, tools_called
+        )
     except privacy.MaskingUnavailable as e:
         return {
-            "reply": _("Maskowanie danych osobowych (polanon) jest włączone, ale nie działa: "
-                       "%(error)s. Nic nie zostało wysłane do AI. Napraw to albo wyłącz maskowanie "
-                       "w Ustawienia → AI Asystent.", error=e),
+            "reply": _(
+                "Maskowanie danych osobowych (polanon) jest włączone, ale nie działa: "
+                "%(error)s. Nic nie zostało wysłane do AI. Napraw to albo wyłącz maskowanie "
+                "w Ustawienia → AI Asystent.",
+                error=e,
+            ),
             "tools_called": tools_called,
             "error": "masking_unavailable",
             "masked": 0,
         }
 
 
-def _run(user_message, history, models, db, finance_helpers, user_id,
-         max_iterations, masker, call, tools_called):
-    out = masker.mask if masker else (lambda t: t)          # real -> tokens (to the model)
-    back = masker.restore if masker else (lambda t: t)      # tokens -> real (from the model)
+def _run(user_message, history, models, db, finance_helpers, user_id, max_iterations, masker, call, tools_called):
+    out = masker.mask if masker else (lambda t: t)  # real -> tokens (to the model)
+    back = masker.restore if masker else (lambda t: t)  # tokens -> real (from the model)
 
     lang = i18n.current_language()
     system = system_prompt(lang) + "\n\n" + _build_context_prefix(lang)
@@ -752,8 +823,12 @@ def _run(user_message, history, models, db, finance_helpers, user_id,
     messages.append({"role": "user", "content": out(user_message)})
 
     def _result(reply, error=None):
-        return {"reply": reply, "tools_called": tools_called, "error": error,
-                "masked": len(masker.mapping) if masker else 0}
+        return {
+            "reply": reply,
+            "tools_called": tools_called,
+            "error": error,
+            "masked": len(masker.mapping) if masker else 0,
+        }
 
     for _iteration in range(max_iterations):
         try:
@@ -768,11 +843,13 @@ def _run(user_message, history, models, db, finance_helpers, user_id,
 
         tool_calls = msg.get("tool_calls") or []
         if tool_calls:
-            messages.append({
-                "role": "assistant",
-                "content": msg.get("content") or "",
-                "tool_calls": tool_calls,
-            })
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": msg.get("content") or "",
+                    "tool_calls": tool_calls,
+                }
+            )
             for tc in tool_calls:
                 fn = tc.get("function", {})
                 name = fn.get("name", "")
@@ -785,11 +862,13 @@ def _run(user_message, history, models, db, finance_helpers, user_id,
                 result = execute_tool(name, args, models, db, finance_helpers, user_id)
                 tools_called.append({"name": name, "args": args, "result": result})
                 sent = masker.mask_data(result) if masker else result
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.get("id"),
-                    "content": json.dumps(sent, ensure_ascii=False, default=str),
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.get("id"),
+                        "content": json.dumps(sent, ensure_ascii=False, default=str),
+                    }
+                )
             continue
 
         reply = msg.get("content") or ""
@@ -799,5 +878,6 @@ def _run(user_message, history, models, db, finance_helpers, user_id,
                 log.warning("polanon: %d token(s) in the answer are not in the mapping", len(unknown))
         return _result(back(reply))
 
-    return _result(_("Przerwano po %(n)s iteracjach narzędzi - za skomplikowane zadanie.", n=max_iterations),
-                   "max_iterations")
+    return _result(
+        _("Przerwano po %(n)s iteracjach narzędzi - za skomplikowane zadanie.", n=max_iterations), "max_iterations"
+    )

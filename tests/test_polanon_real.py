@@ -40,23 +40,39 @@ def test_polanon_keeps_tokens_consistent_within_a_request():
 
 def test_full_loop_with_polanon(monkeypatch):
     seen = []
-    monkeypatch.setattr(ai_assistant, "execute_tool",
-                        lambda name, args, *a, **k: seen.append(args) or {"contact": "jan.kowalski@example.com"})
+    monkeypatch.setattr(
+        ai_assistant,
+        "execute_tool",
+        lambda name, args, *a, **k: seen.append(args) or {"contact": "jan.kowalski@example.com"},
+    )
     requests = []
 
     def model(messages):
         requests.append(json.dumps(messages, ensure_ascii=False))
         if len(requests) == 1:
             token = privacy.TOKEN_RE.findall(messages[-1]["content"])[0]
-            return {"choices": [{"message": {"content": "", "tool_calls": [{
-                "id": "c1", "type": "function",
-                "function": {"name": "search_global", "arguments": json.dumps({"query": token})}}]}}]}
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "",
+                            "tool_calls": [
+                                {
+                                    "id": "c1",
+                                    "type": "function",
+                                    "function": {"name": "search_global", "arguments": json.dumps({"query": token})},
+                                }
+                            ],
+                        }
+                    }
+                ]
+            }
         token = privacy.TOKEN_RE.findall(messages[-1]["content"])[0]
         return {"choices": [{"message": {"content": f"Mail: {token}"}}]}
 
     result = ai_assistant.run_conversation(
-        "Znajdź Jan Kowalski", [], models={}, db=None, finance_helpers=None,
-        masker=privacy.polanon_masker(), call=model)
+        "Znajdź Jan Kowalski", [], models={}, db=None, finance_helpers=None, masker=privacy.polanon_masker(), call=model
+    )
 
     assert all("Jan Kowalski" not in r and "jan.kowalski@example.com" not in r for r in requests)
     assert "Kowalski" in seen[0]["query"]

@@ -57,13 +57,26 @@ def answer(text):
 
 
 def tool_call(name, args, call_id="call_1"):
-    return {"choices": [{"message": {"content": "", "tool_calls": [
-        {"id": call_id, "type": "function",
-         "function": {"name": name, "arguments": json.dumps(args, ensure_ascii=False)}},
-    ]}}]}
+    return {
+        "choices": [
+            {
+                "message": {
+                    "content": "",
+                    "tool_calls": [
+                        {
+                            "id": call_id,
+                            "type": "function",
+                            "function": {"name": name, "arguments": json.dumps(args, ensure_ascii=False)},
+                        },
+                    ],
+                }
+            }
+        ]
+    }
 
 
 # ── Masker ──────────────────────────────────────────────────────
+
 
 def test_mask_and_restore_round_trip():
     m = make_masker()
@@ -82,14 +95,22 @@ def test_tokens_stay_consistent_across_texts():
 def test_mask_data_keeps_keys_numbers_and_structure():
     m = make_masker()
     data = {"id": 7, "contact": "Jan Kowalski", "tags": ["vip", "Jan Kowalski"], "fee": 1500.0, "x": None}
-    assert m.mask_data(data) == {"id": 7, "contact": "<OSOBA_1>", "tags": ["vip", "<OSOBA_1>"], "fee": 1500.0, "x": None}
+    assert m.mask_data(data) == {
+        "id": 7,
+        "contact": "<OSOBA_1>",
+        "tags": ["vip", "<OSOBA_1>"],
+        "fee": 1500.0,
+        "x": None,
+    }
 
 
 def test_restore_data_in_nested_tool_arguments():
     m = make_masker()
     m.mask("Jan Kowalski")
     assert m.restore_data({"content": "Oddzwonić do <OSOBA_1>", "company_id": 3}) == {
-        "content": "Oddzwonić do Jan Kowalski", "company_id": 3}
+        "content": "Oddzwonić do Jan Kowalski",
+        "company_id": 3,
+    }
 
 
 def test_unknown_tokens_are_left_untouched_and_reported():
@@ -110,24 +131,35 @@ def test_anonymizer_crash_becomes_masking_unavailable():
 
 # ── run_conversation with masking ──────────────────────────────
 
+
 def test_model_never_sees_real_values(monkeypatch):
     seen_args = []
 
     def fake_execute(name, args, *a, **kw):
         seen_args.append(args)
-        return {"companies": [{"id": 1, "name": "Gabinet", "contact_person": "Jan Kowalski",
-                               "contact_email": "kontakt@dentysta-kowalski.example"}]}
+        return {
+            "companies": [
+                {
+                    "id": 1,
+                    "name": "Gabinet",
+                    "contact_person": "Jan Kowalski",
+                    "contact_email": "kontakt@dentysta-kowalski.example",
+                }
+            ]
+        }
 
     monkeypatch.setattr(ai_assistant, "execute_tool", fake_execute)
     model = FakeModel(
         tool_call("list_companies", {"query": "<OSOBA_1>"}),
         answer("Kontakt: <OSOBA_1>, <EMAIL_1>."),
     )
-    history = [{"role": "user", "content": "Kto to +48 501 234 567?"},
-               {"role": "assistant", "content": "To numer, który podał Jan Kowalski."}]
+    history = [
+        {"role": "user", "content": "Kto to +48 501 234 567?"},
+        {"role": "assistant", "content": "To numer, który podał Jan Kowalski."},
+    ]
     result = ai_assistant.run_conversation(
-        "Znajdź firmę Jan Kowalski", history, models={}, db=None, finance_helpers=None,
-        masker=make_masker(), call=model)
+        "Znajdź firmę Jan Kowalski", history, models={}, db=None, finance_helpers=None, masker=make_masker(), call=model
+    )
 
     sent = model.sent_text()
     for value in SECRETS:
@@ -149,8 +181,14 @@ def test_masking_failure_sends_nothing():
 
     model = FakeModel(answer("should not be called"))
     result = ai_assistant.run_conversation(
-        "Jan Kowalski", [], models={}, db=None, finance_helpers=None,
-        masker=privacy.Masker(anonymize=broken), call=model)
+        "Jan Kowalski",
+        [],
+        models={},
+        db=None,
+        finance_helpers=None,
+        masker=privacy.Masker(anonymize=broken),
+        call=model,
+    )
     assert model.requests == []
     assert result["error"] == "masking_unavailable"
     assert "Nic nie zostało wysłane" in result["reply"]
@@ -168,8 +206,8 @@ def test_failure_while_masking_a_tool_result_stops_before_next_call(monkeypatch)
     monkeypatch.setattr(ai_assistant, "execute_tool", lambda *a, **k: {"note": "WYNIK Jan Kowalski"})
     model = FakeModel(tool_call("search_global", {"query": "x"}), answer("nie powinno dojść"))
     result = ai_assistant.run_conversation(
-        "szukaj", [], models={}, db=None, finance_helpers=None,
-        masker=privacy.Masker(anonymize=flaky), call=model)
+        "szukaj", [], models={}, db=None, finance_helpers=None, masker=privacy.Masker(anonymize=flaky), call=model
+    )
     assert len(model.requests) == 1  # the tool result never went out
     assert result["error"] == "masking_unavailable"
 
@@ -177,7 +215,8 @@ def test_failure_while_masking_a_tool_result_stops_before_next_call(monkeypatch)
 def test_without_masker_behaviour_is_unchanged():
     model = FakeModel(answer("Cześć Jan Kowalski"))
     result = ai_assistant.run_conversation(
-        "Jestem Jan Kowalski", [], models={}, db=None, finance_helpers=None, call=model)
+        "Jestem Jan Kowalski", [], models={}, db=None, finance_helpers=None, call=model
+    )
     assert "Jan Kowalski" in model.sent_text()
     assert "ZAMASKOWANE" not in model.requests[0][0]["content"]
     assert result["reply"] == "Cześć Jan Kowalski"
@@ -188,12 +227,14 @@ def test_max_iterations_message_uses_the_limit(monkeypatch):
     monkeypatch.setattr(ai_assistant, "execute_tool", lambda *a, **k: {"ok": True})
     model = FakeModel(*[tool_call("list_tasks", {}, f"c{i}") for i in range(3)])
     result = ai_assistant.run_conversation(
-        "pętla", [], models={}, db=None, finance_helpers=None, call=model, max_iterations=3)
+        "pętla", [], models={}, db=None, finance_helpers=None, call=model, max_iterations=3
+    )
     assert result["error"] == "max_iterations"
     assert "3 iteracjach" in result["reply"]
 
 
 # ── build_masker / settings ─────────────────────────────────────
+
 
 class _Settings:
     def __init__(self, enabled, ner=False):

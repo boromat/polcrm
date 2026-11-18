@@ -38,8 +38,13 @@ def team_add():
     if User.query.filter(db.func.lower(User.email) == email).first():
         flash(_("Osoba z tym e-mailem już jest w zespole."), "danger")
         return _back()
-    user = User(name=name[:64], email=email, role=role, initials=_initials(name),
-                avatar_color=_COLORS[User.query.count() % len(_COLORS)])
+    user = User(
+        name=name[:64],
+        email=email,
+        role=role,
+        initials=_initials(name),
+        avatar_color=_COLORS[User.query.count() % len(_COLORS)],
+    )
     if AUTH_MODE == "password":
         problem = auth.password_problem(password, email)
         if problem:
@@ -48,7 +53,10 @@ def team_add():
         user.set_password(password)
     db.session.add(user)
     db.session.commit()
-    flash(_("Dodano: %(name)s. Przekaż tej osobie hasło startowe - może je zmienić w swoim profilu.", name=user.name), "success")
+    flash(
+        _("Dodano: %(name)s. Przekaż tej osobie hasło startowe - może je zmienić w swoim profilu.", name=user.name),
+        "success",
+    )
     return _back()
 
 

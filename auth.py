@@ -70,8 +70,10 @@ class LoginRateLimiter:
 
     def blocked(self, ip: str, email: str) -> bool:
         with self._lock:
-            return (len(self._recent(("acct", ip, email.lower()))) >= self.per_account
-                    or len(self._recent(("ip", ip))) >= self.per_ip)
+            return (
+                len(self._recent(("acct", ip, email.lower()))) >= self.per_account
+                or len(self._recent(("ip", ip))) >= self.per_ip
+            )
 
     def failed(self, ip: str, email: str) -> None:
         now = self.clock()

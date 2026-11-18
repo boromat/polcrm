@@ -12,14 +12,15 @@ from i18n import _
 
 db = SQLAlchemy()
 
+
 def utcnow():
     """Bieżący czas UTC jako naiwny datetime - to samo co dawne datetime.utcnow(), które
     Python 3.12 oznaczył jako przestarzałe. Naiwny, bo tak zapisane są istniejące dane w SQLite."""
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-
 # ── Helpers ────────────────────────────────────────────────────
+
 
 class JsonProperty:
     """Descriptor that auto-serializes a column to/from JSON."""
@@ -51,6 +52,7 @@ class JsonProperty:
 
 
 # ── Settings (singleton) ──────────────────────────────────────
+
 
 class Settings(db.Model):
     __tablename__ = "settings"
@@ -111,6 +113,7 @@ class Settings(db.Model):
 # ── Company ───────────────────────────────────────────────────
 
 PIPELINE_STAGES = ["lead", "audit", "contact", "visit", "offer", "client"]
+
 
 class Company(db.Model):
     __tablename__ = "companies"
@@ -216,6 +219,7 @@ class Company(db.Model):
 
 # ── Audit ─────────────────────────────────────────────────────
 
+
 class Audit(db.Model):
     __tablename__ = "audits"
     id = db.Column(db.Integer, primary_key=True)
@@ -279,15 +283,23 @@ class Audit(db.Model):
         }
 
     def compute_overall(self):
-        scores = [s for s in [
-            self.score_visibility, self.score_offer, self.score_trust,
-            self.score_conversion, self.score_analytics
-        ] if s is not None]
+        scores = [
+            s
+            for s in [
+                self.score_visibility,
+                self.score_offer,
+                self.score_trust,
+                self.score_conversion,
+                self.score_analytics,
+            ]
+            if s is not None
+        ]
         if scores:
             self.score_overall = round(sum(scores) / len(scores), 1)
 
 
 # ── Competitor ────────────────────────────────────────────────
+
 
 class Competitor(db.Model):
     __tablename__ = "competitors"
@@ -306,6 +318,7 @@ class Competitor(db.Model):
 
 
 # ── Package ───────────────────────────────────────────────────
+
 
 class Package(db.Model):
     __tablename__ = "packages"
@@ -327,6 +340,7 @@ class Package(db.Model):
 
 
 # ── Offer ─────────────────────────────────────────────────────
+
 
 class Offer(db.Model):
     __tablename__ = "offers"
@@ -353,6 +367,7 @@ class Offer(db.Model):
 
 
 # ── Visit ─────────────────────────────────────────────────────
+
 
 class Visit(db.Model):
     __tablename__ = "visits"
@@ -396,13 +411,13 @@ class Visit(db.Model):
 
     @property
     def prep_done_count(self):
-        return sum([self.prep_report_printed, self.prep_screenshots,
-                    self.prep_offer_template, self.prep_questions])
+        return sum([self.prep_report_printed, self.prep_screenshots, self.prep_offer_template, self.prep_questions])
 
 
 # ── Note ──────────────────────────────────────────────────────
 
 NOTE_SCOPES = ["company", "project", "personal"]
+
 
 class Note(db.Model):
     __tablename__ = "notes"
@@ -439,6 +454,7 @@ class Note(db.Model):
 
 PAYMENT_KINDS = ["retainer", "addon", "project_milestone", "one_time"]
 PAYMENT_STATUSES = ["unpaid", "paid", "overdue", "cancelled"]
+
 
 class Payment(db.Model):
     __tablename__ = "payments"
@@ -490,6 +506,7 @@ class Payment(db.Model):
 
 EXPENSE_CATEGORIES = ["seo_tools", "subcontractor", "marketing", "office_transport"]
 
+
 class Expense(db.Model):
     __tablename__ = "expenses"
     id = db.Column(db.Integer, primary_key=True)
@@ -528,6 +545,7 @@ class Expense(db.Model):
 # ── Subscription (recurring tool costs) ───────────────────────
 
 BILLING_CYCLES = ["monthly", "quarterly", "yearly"]
+
 
 class Subscription(db.Model):
     __tablename__ = "subscriptions"
@@ -568,6 +586,7 @@ class Subscription(db.Model):
 
 PROJECT_KINDS = ["website", "seo_retainer", "content_campaign", "other"]
 PROJECT_STATUSES = ["planning", "active", "on_hold", "done", "cancelled"]
+
 
 class Project(db.Model):
     __tablename__ = "projects"
@@ -689,17 +708,14 @@ class Task(db.Model):
 
     @property
     def is_overdue(self):
-        return (
-            self.deadline is not None
-            and self.status != "done"
-            and self.deadline < date.today()
-        )
+        return self.deadline is not None and self.status != "done" and self.deadline < date.today()
 
 
 # ── ContentPost (content calendar) ────────────────────────────
 
 CONTENT_TYPES = ["blog", "landing", "guest_post", "social", "email"]
 CONTENT_STATUSES = ["idea", "writing", "review", "approved", "published"]
+
 
 class ContentPost(db.Model):
     __tablename__ = "content_posts"
@@ -747,6 +763,7 @@ class ContentPost(db.Model):
 
 # ── KnowledgeArticle (SOP / baza wiedzy) ──────────────────────
 
+
 class KnowledgeArticle(db.Model):
     __tablename__ = "knowledge_articles"
     id = db.Column(db.Integer, primary_key=True)
@@ -766,6 +783,7 @@ class KnowledgeArticle(db.Model):
 
 # ── ClientCredential (link do sejfu haseł) ────────────────────
 
+
 class ClientCredential(db.Model):
     __tablename__ = "client_credentials"
     id = db.Column(db.Integer, primary_key=True)
@@ -783,6 +801,7 @@ class ClientCredential(db.Model):
 
 # ── EmailTemplate ─────────────────────────────────────────────
 
+
 class EmailTemplate(db.Model):
     __tablename__ = "email_templates"
     id = db.Column(db.Integer, primary_key=True)
@@ -796,6 +815,7 @@ class EmailTemplate(db.Model):
 
 
 # ── EmailLog ──────────────────────────────────────────────────
+
 
 class EmailLog(db.Model):
     __tablename__ = "email_log"
@@ -816,6 +836,7 @@ class EmailLog(db.Model):
 
 # ── ContractTemplate ──────────────────────────────────────────
 
+
 class ContractTemplate(db.Model):
     __tablename__ = "contract_templates"
     id = db.Column(db.Integer, primary_key=True)
@@ -828,6 +849,7 @@ class ContractTemplate(db.Model):
 
 
 # ── Contract ──────────────────────────────────────────────────
+
 
 class Contract(db.Model):
     __tablename__ = "contracts"
@@ -855,6 +877,7 @@ class Contract(db.Model):
 # ── ClientFile (with versioning) ──────────────────────────────
 
 FILE_CATEGORIES = ["contract", "brief", "mockup", "report", "other"]
+
 
 class ClientFile(db.Model):
     __tablename__ = "client_files"
@@ -890,13 +913,20 @@ class ClientFile(db.Model):
     @property
     def icon_class(self):
         m = (self.mime or "").lower()
-        if m.startswith("image/"): return "bi-file-earmark-image"
-        if "pdf" in m: return "bi-file-earmark-pdf"
-        if "word" in m or m.endswith("/msword") or "document" in m: return "bi-file-earmark-word"
-        if "excel" in m or "sheet" in m: return "bi-file-earmark-excel"
-        if "zip" in m or "compress" in m: return "bi-file-earmark-zip"
-        if "video" in m: return "bi-file-earmark-play"
-        if "audio" in m: return "bi-file-earmark-music"
+        if m.startswith("image/"):
+            return "bi-file-earmark-image"
+        if "pdf" in m:
+            return "bi-file-earmark-pdf"
+        if "word" in m or m.endswith("/msword") or "document" in m:
+            return "bi-file-earmark-word"
+        if "excel" in m or "sheet" in m:
+            return "bi-file-earmark-excel"
+        if "zip" in m or "compress" in m:
+            return "bi-file-earmark-zip"
+        if "video" in m:
+            return "bi-file-earmark-play"
+        if "audio" in m:
+            return "bi-file-earmark-music"
         return "bi-file-earmark"
 
     @property
@@ -912,6 +942,7 @@ class ClientFile(db.Model):
 
 
 # ── GSC / GA snapshots ────────────────────────────────────────
+
 
 class GscSnapshot(db.Model):
     __tablename__ = "gsc_snapshots"
@@ -975,10 +1006,12 @@ class User(db.Model):
 
     def set_password(self, password):
         from werkzeug.security import generate_password_hash
+
         self.password_hash = generate_password_hash(password)  # scrypt (Werkzeug 3)
 
     def check_password(self, password):
         from werkzeug.security import check_password_hash
+
         return bool(self.password_hash) and check_password_hash(self.password_hash, password)
 
     @property
@@ -995,6 +1028,7 @@ class User(db.Model):
 
 # ── TaskComment (dyskusja pod zadaniem) ──────────────────────
 
+
 class TaskComment(db.Model):
     __tablename__ = "task_comments"
     id = db.Column(db.Integer, primary_key=True)
@@ -1010,6 +1044,7 @@ class TaskComment(db.Model):
 
 
 # ── Mention (@mentions box / skrzynka) ───────────────────────
+
 
 class Mention(db.Model):
     __tablename__ = "mentions"
@@ -1028,6 +1063,7 @@ class Mention(db.Model):
 
 
 # ── Whiteboard (tablice rysunkowe, wspólne dla zespołu) ──────────
+
 
 class Whiteboard(db.Model):
     __tablename__ = "whiteboards"
@@ -1067,9 +1103,16 @@ class Whiteboard(db.Model):
 
 # Dozwolone narzedzia
 WHITEBOARD_TOOLS = (
-    "pen", "eraser", "highlighter", "text",
-    "rect", "ellipse", "line", "arrow",
-    "sticky", "image",
+    "pen",
+    "eraser",
+    "highlighter",
+    "text",
+    "rect",
+    "ellipse",
+    "line",
+    "arrow",
+    "sticky",
+    "image",
 )
 
 
@@ -1093,7 +1136,7 @@ class WhiteboardStroke(db.Model):
     # Dla tekstu / sticky / image
     text = db.Column(db.Text, default="")
     font_size = db.Column(db.Float, default=18.0)
-    width_box = db.Column(db.Float, default=0)   # szerokosc boksu (sticky/image)
+    width_box = db.Column(db.Float, default=0)  # szerokosc boksu (sticky/image)
     height_box = db.Column(db.Float, default=0)  # wysokosc boksu
     image_path = db.Column(db.String(512), default="")  # wzgledem output/whiteboard_images/
     # Z-index / kolejnosc warstw (niskie = z tylu, wysokie = z przodu)
@@ -1109,6 +1152,7 @@ class WhiteboardStroke(db.Model):
 
 class WhiteboardDeletion(db.Model):
     """Log skasowan - do propagacji do pollingujacych klientow."""
+
     __tablename__ = "whiteboard_deletions"
     id = db.Column(db.Integer, primary_key=True)
     whiteboard_id = db.Column(db.Integer, db.ForeignKey("whiteboards.id"), nullable=False, index=True)
@@ -1118,6 +1162,7 @@ class WhiteboardDeletion(db.Model):
 
 class WhiteboardCursor(db.Model):
     """Live cursor - pozycja uzytkownika na tablicy. Update przez heartbeat."""
+
     __tablename__ = "whiteboard_cursors"
     id = db.Column(db.Integer, primary_key=True)
     whiteboard_id = db.Column(db.Integer, db.ForeignKey("whiteboards.id"), nullable=False, index=True)
@@ -1131,6 +1176,7 @@ class WhiteboardCursor(db.Model):
 
 
 # ── AuditLog (historia zmian dla detail views) ───────────────
+
 
 class AuditLog(db.Model):
     __tablename__ = "audit_log"
@@ -1150,23 +1196,38 @@ class AuditLog(db.Model):
     @staticmethod
     def table_labels():
         return {
-            "tasks": _("Zadania"), "notes": _("Notatki"), "payments": _("Płatności"), "expenses": _("Koszty"),
-            "companies": _("Firmy"), "visits": _("Wizyty"), "content_posts": _("Content"),
-            "contracts": _("Umowy"), "projects": _("Projekty"), "audits": _("Audyty"),
+            "tasks": _("Zadania"),
+            "notes": _("Notatki"),
+            "payments": _("Płatności"),
+            "expenses": _("Koszty"),
+            "companies": _("Firmy"),
+            "visits": _("Wizyty"),
+            "content_posts": _("Content"),
+            "contracts": _("Umowy"),
+            "projects": _("Projekty"),
+            "audits": _("Audyty"),
         }
 
     @staticmethod
     def action_labels():
         return {
-            "create": _("Dodanie"), "update": _("Zmiana"), "delete": _("Usunięcie"),
-            "status_change": _("Zmiana statusu"), "comment": _("Komentarz"),
+            "create": _("Dodanie"),
+            "update": _("Zmiana"),
+            "delete": _("Usunięcie"),
+            "status_change": _("Zmiana statusu"),
+            "comment": _("Komentarz"),
         }
 
     @property
     def field_label(self):
         labels = {
-            "status": _("status"), "priority": _("priorytet"), "deadline": _("termin"), "title": _("tytuł"),
-            "description": _("opis"), "files": _("pliki"), "subtasks": _("podzadania"),
+            "status": _("status"),
+            "priority": _("priorytet"),
+            "deadline": _("termin"),
+            "title": _("tytuł"),
+            "description": _("opis"),
+            "files": _("pliki"),
+            "subtasks": _("podzadania"),
         }
         return labels.get(self.field, self.field)
 
@@ -1182,6 +1243,7 @@ class AuditLog(db.Model):
 # ── Deleting records with links ───────────────────────────────
 # Explicit, because SQLite does not enforce foreign keys (a missing cascade only leaves orphaned
 # rows) while PostgreSQL rejects a delete that leaves references behind.
+
 
 def _null(column, ids):
     """UPDATE ... SET column = NULL WHERE column IN ids."""
@@ -1226,7 +1288,8 @@ def delete_company(company):
     _null(Note.project_id, project_ids)
     _null(Offer.audit_id, audit_ids)
     Task.query.filter(Task.company_id == cid, ~Task.id.in_(doomed) if doomed else True).update(
-        {Task.company_id: None}, synchronize_session=False)
+        {Task.company_id: None}, synchronize_session=False
+    )
     for column in (Expense.client_id, EmailLog.company_id, Whiteboard.company_id):
         _null(column, [cid])
     db.session.expire_all()
@@ -1234,6 +1297,7 @@ def delete_company(company):
 
 
 # ── Schema extension (idempotent ALTER TABLE for new columns) ─
+
 
 def ensure_schema():
     """
@@ -1319,7 +1383,8 @@ def ensure_schema():
         company_col = next((c for c in notes_info if c["name"] == "company_id"), None)
         if company_col and not company_col.get("nullable", True):
             with db.engine.begin() as conn:
-                conn.execute(text("""
+                conn.execute(
+                    text("""
                     CREATE TABLE notes_new (
                         id INTEGER PRIMARY KEY,
                         company_id INTEGER,
@@ -1333,22 +1398,34 @@ def ensure_schema():
                         FOREIGN KEY(company_id) REFERENCES companies(id),
                         FOREIGN KEY(project_id) REFERENCES projects(id)
                     )
-                """))
-                conn.execute(text("""
+                """)
+                )
+                conn.execute(
+                    text("""
                     INSERT INTO notes_new (id, company_id, project_id, scope, title, content, note_type, pinned, created_at)
                     SELECT id, company_id, project_id,
                            COALESCE(scope, 'company'), COALESCE(title, ''),
                            content, note_type, COALESCE(pinned, 0), created_at
                     FROM notes
-                """))
+                """)
+                )
                 conn.execute(text("DROP TABLE notes"))
                 conn.execute(text("ALTER TABLE notes_new RENAME TO notes"))
 
     # Attribution FK (created_by_user_id, updated_by_user_id) - wszystkie kluczowe tabele
     attribution_tables = [
-        "tasks", "notes", "content_posts", "payments", "expenses",
-        "projects", "contracts", "visits", "client_credentials",
-        "subscriptions", "knowledge_articles", "companies",
+        "tasks",
+        "notes",
+        "content_posts",
+        "payments",
+        "expenses",
+        "projects",
+        "contracts",
+        "visits",
+        "client_credentials",
+        "subscriptions",
+        "knowledge_articles",
+        "companies",
     ]
     with db.engine.begin() as conn:
         for tbl in attribution_tables:
@@ -1467,6 +1544,7 @@ def ensure_indexes():
 
 # ── Seed defaults ─────────────────────────────────────────────
 
+
 def seed_defaults():
     """Create default packages, email/contract templates, and knowledge articles.
 
@@ -1485,365 +1563,400 @@ def seed_defaults():
         db.session.commit()
 
     if Package.query.count() == 0:
-        defaults = _english_packages() if english else [
-            Package(
-                name="START",
-                description="Quick wins - szybkie rezultaty w 30 dni",
-                price=1500,
-                duration_days=30,
-                _deliverables=json.dumps([
-                    "Optymalizacja wizytówki Google Business Profile",
-                    "Kluczowe poprawki na stronie (CTA, formularze, kontakt)",
-                    "Wdrożenie śledzenia konwersji (GA4)",
-                    "System pozyskiwania opinii od klientów",
-                ], ensure_ascii=False),
-                _expected_results=json.dumps([
-                    "Lepsza widoczność w Google Maps",
-                    "Więcej telefonów i zapytań z wizytówki",
-                    "Podstawowe dane o ruchu i konwersjach",
-                ], ensure_ascii=False),
-                _payment_variants=json.dumps(["Jednorazowo"], ensure_ascii=False),
-                is_active=True,
-            ),
-            Package(
-                name="GROWTH",
-                description="Rozszerzony pakiet - wzrost w 60 dni",
-                price=3500,
-                duration_days=60,
-                _deliverables=json.dumps([
-                    "Wszystko z pakietu START",
-                    "Treści SEO lokalne (5 podstron zoptymalizowanych)",
-                    "Przebudowa kluczowych sekcji strony",
-                    "System zbierania i zarządzania opiniami",
-                    "Podstawowa kampania Google Ads (setup + 2 tyg. zarządzania)",
-                ], ensure_ascii=False),
-                _expected_results=json.dumps([
-                    "Wzrost widoczności na frazy lokalne",
-                    "Więcej organicznego ruchu na stronie",
-                    "Pierwsze leady z kampanii płatnej",
-                    "Regularny wzrost opinii",
-                ], ensure_ascii=False),
-                _payment_variants=json.dumps(["Jednorazowo", "2 raty"], ensure_ascii=False),
-                is_active=True,
-            ),
-            Package(
-                name="PREMIUM",
-                description="Pełne przejęcie marketingu - współpraca ongoing",
-                price=5000,
-                duration_days=90,
-                _deliverables=json.dumps([
-                    "Strategia marketingu lokalnego",
-                    "Content plan + realizacja (blog, social media)",
-                    "Pełne SEO lokalne (on-site + off-site)",
-                    "Zarządzanie kampaniami Google Ads",
-                    "Miesięczne raportowanie i optymalizacja",
-                    "Dedykowany opiekun klienta",
-                ], ensure_ascii=False),
-                _expected_results=json.dumps([
-                    "Dominacja w wynikach lokalnych",
-                    "Stały napływ nowych klientów",
-                    "Mierzalny ROI z działań marketingowych",
-                    "Profesjonalny wizerunek online",
-                ], ensure_ascii=False),
-                _payment_variants=json.dumps(["Miesięcznie", "Kwartalnie"], ensure_ascii=False),
-                is_active=True,
-            ),
-        ]
+        defaults = (
+            _english_packages()
+            if english
+            else [
+                Package(
+                    name="START",
+                    description="Quick wins - szybkie rezultaty w 30 dni",
+                    price=1500,
+                    duration_days=30,
+                    _deliverables=json.dumps(
+                        [
+                            "Optymalizacja wizytówki Google Business Profile",
+                            "Kluczowe poprawki na stronie (CTA, formularze, kontakt)",
+                            "Wdrożenie śledzenia konwersji (GA4)",
+                            "System pozyskiwania opinii od klientów",
+                        ],
+                        ensure_ascii=False,
+                    ),
+                    _expected_results=json.dumps(
+                        [
+                            "Lepsza widoczność w Google Maps",
+                            "Więcej telefonów i zapytań z wizytówki",
+                            "Podstawowe dane o ruchu i konwersjach",
+                        ],
+                        ensure_ascii=False,
+                    ),
+                    _payment_variants=json.dumps(["Jednorazowo"], ensure_ascii=False),
+                    is_active=True,
+                ),
+                Package(
+                    name="GROWTH",
+                    description="Rozszerzony pakiet - wzrost w 60 dni",
+                    price=3500,
+                    duration_days=60,
+                    _deliverables=json.dumps(
+                        [
+                            "Wszystko z pakietu START",
+                            "Treści SEO lokalne (5 podstron zoptymalizowanych)",
+                            "Przebudowa kluczowych sekcji strony",
+                            "System zbierania i zarządzania opiniami",
+                            "Podstawowa kampania Google Ads (setup + 2 tyg. zarządzania)",
+                        ],
+                        ensure_ascii=False,
+                    ),
+                    _expected_results=json.dumps(
+                        [
+                            "Wzrost widoczności na frazy lokalne",
+                            "Więcej organicznego ruchu na stronie",
+                            "Pierwsze leady z kampanii płatnej",
+                            "Regularny wzrost opinii",
+                        ],
+                        ensure_ascii=False,
+                    ),
+                    _payment_variants=json.dumps(["Jednorazowo", "2 raty"], ensure_ascii=False),
+                    is_active=True,
+                ),
+                Package(
+                    name="PREMIUM",
+                    description="Pełne przejęcie marketingu - współpraca ongoing",
+                    price=5000,
+                    duration_days=90,
+                    _deliverables=json.dumps(
+                        [
+                            "Strategia marketingu lokalnego",
+                            "Content plan + realizacja (blog, social media)",
+                            "Pełne SEO lokalne (on-site + off-site)",
+                            "Zarządzanie kampaniami Google Ads",
+                            "Miesięczne raportowanie i optymalizacja",
+                            "Dedykowany opiekun klienta",
+                        ],
+                        ensure_ascii=False,
+                    ),
+                    _expected_results=json.dumps(
+                        [
+                            "Dominacja w wynikach lokalnych",
+                            "Stały napływ nowych klientów",
+                            "Mierzalny ROI z działań marketingowych",
+                            "Profesjonalny wizerunek online",
+                        ],
+                        ensure_ascii=False,
+                    ),
+                    _payment_variants=json.dumps(["Miesięcznie", "Kwartalnie"], ensure_ascii=False),
+                    is_active=True,
+                ),
+            ]
+        )
         db.session.add_all(defaults)
         db.session.commit()
 
     if EmailTemplate.query.count() == 0:
-        email_seeds = _english_email_templates() if english else [
-            EmailTemplate(
-                key="welcome",
-                name="Powitanie klienta",
-                subject_template="Witamy w {{ agency.name }} - kolejne kroki współpracy",
-                body_template=(
-                    "<p>Dzień dobry {{ company.contact_person or company.name }},</p>"
-                    "<p>Dziękujemy za zaufanie i wybór naszej agencji. Od dziś zaczynamy pracę nad widocznością "
-                    "<b>{{ company.name }}</b> w Google.</p>"
-                    "<p><b>Najbliższe kroki:</b></p>"
-                    "<ol>"
-                    "<li>Dostęp do Google Business Profile, Search Console i Analytics.</li>"
-                    "<li>Audyt wyjściowy (do 7 dni).</li>"
-                    "<li>Plan działań na pierwszy miesiąc.</li>"
-                    "</ol>"
-                    "<p>W razie pytań jesteśmy do dyspozycji pod tym adresem.</p>"
-                    "<p>Pozdrawiamy,<br>{{ agency.name }}</p>"
+        email_seeds = (
+            _english_email_templates()
+            if english
+            else [
+                EmailTemplate(
+                    key="welcome",
+                    name="Powitanie klienta",
+                    subject_template="Witamy w {{ agency.name }} - kolejne kroki współpracy",
+                    body_template=(
+                        "<p>Dzień dobry {{ company.contact_person or company.name }},</p>"
+                        "<p>Dziękujemy za zaufanie i wybór naszej agencji. Od dziś zaczynamy pracę nad widocznością "
+                        "<b>{{ company.name }}</b> w Google.</p>"
+                        "<p><b>Najbliższe kroki:</b></p>"
+                        "<ol>"
+                        "<li>Dostęp do Google Business Profile, Search Console i Analytics.</li>"
+                        "<li>Audyt wyjściowy (do 7 dni).</li>"
+                        "<li>Plan działań na pierwszy miesiąc.</li>"
+                        "</ol>"
+                        "<p>W razie pytań jesteśmy do dyspozycji pod tym adresem.</p>"
+                        "<p>Pozdrawiamy,<br>{{ agency.name }}</p>"
+                    ),
+                    placeholders_doc="{{ company.name }}, {{ company.contact_person }}, {{ agency.name }}",
                 ),
-                placeholders_doc="{{ company.name }}, {{ company.contact_person }}, {{ agency.name }}",
-            ),
-            EmailTemplate(
-                key="payment_reminder",
-                name="Przypomnienie o płatności",
-                subject_template="Przypomnienie o płatności {{ payment.payment_number }} - {{ payment.title }}",
-                body_template=(
-                    "<p>Dzień dobry {{ company.contact_person or company.name }},</p>"
-                    "<p>Uprzejmie przypominamy, że kwota <b>{{ payment.amount_gross }} zł brutto</b> "
-                    "z tytułu &bdquo;{{ payment.title }}&rdquo; była płatna do {{ payment.due_at.strftime('%d.%m.%Y') if payment.due_at else '-' }}.</p>"
-                    "<p>Prosimy o uregulowanie w najbliższym dogodnym terminie.</p>"
-                    "<p>Pozdrawiamy,<br>{{ agency.name }}</p>"
+                EmailTemplate(
+                    key="payment_reminder",
+                    name="Przypomnienie o płatności",
+                    subject_template="Przypomnienie o płatności {{ payment.payment_number }} - {{ payment.title }}",
+                    body_template=(
+                        "<p>Dzień dobry {{ company.contact_person or company.name }},</p>"
+                        "<p>Uprzejmie przypominamy, że kwota <b>{{ payment.amount_gross }} zł brutto</b> "
+                        "z tytułu &bdquo;{{ payment.title }}&rdquo; była płatna do {{ payment.due_at.strftime('%d.%m.%Y') if payment.due_at else '-' }}.</p>"
+                        "<p>Prosimy o uregulowanie w najbliższym dogodnym terminie.</p>"
+                        "<p>Pozdrawiamy,<br>{{ agency.name }}</p>"
+                    ),
+                    placeholders_doc="{{ payment.* }}, {{ company.* }}, {{ agency.* }}",
                 ),
-                placeholders_doc="{{ payment.* }}, {{ company.* }}, {{ agency.* }}",
-            ),
-            EmailTemplate(
-                key="follow_up_after_visit",
-                name="Follow-up po wizycie",
-                subject_template="Podsumowanie naszego spotkania - {{ company.name }}",
-                body_template=(
-                    "<p>Dzień dobry {{ company.contact_person or company.name }},</p>"
-                    "<p>Dziękujemy za spotkanie. Poniżej krótkie podsumowanie ustaleń:</p>"
-                    "<ul>"
-                    "<li>Punkt 1 (uzupełnij przed wysyłką)</li>"
-                    "<li>Punkt 2</li>"
-                    "</ul>"
-                    "<p>Kolejny krok po naszej stronie: przygotowanie oferty.</p>"
-                    "<p>Pozdrawiamy,<br>{{ agency.name }}</p>"
+                EmailTemplate(
+                    key="follow_up_after_visit",
+                    name="Follow-up po wizycie",
+                    subject_template="Podsumowanie naszego spotkania - {{ company.name }}",
+                    body_template=(
+                        "<p>Dzień dobry {{ company.contact_person or company.name }},</p>"
+                        "<p>Dziękujemy za spotkanie. Poniżej krótkie podsumowanie ustaleń:</p>"
+                        "<ul>"
+                        "<li>Punkt 1 (uzupełnij przed wysyłką)</li>"
+                        "<li>Punkt 2</li>"
+                        "</ul>"
+                        "<p>Kolejny krok po naszej stronie: przygotowanie oferty.</p>"
+                        "<p>Pozdrawiamy,<br>{{ agency.name }}</p>"
+                    ),
+                    placeholders_doc="{{ company.* }}, {{ agency.* }}",
                 ),
-                placeholders_doc="{{ company.* }}, {{ agency.* }}",
-            ),
-            EmailTemplate(
-                key="audit_delivery",
-                name="Przekazanie audytu",
-                subject_template="Audyt marketingowy dla {{ company.name }} - gotowy",
-                body_template=(
-                    "<p>Dzień dobry {{ company.contact_person or company.name }},</p>"
-                    "<p>W załączeniu przesyłamy audyt marketingowy Państwa firmy. Znajdą tam Państwo:</p>"
-                    "<ul>"
-                    "<li>Ocenę 5 kluczowych obszarów (1-5)</li>"
-                    "<li>Główne problemy i szanse</li>"
-                    "<li>Konkretny plan działania na 90 dni</li>"
-                    "</ul>"
-                    "<p>Chętnie omówimy wyniki podczas wspólnej rozmowy.</p>"
-                    "<p>Pozdrawiamy,<br>{{ agency.name }}</p>"
+                EmailTemplate(
+                    key="audit_delivery",
+                    name="Przekazanie audytu",
+                    subject_template="Audyt marketingowy dla {{ company.name }} - gotowy",
+                    body_template=(
+                        "<p>Dzień dobry {{ company.contact_person or company.name }},</p>"
+                        "<p>W załączeniu przesyłamy audyt marketingowy Państwa firmy. Znajdą tam Państwo:</p>"
+                        "<ul>"
+                        "<li>Ocenę 5 kluczowych obszarów (1-5)</li>"
+                        "<li>Główne problemy i szanse</li>"
+                        "<li>Konkretny plan działania na 90 dni</li>"
+                        "</ul>"
+                        "<p>Chętnie omówimy wyniki podczas wspólnej rozmowy.</p>"
+                        "<p>Pozdrawiamy,<br>{{ agency.name }}</p>"
+                    ),
+                    placeholders_doc="{{ company.* }}, {{ agency.* }}, {{ audit.* }}",
                 ),
-                placeholders_doc="{{ company.* }}, {{ agency.* }}, {{ audit.* }}",
-            ),
-        ]
+            ]
+        )
         db.session.add_all(email_seeds)
         db.session.commit()
 
     if ContractTemplate.query.count() == 0:
-        contract_seeds = _english_contract_templates() if english else [
-            ContractTemplate(
-                key="seo_retainer",
-                name="Umowa abonamentowa SEO",
-                body_template=(
-                    "UMOWA O ŚWIADCZENIE USŁUG SEO\n\n"
-                    "Zawarta dnia {{ today }} pomiędzy:\n\n"
-                    "{{ agency.legal_name }}, NIP: {{ agency.nip }}, adres: {{ agency.address }},\n"
-                    "zwaną dalej Wykonawcą,\n\n"
-                    "a\n\n"
-                    "{{ client.legal_name or client.name }}, NIP: {{ client.nip }}, adres: {{ client.address }},\n"
-                    "zwaną dalej Zleceniodawcą.\n\n"
-                    "§ 1. PRZEDMIOT UMOWY\n"
-                    "Wykonawca zobowiązuje się do świadczenia usług pozycjonowania strony {{ client.website }} "
-                    "w wyszukiwarce Google, zgodnie z planem działań stanowiącym załącznik do niniejszej umowy.\n\n"
-                    "§ 2. WYNAGRODZENIE\n"
-                    "Miesięczne wynagrodzenie Wykonawcy wynosi {{ monthly_fee_net }} zł netto "
-                    "({{ monthly_fee_gross }} zł brutto) i płatne jest do {{ billing_day }}. dnia każdego miesiąca "
-                    "na rachunek: {{ agency.bank_account }}.\n\n"
-                    "§ 3. OKRES OBOWIĄZYWANIA\n"
-                    "Umowa zostaje zawarta na czas nieokreślony z miesięcznym okresem wypowiedzenia.\n\n"
-                    "§ 4. POSTANOWIENIA KOŃCOWE\n"
-                    "{{ extra_clauses }}\n\n"
-                    "Podpisy:\n\n"
-                    ".................................\t\t.................................\n"
-                    "Wykonawca\t\t\t\t\tZleceniodawca"
+        contract_seeds = (
+            _english_contract_templates()
+            if english
+            else [
+                ContractTemplate(
+                    key="seo_retainer",
+                    name="Umowa abonamentowa SEO",
+                    body_template=(
+                        "UMOWA O ŚWIADCZENIE USŁUG SEO\n\n"
+                        "Zawarta dnia {{ today }} pomiędzy:\n\n"
+                        "{{ agency.legal_name }}, NIP: {{ agency.nip }}, adres: {{ agency.address }},\n"
+                        "zwaną dalej Wykonawcą,\n\n"
+                        "a\n\n"
+                        "{{ client.legal_name or client.name }}, NIP: {{ client.nip }}, adres: {{ client.address }},\n"
+                        "zwaną dalej Zleceniodawcą.\n\n"
+                        "§ 1. PRZEDMIOT UMOWY\n"
+                        "Wykonawca zobowiązuje się do świadczenia usług pozycjonowania strony {{ client.website }} "
+                        "w wyszukiwarce Google, zgodnie z planem działań stanowiącym załącznik do niniejszej umowy.\n\n"
+                        "§ 2. WYNAGRODZENIE\n"
+                        "Miesięczne wynagrodzenie Wykonawcy wynosi {{ monthly_fee_net }} zł netto "
+                        "({{ monthly_fee_gross }} zł brutto) i płatne jest do {{ billing_day }}. dnia każdego miesiąca "
+                        "na rachunek: {{ agency.bank_account }}.\n\n"
+                        "§ 3. OKRES OBOWIĄZYWANIA\n"
+                        "Umowa zostaje zawarta na czas nieokreślony z miesięcznym okresem wypowiedzenia.\n\n"
+                        "§ 4. POSTANOWIENIA KOŃCOWE\n"
+                        "{{ extra_clauses }}\n\n"
+                        "Podpisy:\n\n"
+                        ".................................\t\t.................................\n"
+                        "Wykonawca\t\t\t\t\tZleceniodawca"
+                    ),
+                    placeholders_doc="{{ today }}, {{ agency.* }}, {{ client.* }}, {{ monthly_fee_net }}, {{ monthly_fee_gross }}, {{ billing_day }}, {{ extra_clauses }}",
                 ),
-                placeholders_doc="{{ today }}, {{ agency.* }}, {{ client.* }}, {{ monthly_fee_net }}, {{ monthly_fee_gross }}, {{ billing_day }}, {{ extra_clauses }}",
-            ),
-            ContractTemplate(
-                key="website_build",
-                name="Umowa wykonania strony WWW",
-                body_template=(
-                    "UMOWA O WYKONANIE STRONY INTERNETOWEJ\n\n"
-                    "Zawarta dnia {{ today }} pomiędzy:\n\n"
-                    "{{ agency.legal_name }}, NIP: {{ agency.nip }}, adres: {{ agency.address }},\n"
-                    "zwaną dalej Wykonawcą,\n\n"
-                    "a\n\n"
-                    "{{ client.legal_name or client.name }}, NIP: {{ client.nip }}, adres: {{ client.address }},\n"
-                    "zwaną dalej Zamawiającym.\n\n"
-                    "§ 1. PRZEDMIOT UMOWY\n"
-                    "Wykonawca zobowiązuje się do zaprojektowania i wdrożenia strony internetowej "
-                    "pod adresem {{ domain }}, zgodnie z briefem zaakceptowanym przez obie strony.\n\n"
-                    "§ 2. WYNAGRODZENIE I PŁATNOŚCI\n"
-                    "Łączne wynagrodzenie wynosi {{ total_net }} zł netto ({{ total_gross }} zł brutto) "
-                    "i płatne jest w następujących etapach:\n"
-                    "a) {{ payment_stage_1 }} - po podpisaniu umowy,\n"
-                    "b) {{ payment_stage_2 }} - po akceptacji projektu graficznego,\n"
-                    "c) {{ payment_stage_3 }} - po oddaniu strony do użytku.\n\n"
-                    "§ 3. TERMIN REALIZACJI\n"
-                    "Strona zostanie uruchomiona w terminie do {{ deadline }}.\n\n"
-                    "§ 4. PRZENIESIENIE PRAW\n"
-                    "Z chwilą uregulowania pełnego wynagrodzenia, Wykonawca przenosi na Zamawiającego "
-                    "autorskie prawa majątkowe do zrealizowanych utworów (projektu graficznego, kodu, treści).\n\n"
-                    "§ 5. POSTANOWIENIA KOŃCOWE\n"
-                    "{{ extra_clauses }}\n\n"
-                    "Podpisy:\n\n"
-                    ".................................\t\t.................................\n"
-                    "Wykonawca\t\t\t\t\tZamawiający"
+                ContractTemplate(
+                    key="website_build",
+                    name="Umowa wykonania strony WWW",
+                    body_template=(
+                        "UMOWA O WYKONANIE STRONY INTERNETOWEJ\n\n"
+                        "Zawarta dnia {{ today }} pomiędzy:\n\n"
+                        "{{ agency.legal_name }}, NIP: {{ agency.nip }}, adres: {{ agency.address }},\n"
+                        "zwaną dalej Wykonawcą,\n\n"
+                        "a\n\n"
+                        "{{ client.legal_name or client.name }}, NIP: {{ client.nip }}, adres: {{ client.address }},\n"
+                        "zwaną dalej Zamawiającym.\n\n"
+                        "§ 1. PRZEDMIOT UMOWY\n"
+                        "Wykonawca zobowiązuje się do zaprojektowania i wdrożenia strony internetowej "
+                        "pod adresem {{ domain }}, zgodnie z briefem zaakceptowanym przez obie strony.\n\n"
+                        "§ 2. WYNAGRODZENIE I PŁATNOŚCI\n"
+                        "Łączne wynagrodzenie wynosi {{ total_net }} zł netto ({{ total_gross }} zł brutto) "
+                        "i płatne jest w następujących etapach:\n"
+                        "a) {{ payment_stage_1 }} - po podpisaniu umowy,\n"
+                        "b) {{ payment_stage_2 }} - po akceptacji projektu graficznego,\n"
+                        "c) {{ payment_stage_3 }} - po oddaniu strony do użytku.\n\n"
+                        "§ 3. TERMIN REALIZACJI\n"
+                        "Strona zostanie uruchomiona w terminie do {{ deadline }}.\n\n"
+                        "§ 4. PRZENIESIENIE PRAW\n"
+                        "Z chwilą uregulowania pełnego wynagrodzenia, Wykonawca przenosi na Zamawiającego "
+                        "autorskie prawa majątkowe do zrealizowanych utworów (projektu graficznego, kodu, treści).\n\n"
+                        "§ 5. POSTANOWIENIA KOŃCOWE\n"
+                        "{{ extra_clauses }}\n\n"
+                        "Podpisy:\n\n"
+                        ".................................\t\t.................................\n"
+                        "Wykonawca\t\t\t\t\tZamawiający"
+                    ),
+                    placeholders_doc="{{ today }}, {{ agency.* }}, {{ client.* }}, {{ domain }}, {{ total_net }}, {{ total_gross }}, {{ payment_stage_1..3 }}, {{ deadline }}",
                 ),
-                placeholders_doc="{{ today }}, {{ agency.* }}, {{ client.* }}, {{ domain }}, {{ total_net }}, {{ total_gross }}, {{ payment_stage_1..3 }}, {{ deadline }}",
-            ),
-            ContractTemplate(
-                key="rodo",
-                name="Umowa powierzenia przetwarzania (RODO)",
-                body_template=(
-                    "UMOWA POWIERZENIA PRZETWARZANIA DANYCH OSOBOWYCH\n\n"
-                    "Zawarta dnia {{ today }} pomiędzy:\n\n"
-                    "{{ client.legal_name or client.name }}, NIP: {{ client.nip }}, adres: {{ client.address }},\n"
-                    "zwaną dalej Administratorem,\n\n"
-                    "a\n\n"
-                    "{{ agency.legal_name }}, NIP: {{ agency.nip }}, adres: {{ agency.address }},\n"
-                    "zwaną dalej Podmiotem przetwarzającym.\n\n"
-                    "§ 1. PRZEDMIOT\n"
-                    "Administrator powierza Podmiotowi przetwarzającemu przetwarzanie danych osobowych "
-                    "w zakresie niezbędnym do realizacji umowy głównej z dnia {{ main_contract_date }}.\n\n"
-                    "§ 2. KATEGORIE DANYCH\n"
-                    "Dane kontaktowe klientów Administratora: imię, nazwisko, e-mail, telefon, adres.\n\n"
-                    "§ 3. OBOWIĄZKI PODMIOTU PRZETWARZAJĄCEGO\n"
-                    "Podmiot przetwarzający zobowiązuje się do przetwarzania danych wyłącznie zgodnie z poleceniami "
-                    "Administratora, zapewnienia odpowiednich środków technicznych i organizacyjnych oraz "
-                    "zgłaszania naruszeń w terminie 24 godzin.\n\n"
-                    "§ 4. OKRES OBOWIĄZYWANIA\n"
-                    "Umowa obowiązuje przez czas trwania umowy głównej. Po jej zakończeniu Podmiot "
-                    "przetwarzający zwróci lub usunie powierzone dane.\n\n"
-                    "Podpisy:\n\n"
-                    ".................................\t\t.................................\n"
-                    "Administrator\t\t\t\tPodmiot przetwarzający"
+                ContractTemplate(
+                    key="rodo",
+                    name="Umowa powierzenia przetwarzania (RODO)",
+                    body_template=(
+                        "UMOWA POWIERZENIA PRZETWARZANIA DANYCH OSOBOWYCH\n\n"
+                        "Zawarta dnia {{ today }} pomiędzy:\n\n"
+                        "{{ client.legal_name or client.name }}, NIP: {{ client.nip }}, adres: {{ client.address }},\n"
+                        "zwaną dalej Administratorem,\n\n"
+                        "a\n\n"
+                        "{{ agency.legal_name }}, NIP: {{ agency.nip }}, adres: {{ agency.address }},\n"
+                        "zwaną dalej Podmiotem przetwarzającym.\n\n"
+                        "§ 1. PRZEDMIOT\n"
+                        "Administrator powierza Podmiotowi przetwarzającemu przetwarzanie danych osobowych "
+                        "w zakresie niezbędnym do realizacji umowy głównej z dnia {{ main_contract_date }}.\n\n"
+                        "§ 2. KATEGORIE DANYCH\n"
+                        "Dane kontaktowe klientów Administratora: imię, nazwisko, e-mail, telefon, adres.\n\n"
+                        "§ 3. OBOWIĄZKI PODMIOTU PRZETWARZAJĄCEGO\n"
+                        "Podmiot przetwarzający zobowiązuje się do przetwarzania danych wyłącznie zgodnie z poleceniami "
+                        "Administratora, zapewnienia odpowiednich środków technicznych i organizacyjnych oraz "
+                        "zgłaszania naruszeń w terminie 24 godzin.\n\n"
+                        "§ 4. OKRES OBOWIĄZYWANIA\n"
+                        "Umowa obowiązuje przez czas trwania umowy głównej. Po jej zakończeniu Podmiot "
+                        "przetwarzający zwróci lub usunie powierzone dane.\n\n"
+                        "Podpisy:\n\n"
+                        ".................................\t\t.................................\n"
+                        "Administrator\t\t\t\tPodmiot przetwarzający"
+                    ),
+                    placeholders_doc="{{ today }}, {{ main_contract_date }}, {{ agency.* }}, {{ client.* }}",
                 ),
-                placeholders_doc="{{ today }}, {{ main_contract_date }}, {{ agency.* }}, {{ client.* }}",
-            ),
-            ContractTemplate(
-                key="nda",
-                name="Umowa poufności (NDA)",
-                body_template=(
-                    "UMOWA O ZACHOWANIU POUFNOŚCI (NDA)\n\n"
-                    "Zawarta dnia {{ today }} pomiędzy:\n\n"
-                    "{{ agency.legal_name }}, NIP: {{ agency.nip }}, adres: {{ agency.address }},\n"
-                    "a\n\n"
-                    "{{ client.legal_name or client.name }}, NIP: {{ client.nip }}, adres: {{ client.address }}.\n\n"
-                    "§ 1. INFORMACJE POUFNE\n"
-                    "Strony zobowiązują się do zachowania w tajemnicy wszelkich informacji biznesowych, "
-                    "technicznych i handlowych uzyskanych w trakcie współpracy.\n\n"
-                    "§ 2. OKRES OBOWIĄZYWANIA\n"
-                    "Zobowiązanie do poufności obowiązuje przez {{ duration_years }} lata od daty podpisania umowy.\n\n"
-                    "§ 3. WYJĄTKI\n"
-                    "Obowiązek nie dotyczy informacji publicznie dostępnych lub uzyskanych niezależnie.\n\n"
-                    "§ 4. KARA UMOWNA\n"
-                    "Naruszenie obowiązku poufności skutkuje karą umowną w wysokości {{ penalty }} zł.\n\n"
-                    "Podpisy:\n\n"
-                    ".................................\t\t.................................\n"
-                    "Strona A\t\t\t\t\tStrona B"
+                ContractTemplate(
+                    key="nda",
+                    name="Umowa poufności (NDA)",
+                    body_template=(
+                        "UMOWA O ZACHOWANIU POUFNOŚCI (NDA)\n\n"
+                        "Zawarta dnia {{ today }} pomiędzy:\n\n"
+                        "{{ agency.legal_name }}, NIP: {{ agency.nip }}, adres: {{ agency.address }},\n"
+                        "a\n\n"
+                        "{{ client.legal_name or client.name }}, NIP: {{ client.nip }}, adres: {{ client.address }}.\n\n"
+                        "§ 1. INFORMACJE POUFNE\n"
+                        "Strony zobowiązują się do zachowania w tajemnicy wszelkich informacji biznesowych, "
+                        "technicznych i handlowych uzyskanych w trakcie współpracy.\n\n"
+                        "§ 2. OKRES OBOWIĄZYWANIA\n"
+                        "Zobowiązanie do poufności obowiązuje przez {{ duration_years }} lata od daty podpisania umowy.\n\n"
+                        "§ 3. WYJĄTKI\n"
+                        "Obowiązek nie dotyczy informacji publicznie dostępnych lub uzyskanych niezależnie.\n\n"
+                        "§ 4. KARA UMOWNA\n"
+                        "Naruszenie obowiązku poufności skutkuje karą umowną w wysokości {{ penalty }} zł.\n\n"
+                        "Podpisy:\n\n"
+                        ".................................\t\t.................................\n"
+                        "Strona A\t\t\t\t\tStrona B"
+                    ),
+                    placeholders_doc="{{ today }}, {{ agency.* }}, {{ client.* }}, {{ duration_years }}, {{ penalty }}",
                 ),
-                placeholders_doc="{{ today }}, {{ agency.* }}, {{ client.* }}, {{ duration_years }}, {{ penalty }}",
-            ),
-        ]
+            ]
+        )
         db.session.add_all(contract_seeds)
         db.session.commit()
 
     if KnowledgeArticle.query.count() == 0:
-        knowledge_seeds = _english_knowledge_articles() if english else [
-            KnowledgeArticle(
-                title="Procedura wdrożenia nowego klienta",
-                category="Onboarding",
-                body=(
-                    "# Onboarding klienta - checklist\n\n"
-                    "## Dzień 0 (podpisanie umowy)\n"
-                    "- [ ] Umowa główna podpisana i zarchiwizowana w plikach klienta\n"
-                    "- [ ] Umowa RODO podpisana\n"
-                    "- [ ] Utworzony folder w Dropbox/Drive\n"
-                    "- [ ] Wysłany e-mail powitalny (szablon: welcome)\n\n"
-                    "## Dni 1-3 (zebranie dostępów)\n"
-                    "- [ ] Google Business Profile - uprawnienia dla agencji\n"
-                    "- [ ] Google Search Console - dodany użytkownik\n"
-                    "- [ ] Google Analytics 4 - dodany użytkownik\n"
-                    "- [ ] WordPress admin - konto dla agencji\n"
-                    "- [ ] Hosting / DNS - dane dostępowe w Bitwarden\n\n"
-                    "## Dni 4-7 (audyt wyjściowy)\n"
-                    "- [ ] Audyt SEO (wbudowany w apkę)\n"
-                    "- [ ] Analiza konkurencji (3 konkurenci)\n"
-                    "- [ ] PageSpeed raport\n"
-                    "- [ ] Plan 90 dni przygotowany i wysłany\n"
+        knowledge_seeds = (
+            _english_knowledge_articles()
+            if english
+            else [
+                KnowledgeArticle(
+                    title="Procedura wdrożenia nowego klienta",
+                    category="Onboarding",
+                    body=(
+                        "# Onboarding klienta - checklist\n\n"
+                        "## Dzień 0 (podpisanie umowy)\n"
+                        "- [ ] Umowa główna podpisana i zarchiwizowana w plikach klienta\n"
+                        "- [ ] Umowa RODO podpisana\n"
+                        "- [ ] Utworzony folder w Dropbox/Drive\n"
+                        "- [ ] Wysłany e-mail powitalny (szablon: welcome)\n\n"
+                        "## Dni 1-3 (zebranie dostępów)\n"
+                        "- [ ] Google Business Profile - uprawnienia dla agencji\n"
+                        "- [ ] Google Search Console - dodany użytkownik\n"
+                        "- [ ] Google Analytics 4 - dodany użytkownik\n"
+                        "- [ ] WordPress admin - konto dla agencji\n"
+                        "- [ ] Hosting / DNS - dane dostępowe w Bitwarden\n\n"
+                        "## Dni 4-7 (audyt wyjściowy)\n"
+                        "- [ ] Audyt SEO (wbudowany w apkę)\n"
+                        "- [ ] Analiza konkurencji (3 konkurenci)\n"
+                        "- [ ] PageSpeed raport\n"
+                        "- [ ] Plan 90 dni przygotowany i wysłany\n"
+                    ),
+                    _tags=json.dumps(["onboarding", "checklist"], ensure_ascii=False),
+                    pinned=True,
                 ),
-                _tags=json.dumps(["onboarding", "checklist"], ensure_ascii=False),
-                pinned=True,
-            ),
-            KnowledgeArticle(
-                title="Scenariusz pierwszej rozmowy handlowej",
-                category="Sprzedaż",
-                body=(
-                    "# Pierwsza rozmowa z klientem\n\n"
-                    "## Cel rozmowy\n"
-                    "Zrozumieć sytuację klienta i zdecydować czy jest dopasowanie (fit check).\n\n"
-                    "## Pytania do zadania\n"
-                    "1. Jak teraz pozyskujecie klientów?\n"
-                    "2. Ile kosztuje was pozyskanie jednego klienta?\n"
-                    "3. Ile jest wart jeden klient (LTV)?\n"
-                    "4. Co próbowaliście wcześniej w marketingu i czemu nie zadziałało?\n"
-                    "5. Jakie macie oczekiwania co do efektów za 3 / 6 / 12 miesięcy?\n"
-                    "6. Kto decyduje o wdrożeniu? Jak wygląda proces decyzyjny?\n\n"
-                    "## Czerwone flagi (lead słaby)\n"
-                    "- Brak mierzenia obecnych działań\n"
-                    "- Oczekiwanie natychmiastowych efektów\n"
-                    "- Budżet < 1500 zł/mc\n"
-                    "- Brak decyzyjności\n"
+                KnowledgeArticle(
+                    title="Scenariusz pierwszej rozmowy handlowej",
+                    category="Sprzedaż",
+                    body=(
+                        "# Pierwsza rozmowa z klientem\n\n"
+                        "## Cel rozmowy\n"
+                        "Zrozumieć sytuację klienta i zdecydować czy jest dopasowanie (fit check).\n\n"
+                        "## Pytania do zadania\n"
+                        "1. Jak teraz pozyskujecie klientów?\n"
+                        "2. Ile kosztuje was pozyskanie jednego klienta?\n"
+                        "3. Ile jest wart jeden klient (LTV)?\n"
+                        "4. Co próbowaliście wcześniej w marketingu i czemu nie zadziałało?\n"
+                        "5. Jakie macie oczekiwania co do efektów za 3 / 6 / 12 miesięcy?\n"
+                        "6. Kto decyduje o wdrożeniu? Jak wygląda proces decyzyjny?\n\n"
+                        "## Czerwone flagi (lead słaby)\n"
+                        "- Brak mierzenia obecnych działań\n"
+                        "- Oczekiwanie natychmiastowych efektów\n"
+                        "- Budżet < 1500 zł/mc\n"
+                        "- Brak decyzyjności\n"
+                    ),
+                    _tags=json.dumps(["sprzedaż", "rozmowa"], ensure_ascii=False),
+                    pinned=True,
                 ),
-                _tags=json.dumps(["sprzedaż", "rozmowa"], ensure_ascii=False),
-                pinned=True,
-            ),
-            KnowledgeArticle(
-                title="Checklist audytu SEO",
-                category="Procedury audytu",
-                body=(
-                    "# Co sprawdzamy w audycie SEO\n\n"
-                    "## On-site (strona)\n"
-                    "- Meta title i description na każdej podstronie\n"
-                    "- Struktura nagłówków H1-H3\n"
-                    "- Linkowanie wewnętrzne\n"
-                    "- Schema markup (LocalBusiness / Product / Article)\n"
-                    "- HTTPS / SSL\n"
-                    "- Mobile friendly (test Google)\n"
-                    "- Core Web Vitals (PageSpeed)\n\n"
-                    "## Google Business Profile\n"
-                    "- Kompletne dane (NAP)\n"
-                    "- Kategorie główna + dodatkowe\n"
-                    "- Zdjęcia, posty, opinie\n"
-                    "- Odpowiedzi na opinie\n\n"
-                    "## Off-site\n"
-                    "- Profile w katalogach (Panorama, PKT, Yelp)\n"
-                    "- Spójność NAP we wszystkich źródłach\n"
-                    "- Profil linkowy (Ahrefs/ręcznie)\n"
+                KnowledgeArticle(
+                    title="Checklist audytu SEO",
+                    category="Procedury audytu",
+                    body=(
+                        "# Co sprawdzamy w audycie SEO\n\n"
+                        "## On-site (strona)\n"
+                        "- Meta title i description na każdej podstronie\n"
+                        "- Struktura nagłówków H1-H3\n"
+                        "- Linkowanie wewnętrzne\n"
+                        "- Schema markup (LocalBusiness / Product / Article)\n"
+                        "- HTTPS / SSL\n"
+                        "- Mobile friendly (test Google)\n"
+                        "- Core Web Vitals (PageSpeed)\n\n"
+                        "## Google Business Profile\n"
+                        "- Kompletne dane (NAP)\n"
+                        "- Kategorie główna + dodatkowe\n"
+                        "- Zdjęcia, posty, opinie\n"
+                        "- Odpowiedzi na opinie\n\n"
+                        "## Off-site\n"
+                        "- Profile w katalogach (Panorama, PKT, Yelp)\n"
+                        "- Spójność NAP we wszystkich źródłach\n"
+                        "- Profil linkowy (Ahrefs/ręcznie)\n"
+                    ),
+                    _tags=json.dumps(["audyt", "checklist"], ensure_ascii=False),
                 ),
-                _tags=json.dumps(["audyt", "checklist"], ensure_ascii=False),
-            ),
-            KnowledgeArticle(
-                title="Szablon raportu miesięcznego dla klienta",
-                category="Raportowanie",
-                body=(
-                    "# Co zawiera raport miesięczny\n\n"
-                    "## Sekcje\n"
-                    "1. **Podsumowanie miesiąca** - co zostało zrobione (max 5 punktów)\n"
-                    "2. **Metryki** - wzrost/spadek pozycji, ruchu, konwersji\n"
-                    "3. **Najlepsze frazy** - top 10 z największymi zmianami\n"
-                    "4. **Problemy i blokery** - co stanęło na drodze\n"
-                    "5. **Plan na kolejny miesiąc** - 3-5 zadań priorytetowych\n\n"
-                    "## Zasady\n"
-                    "- Max 2 strony PDF\n"
-                    "- Konkretne liczby, nie ogólniki\n"
-                    "- Jeden wykres per sekcja metryk\n"
-                    "- Język prosty, bez branżowego żargonu\n"
+                KnowledgeArticle(
+                    title="Szablon raportu miesięcznego dla klienta",
+                    category="Raportowanie",
+                    body=(
+                        "# Co zawiera raport miesięczny\n\n"
+                        "## Sekcje\n"
+                        "1. **Podsumowanie miesiąca** - co zostało zrobione (max 5 punktów)\n"
+                        "2. **Metryki** - wzrost/spadek pozycji, ruchu, konwersji\n"
+                        "3. **Najlepsze frazy** - top 10 z największymi zmianami\n"
+                        "4. **Problemy i blokery** - co stanęło na drodze\n"
+                        "5. **Plan na kolejny miesiąc** - 3-5 zadań priorytetowych\n\n"
+                        "## Zasady\n"
+                        "- Max 2 strony PDF\n"
+                        "- Konkretne liczby, nie ogólniki\n"
+                        "- Jeden wykres per sekcja metryk\n"
+                        "- Język prosty, bez branżowego żargonu\n"
+                    ),
+                    _tags=json.dumps(["raport", "komunikacja"], ensure_ascii=False),
                 ),
-                _tags=json.dumps(["raport", "komunikacja"], ensure_ascii=False),
-            ),
-        ]
+            ]
+        )
         db.session.add_all(knowledge_seeds)
         db.session.commit()
 
 
 # English defaults for a fresh database with DEFAULT_LANGUAGE=en (an English-speaking agency).
 # Same keys, prices and Jinja placeholders as the Polish seeds above - only the text differs.
+
 
 def _english_packages():
     return [
@@ -1852,17 +1965,23 @@ def _english_packages():
             description="Quick wins - fast results in 30 days",
             price=1500,
             duration_days=30,
-            _deliverables=json.dumps([
-                "Google Business Profile optimization",
-                "Key website fixes (CTA, forms, contact)",
-                "Conversion tracking setup (GA4)",
-                "System for collecting customer reviews",
-            ], ensure_ascii=False),
-            _expected_results=json.dumps([
-                "Better visibility in Google Maps",
-                "More calls and inquiries from the business profile",
-                "Basic traffic and conversion data",
-            ], ensure_ascii=False),
+            _deliverables=json.dumps(
+                [
+                    "Google Business Profile optimization",
+                    "Key website fixes (CTA, forms, contact)",
+                    "Conversion tracking setup (GA4)",
+                    "System for collecting customer reviews",
+                ],
+                ensure_ascii=False,
+            ),
+            _expected_results=json.dumps(
+                [
+                    "Better visibility in Google Maps",
+                    "More calls and inquiries from the business profile",
+                    "Basic traffic and conversion data",
+                ],
+                ensure_ascii=False,
+            ),
             _payment_variants=json.dumps(["One-time"], ensure_ascii=False),
             is_active=True,
         ),
@@ -1871,19 +1990,25 @@ def _english_packages():
             description="Extended package - growth in 60 days",
             price=3500,
             duration_days=60,
-            _deliverables=json.dumps([
-                "Everything in the START package",
-                "Local SEO content (5 optimized subpages)",
-                "Rebuild of key website sections",
-                "Review collection and management system",
-                "Basic Google Ads campaign (setup + 2 weeks of management)",
-            ], ensure_ascii=False),
-            _expected_results=json.dumps([
-                "Higher visibility for local keywords",
-                "More organic website traffic",
-                "First leads from the paid campaign",
-                "Steady growth in reviews",
-            ], ensure_ascii=False),
+            _deliverables=json.dumps(
+                [
+                    "Everything in the START package",
+                    "Local SEO content (5 optimized subpages)",
+                    "Rebuild of key website sections",
+                    "Review collection and management system",
+                    "Basic Google Ads campaign (setup + 2 weeks of management)",
+                ],
+                ensure_ascii=False,
+            ),
+            _expected_results=json.dumps(
+                [
+                    "Higher visibility for local keywords",
+                    "More organic website traffic",
+                    "First leads from the paid campaign",
+                    "Steady growth in reviews",
+                ],
+                ensure_ascii=False,
+            ),
             _payment_variants=json.dumps(["One-time", "2 installments"], ensure_ascii=False),
             is_active=True,
         ),
@@ -1892,20 +2017,26 @@ def _english_packages():
             description="Full marketing takeover - ongoing partnership",
             price=5000,
             duration_days=90,
-            _deliverables=json.dumps([
-                "Local marketing strategy",
-                "Content plan + execution (blog, social media)",
-                "Full local SEO (on-site + off-site)",
-                "Google Ads campaign management",
-                "Monthly reporting and optimization",
-                "Dedicated account manager",
-            ], ensure_ascii=False),
-            _expected_results=json.dumps([
-                "Dominance in local search results",
-                "Steady flow of new clients",
-                "Measurable ROI from marketing activities",
-                "Professional online image",
-            ], ensure_ascii=False),
+            _deliverables=json.dumps(
+                [
+                    "Local marketing strategy",
+                    "Content plan + execution (blog, social media)",
+                    "Full local SEO (on-site + off-site)",
+                    "Google Ads campaign management",
+                    "Monthly reporting and optimization",
+                    "Dedicated account manager",
+                ],
+                ensure_ascii=False,
+            ),
+            _expected_results=json.dumps(
+                [
+                    "Dominance in local search results",
+                    "Steady flow of new clients",
+                    "Measurable ROI from marketing activities",
+                    "Professional online image",
+                ],
+                ensure_ascii=False,
+            ),
             _payment_variants=json.dumps(["Monthly", "Quarterly"], ensure_ascii=False),
             is_active=True,
         ),
