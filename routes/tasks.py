@@ -83,7 +83,7 @@ def tasks_list():
 
     # Kanban pre-grouping (used when filters are off = "wszystkie")
     week_end = today + timedelta(days=7)
-    kb = {"overdue": [], "today": [], "week": [], "later": [], "done": []}
+    kb: dict[str, list[Task]] = {"overdue": [], "today": [], "week": [], "later": [], "done": []}
     for t in tasks:
         if t.status == "done":
             kb["done"].append(t)

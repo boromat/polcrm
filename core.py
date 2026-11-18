@@ -77,7 +77,10 @@ SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", IS_PRODUCTION)
 app = Flask(__name__)
 # Język interfejsu (pl/en): {{ _('...') }} w szablonach, i18n._ w Pythonie - zob. i18n.py
 app.jinja_env.add_extension("jinja2.ext.i18n")
-app.jinja_env.install_gettext_callables(gettext=i18n.gettext, ngettext=i18n.ngettext, newstyle=True)
+# install_gettext_callables dokłada do środowiska rozszerzenie i18n, stąd ignore dla mypy.
+app.jinja_env.install_gettext_callables(  # type: ignore[attr-defined]
+    gettext=i18n.gettext, ngettext=i18n.ngettext, newstyle=True
+)
 
 # SECRET_KEY - w prod MUSI byc z env; w dev fallback pozwala developowac bez .env
 _secret = os.environ.get("FLASK_SECRET_KEY", "").strip()
