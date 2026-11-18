@@ -1,0 +1,14 @@
+# Pokrycie kodu aplikacji przez testy (python -m pytest --cov).
+[run]
+branch = true
+source = .
+omit =
+    tests/*
+    scripts/*
+    .venv/*
+
+[report]
+# Zapora, nie cel: zestaw jest powyżej, a próg nie pozwala mu się cofnąć.
+fail_under = 60
+show_missing = true
+skip_covered = true

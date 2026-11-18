@@ -19,6 +19,8 @@ __pycache__/
 venv/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.coverage
 
 # Edytory i system
 .vscode/

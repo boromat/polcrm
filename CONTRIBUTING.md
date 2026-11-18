@@ -13,16 +13,19 @@ python scripts/seed_test_data.py                        # made-up companies and 
 FLASK_ENV=development python app.py                     # http://127.0.0.1:4666
 ```
 
-The demo accounts are in the README. `requirements-dev.txt` adds pytest, ruff and polanon, so the
-masking tests run against the real library. Node.js is needed for one thing only: rebuilding `static/css/tailwind.css` after a change
-to the Tailwind classes in a template (the command is in the README). `docs/ARCHITECTURE.md`
-explains how the app is put together.
+The demo accounts are in the README. `requirements-dev.txt` adds pytest with coverage, ruff, mypy
+and polanon, so the masking tests run against the real library. Node.js is needed for one thing
+only: rebuilding `static/css/tailwind.css` after a change to the Tailwind classes in a template
+(the command is in the README). `docs/ARCHITECTURE.md` explains how the app is put together.
 
 ## Quality bar
 
-- `python -m ruff check .` and `python -m pytest` pass locally. CI runs them on Linux (Python 3.12
-  and 3.13) and Windows, runs the whole suite again on PostgreSQL 16, builds the Docker image and
-  checks that the committed Tailwind CSS is up to date.
+- `python -m ruff check .`, `python -m ruff format --check .`, `python -m mypy .` and
+  `python -m pytest --cov` pass locally. CI runs them on Linux (Python 3.12 and 3.13) and Windows,
+  runs the whole suite again on PostgreSQL 16, builds the Docker image and checks that the
+  committed Tailwind CSS is up to date.
+- Coverage stays at or above the floor in `.coveragerc` (60%, a little under where the suite is).
+  The floor is there to stop it sliding back: raise it when the suite has grown past it.
 - A change that touches the database runs on both engines: `TEST_DATABASE_URL=postgresql+psycopg://...
   python -m pytest` runs the suite on an empty PostgreSQL schema. Use portable SQLAlchemy only.
 - Tests for every behaviour change, and no network in them: `tests/test_app_smoke.py` crawls every

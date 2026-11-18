@@ -170,8 +170,10 @@ Zgłaszanie problemów: [SECURITY.md](SECURITY.md).
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest
+python -m pytest --cov      # testy i pokrycie kodu (próg 60% w .coveragerc)
 python -m ruff check .      # lint: reguły pyflakes
+python -m ruff format --check .
+python -m mypy .            # typy (ustawienia w mypy.ini)
 # ten sam zestaw na PostgreSQL:
 TEST_DATABASE_URL=postgresql+psycopg://user:haslo@127.0.0.1:5432/polcrm_test python -m pytest
 ```
@@ -188,7 +190,7 @@ Testy obejmują:
 - logikę finansów i oceny audytu oraz główne formularze,
 - przejście po każdej trasie GET bez błędu serwera i bez dostępu do sieci.
 
-Razem 114 testów, ten sam zestaw na SQLite i PostgreSQL 16. CI uruchamia je na Linuksie (Python 3.12 i 3.13) i Windowsie, osobno na PostgreSQL 16, buduje obraz Dockera i sprawdza, czy zbudowany Tailwind jest aktualny.
+Razem 124 testy, ten sam zestaw na SQLite i PostgreSQL 16. CI sprawdza lint, format i typy, uruchamia testy z progiem pokrycia na Linuksie (Python 3.12 i 3.13) i Windowsie, osobno na PostgreSQL 16, buduje obraz Dockera i sprawdza, czy zbudowany Tailwind jest aktualny.
 
 Po zmianie klas Tailwinda w szablonach przebuduj CSS (Node.js potrzebny tylko do tego kroku):
 

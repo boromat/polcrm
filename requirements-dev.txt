@@ -1,5 +1,7 @@
-# Testy, lint i opcjonalne maskowanie danych osobowych (polanon).
+# Testy z pokryciem, lint, format, typy i opcjonalne maskowanie danych osobowych (polanon).
 -r requirements.txt
 pytest==9.2.0
+pytest-cov==7.1.0
 polanon==0.3.6
 ruff==0.17.4
+mypy==2.4.1
