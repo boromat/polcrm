@@ -67,3 +67,10 @@ The optional masking of personal data before an AI call is done by
 polanon: report it there, with invented text of the same shape. A way to read or change data
 without the right role, to get a secret out of the database, or to make the assistant send personal
 data while masking is on is a security report: see `SECURITY.md`, never a public issue.
+
+## Releases
+
+The version number lives in `CHANGELOG.md` only. To release, rename `## Unreleased` to
+`## X.Y.Z - YYYY-MM-DD` in a commit of its own (`Release X.Y.Z`), then push the tag `vX.Y.Z`.
+`.github/workflows/release.yml` checks that the section is there and dated, publishes the Docker
+image to `ghcr.io/boromat/polcrm` and creates the GitHub release with that section as its notes.
