@@ -1,5 +1,5 @@
 # PolCRM - obraz produkcyjny (waitress). Użycie z PostgreSQL: docker compose up -d (zob. docker-compose.yml).
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
