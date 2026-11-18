@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- Releases are published from a version tag: a GitHub release with this file's section for the
+  version, and a Docker image for amd64 and arm64 at `ghcr.io/boromat/polcrm`, tagged with the
+  version, the minor version and `latest`.
+
 ### Changed
 
 - polanon, used by the tests and by the optional masking of personal data before an AI call,

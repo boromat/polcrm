@@ -1,0 +1,107 @@
+name: Release
+
+# Tag w rodzaju v1.0.2 publikuje wydanie: obraz Dockera w GitHub Container Registry
+# (ghcr.io/boromat/polcrm) i wydanie na GitHubie z opisem z sekcji tej wersji w CHANGELOG.md.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Tag i CHANGELOG się zgadzają
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      # Numer wersji PolCRM jest tylko w CHANGELOG.md. Wydanie bez datowanej sekcji tej wersji
+      # wyszłoby bez opisu albo z sekcją "Unreleased", więc zatrzymuje się tutaj.
+      - name: Porównaj
+        run: |
+          python - "${GITHUB_REF_NAME#v}" <<'PY'
+          import re
+          import sys
+
+          tag = sys.argv[1]
+          changelog = open("CHANGELOG.md", encoding="utf-8").read()
+          if not re.search(rf"^## \[?{re.escape(tag)}\]?(\s|$)", changelog, re.MULTILINE):
+              sys.exit(f"CHANGELOG.md nie ma sekcji '## {tag} - RRRR-MM-DD'")
+          dated = rf"^## \[?{re.escape(tag)}\]? - \d{{4}}-\d{{2}}-\d{{2}}\s*$"
+          if not re.search(dated, changelog, re.MULTILINE):
+              sys.exit(f"CHANGELOG.md nie ma daty wydania {tag}: wpisz '## {tag} - RRRR-MM-DD'")
+          PY
+
+  image:
+    name: Obraz Dockera do GitHub Container Registry
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Także arm64: Raspberry Pi, małe serwery ARM i Macy z Apple Silicon.
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 1.0.2 i 1.0, a do tego latest dla wydania, które nie jest wersją testową.
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  github:
+    name: Wydanie na GitHubie
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Sekcja wersji z CHANGELOG.md, bez nagłówka, aż do następnego "## ".
+      - name: Opis z CHANGELOG.md
+        run: |
+          python - "${GITHUB_REF_NAME#v}" > notes.md <<'PY'
+          import re
+          import sys
+
+          tag = sys.argv[1]
+          changelog = open("CHANGELOG.md", encoding="utf-8").read()
+          section = re.search(
+              rf"^## \[?{re.escape(tag)}\]?[^\n]*\n(.*?)(?=^## |\Z)", changelog, re.MULTILINE | re.DOTALL
+          )
+          print(section.group(1).strip())
+          PY
+
+      - name: Publikacja
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
