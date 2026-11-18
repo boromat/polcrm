@@ -180,8 +180,8 @@ Tests: `tests/test_privacy.py` (contract with a fake anonymizer), `tests/test_po
 (SQLite by default, PostgreSQL with `TEST_DATABASE_URL`). Generated PDFs and uploads land in
 `output/` and the development Fernet key in `instance/`, as when the app runs (both git-ignored). GitHub Actions runs `ruff check .`
 (pyflakes rules), `ruff format --check .`, `mypy .` (`mypy.ini`: the app code, function bodies included)
-and the suite with coverage, which fails below the floor in `.coveragerc`, on Ubuntu (Python 3.12 and
-3.13) and Windows (Python 3.13) with polanon installed, the same suite on PostgreSQL 16, builds the Docker image and validates
+and the suite with coverage, which fails below the floor in `.coveragerc`, on Ubuntu (Python 3.12, 3.13
+and 3.15, the one the image runs) and Windows (Python 3.13) with polanon installed, the same suite on PostgreSQL 16, builds the Docker image and validates
 `docker-compose.yml`, and rebuilds Tailwind to check the committed CSS is up to date.
 
 | File | What it covers |

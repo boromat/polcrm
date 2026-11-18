@@ -22,7 +22,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python: ["3.12", "3.13"]
+        # 3.12 to najstarszy wspierany Python, 3.15 ten, na którym działa obraz Dockera.
+        python: ["3.12", "3.13", "3.15"]
         include:
           # Windows, bo lokalnie aplikację uruchamia się przez scripts/start.bat.
           - os: windows-latest

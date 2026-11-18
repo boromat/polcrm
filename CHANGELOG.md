@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- The Docker image runs Python 3.15 (from 3.12), and CI runs the tests on 3.15 next to 3.12 and
+  3.13. Every dependency installs from a ready wheel on amd64 and arm64.
+
 ## 1.1.0 - 2026-11-18
 
 ### Added
