@@ -19,6 +19,12 @@
   passed the check, and a browser reads a backslash as a slash; it was safe only because Werkzeug
   happened to encode the backslash in the redirect. The check now refuses a backslash, `/%2f`,
   `/%5c` and control characters itself. Found by CodeQL (py/url-redirection).
+- **A failed Google search no longer shows the API key.** When the connection to Google dropped,
+  the competitor search in an audit answered with the error text and the lead search flashed it.
+  That text quotes the whole request address, `key=` included, although the settings never show a
+  saved key to anyone, and a flash travels in the session cookie as well. Both now show Google's
+  own answer (`REQUEST_DENIED` and the like) or a plain sentence, and the details go to the server
+  log with the key masked. Found by CodeQL (py/stack-trace-exposure).
 
 ## 1.1.3 - 2026-11-19
 

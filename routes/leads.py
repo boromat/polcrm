@@ -18,6 +18,7 @@ from core import (
     _parse_int,
     app,
     get_api_key,
+    google_error,
 )
 from i18n import _
 from models import (
@@ -274,7 +275,7 @@ def search_run():
                 language=i18n.DEFAULT_LANGUAGE,
             )
         except Exception as exc:
-            flash(_("Błąd Nearby Search [%(keyword)s]: %(error)s", keyword=keyword, error=exc), "warning")
+            flash(_("Błąd Nearby Search [%(keyword)s]: %(error)s", keyword=keyword, error=google_error(exc)), "warning")
             continue
 
         while True:

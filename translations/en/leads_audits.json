@@ -129,6 +129,8 @@
   "Brak wyników": "No results",
   "Dodaj": "Add",
   "Błąd wyszukiwania": "Search error",
+  "Błąd wyszukiwania: %(error)s": "Search error: %(error)s",
+  "nie udało się zapytać Google, szczegóły w logu serwera": "could not query Google, details in the server log",
   "Usunąć konkurenta?": "Delete this competitor?",
   "Audyty": "Audits",
   "%(count)s audytów w bazie": "%(count)s audits in the database",

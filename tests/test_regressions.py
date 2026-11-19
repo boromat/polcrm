@@ -1,5 +1,7 @@
 """Regression tests for bugs fixed while preparing the public version (see CHANGELOG.md)."""
 
+import pytest
+
 import app  # noqa: F401  (registers routes)
 import core as app_module
 
@@ -235,3 +237,60 @@ def test_the_werkzeug_debugger_needs_flask_debug(monkeypatch):
     monkeypatch.setenv("FLASK_DEBUG", "1")
     entry.main()
     assert [call["debug"] for call in calls] == [False, True]
+
+
+# Made up: a real key is "AIza" and 35 more characters, and googlemaps checks only the prefix.
+FAKE_GOOGLE_KEY = "AIza" + "TestKeyNotRealExample0123456789abcd"
+
+
+@pytest.fixture()
+def google_offline(seeded, monkeypatch):
+    """A made-up Google key and a network that fails the way a dropped connection does: requests
+    quotes the whole address in the error, and googlemaps puts the key in that address."""
+    import requests
+
+    from models import Settings, db
+
+    def unreachable(self, method, url, *args, **kwargs):
+        raise requests.exceptions.ConnectionError(
+            f"Max retries exceeded with url: {url} (Caused by NameResolutionError)"
+        )
+
+    monkeypatch.setattr(requests.sessions.Session, "request", unreachable)
+    with seeded.app_context():
+        settings = Settings.get()
+        saved, settings.google_api_key = settings.google_api_key, FAKE_GOOGLE_KEY
+        db.session.commit()
+    yield
+    with seeded.app_context():
+        Settings.get().google_api_key = saved
+        db.session.commit()
+
+
+def test_a_failed_competitor_search_never_shows_the_google_key(client, google_offline, caplog):
+    """The competitor search answered with str(exc), which for a dropped connection is the request
+    address with key= in it, while the settings never show a saved key to anyone (CodeQL
+    py/stack-trace-exposure). The details now go to the server log, with the key masked."""
+    r = client.post("/api/search_competitor", json={"keyword": "kwiaciarnia", "lat": 52.1, "lng": 21.0})
+    assert r.status_code == 502
+    assert FAKE_GOOGLE_KEY not in r.get_data(as_text=True)
+    assert "logu serwera" in r.get_json()["error"]
+    assert "NameResolutionError" in caplog.text and FAKE_GOOGLE_KEY not in caplog.text
+
+
+def test_a_failed_place_search_never_flashes_the_google_key(client, google_offline):
+    """The lead search flashed the same text, and a flash travels in the session cookie too."""
+    r = client.post("/search/run", data={"center_lat": "52.1", "center_lng": "21.0", "keywords": "kwiaciarnia"})
+    page = r.get_data(as_text=True)
+    assert "Błąd Nearby Search [kwiaciarnia]" in page
+    assert FAKE_GOOGLE_KEY not in page
+
+
+def test_google_errors_pass_on_what_google_answered():
+    """Google's own answer says what to put right in the settings, so it still reaches the person."""
+    import googlemaps
+
+    denied = googlemaps.exceptions.ApiError("REQUEST_DENIED", "This API project is not authorized to use this API.")
+    assert app_module.google_error(denied) == "REQUEST_DENIED (This API project is not authorized to use this API.)"
+    assert app_module.google_error(googlemaps.exceptions.ApiError("ZERO_RESULTS")) == "ZERO_RESULTS"
+    assert app_module.google_error(googlemaps.exceptions.HTTPError(403)) == "HTTP 403"
