@@ -120,6 +120,26 @@ def test_unknown_tokens_are_left_untouched_and_reported():
     assert m.unknown_tokens("<OSOBA_1> i <OSOBA_9>") == ["<OSOBA_9>"]
 
 
+def test_a_token_already_in_the_input_is_defused():
+    """Numbering starts again in every request: an old <OSOBA_2> left in the history, or one the
+    user typed, must not be restored to whoever gets that token this time."""
+    m = make_masker()
+    masked = m.mask("Stara odpowiedź: <OSOBA_2> i <OSOBA_3:celownik>. Teraz: Jan Kowalski")
+    assert masked == "Stara odpowiedź: [OSOBA_2] i [OSOBA_3:celownik]. Teraz: <OSOBA_1>"
+    assert m.restore(masked) == "Stara odpowiedź: [OSOBA_2] i [OSOBA_3:celownik]. Teraz: Jan Kowalski"
+
+
+def test_a_stale_token_in_the_history_never_becomes_todays_person():
+    """An earlier answer kept a token the model made up, <OSOBA_1>. This request gives <OSOBA_1> to
+    Jan Kowalski, so the old one must reach the model defused, not as the same person."""
+    model = FakeModel(answer("Gotowe."))
+    history = [{"role": "assistant", "content": "Nie znam <OSOBA_1>."}]
+    ai_assistant.run_conversation(
+        "Co z Jan Kowalski?", history, models={}, db=None, finance_helpers=None, masker=make_masker(), call=model
+    )
+    assert [m["content"] for m in model.requests[0][1:]] == ["Nie znam [OSOBA_1].", "Co z <OSOBA_1>?"]
+
+
 # ── A person named again in another case (polanon 0.4) ────────
 
 

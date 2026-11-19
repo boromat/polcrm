@@ -135,8 +135,15 @@ class Masker:
     # ── outgoing: real -> tokens ───────────────────────────────
 
     def mask(self, text: str) -> str:
+        """Mask one text. Any failure of the anonymizer becomes :class:`MaskingUnavailable`.
+
+        Token-shaped text already in the input (one the model made up and the history kept, one the
+        user typed) is defused to ``[OSOBA_2]`` first: numbering starts again in every request, so
+        an old ``<OSOBA_2>`` must never be restored to whoever gets that token this time.
+        """
         if not text or not isinstance(text, str):
             return text
+        text = TOKEN_RE.sub(lambda m: "[" + m.group(0)[1:-1] + "]", text)
         try:
             masked, self.mapping = self.anonymize(text, self.mapping)
         except MaskingUnavailable:

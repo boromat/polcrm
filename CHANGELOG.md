@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- With masking on, a token already in the text, one the model made up and the conversation kept
+  or one typed by hand, went to the model as it was. Numbering starts again in every request, so
+  an old `<OSOBA_1>` could stand next to the person who got `<OSOBA_1>` this time and come back as
+  that person's name. Such a token is now defused to `[OSOBA_1]` before masking, as in PolSales.
+
 ## 1.1.2 - 2026-11-19
 
 ### Fixed

@@ -148,6 +148,9 @@ Design rules:
   `<OSOBA_1:celownik>`, and the model writes the token back as it got it. The answer gets the
   name declined through polanon's own restore ("Janowi Kowalskiemu"); tool arguments get it as
   the mapping holds it, since the database keeps the original spelling.
+- **A token already in the input is defused.** Numbering starts again in every request, so a
+  token the history kept or the user typed becomes `[OSOBA_1]` before masking and is never
+  restored to whoever gets `<OSOBA_1>` this time.
 - **Known client names are always masked.** Tool results are masked field by field, so a
   company name arrives without a sentence around it, and polanon's rules alone let a name like
   "Auto Serwis Nowak" through. `build_masker()` therefore passes every client's trade and legal
