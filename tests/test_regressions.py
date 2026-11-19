@@ -219,3 +219,19 @@ def test_tailwind_is_served_locally_not_from_the_play_cdn(client):
     html = client.get("/companies").get_data(as_text=True)
     assert "/static/css/tailwind.css" in html
     assert client.get("/static/css/tailwind.css").status_code == 200
+
+
+def test_the_werkzeug_debugger_needs_flask_debug(monkeypatch):
+    """Without FLASK_ENV=production the app ran the Flask server with debug=True, so a deployment
+    whose .env left FLASK_ENV out served the Werkzeug debugger through the tunnel (CodeQL
+    py/flask-debug). The debugger now needs FLASK_DEBUG=1."""
+    import app as entry
+
+    calls = []
+    monkeypatch.setattr(entry, "IS_PRODUCTION", False)
+    monkeypatch.setattr(entry.app, "run", lambda **kwargs: calls.append(kwargs))
+    monkeypatch.delenv("FLASK_DEBUG", raising=False)
+    entry.main()
+    monkeypatch.setenv("FLASK_DEBUG", "1")
+    entry.main()
+    assert [call["debug"] for call in calls] == [False, True]

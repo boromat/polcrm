@@ -108,7 +108,7 @@ scripts\start.bat
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python scripts/seed_test_data.py
-FLASK_ENV=development python app.py
+FLASK_ENV=development FLASK_DEBUG=1 python app.py
 ```
 
 Aplikacja działa pod <http://127.0.0.1:4666>. Dane testowe zakładają trzy konta demo: `anna@example.com` (administrator), `tomasz@example.com` i `ola@example.com` (członkowie), wszystkie z hasłem `demo-polcrm`. Bez danych testowych pierwsze wejście prowadzi do strony `/setup`, która zakłada konto administratora. Dane testowe usuniesz poleceniem `python scripts/seed_test_data.py --clean`.
@@ -141,7 +141,7 @@ Plik `.env` (wzór: [`.env.example`](.env.example)). Sekrety wygenerujesz polece
 |---|---|
 | `FLASK_SECRET_KEY` | podpis sesji i tokenów CSRF; w produkcji wymagany |
 | `FERNET_KEY` | szyfrowanie kluczy API, hasła SMTP i tokenów Google w bazie; w produkcji wymagany |
-| `FLASK_ENV` | `development` (serwer Flask z debugiem) albo `production` (waitress) |
+| `FLASK_ENV` | `development` (serwer Flaska; debugger tylko z `FLASK_DEBUG=1`) albo `production` (waitress) |
 | `AUTH_MODE` | `password` (domyślnie), `cloudflare` (tożsamość z Cloudflare Access) albo `profile` (demo bez haseł, zablokowany w produkcji) |
 | `ALLOWED_EMAILS` | dla `cloudflare`: dodatkowa biała lista e-maili po stronie aplikacji |
 | `DEFAULT_LANGUAGE` | `pl` albo `en`: język przed zalogowaniem i domyślnych szablonów przy pierwszym starcie |
@@ -192,7 +192,7 @@ Testy obejmują:
 - logikę finansów i oceny audytu oraz główne formularze,
 - przejście po każdej trasie GET bez błędu serwera i bez dostępu do sieci.
 
-Razem 133 testy, ten sam zestaw na SQLite i PostgreSQL 16. CI sprawdza lint, format i typy, uruchamia testy z progiem pokrycia na Linuksie (Python 3.12, 3.13 i 3.15, ten ostatni jak w obrazie Dockera) i Windowsie, osobno na PostgreSQL 16, buduje obraz Dockera i sprawdza, czy zbudowany Tailwind jest aktualny.
+Razem 134 testy, ten sam zestaw na SQLite i PostgreSQL 16. CI sprawdza lint, format i typy, uruchamia testy z progiem pokrycia na Linuksie (Python 3.12, 3.13 i 3.15, ten ostatni jak w obrazie Dockera) i Windowsie, osobno na PostgreSQL 16, buduje obraz Dockera i sprawdza, czy zbudowany Tailwind jest aktualny.
 
 Po zmianie klas Tailwinda w szablonach przebuduj CSS (Node.js potrzebny tylko do tego kroku):
 

@@ -10,7 +10,7 @@ PostgreSQL.
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 python scripts/seed_test_data.py                        # made-up companies and three demo accounts
-FLASK_ENV=development python app.py                     # http://127.0.0.1:4666
+FLASK_ENV=development FLASK_DEBUG=1 python app.py       # http://127.0.0.1:4666
 ```
 
 The demo accounts are in the README. `requirements-dev.txt` adds pytest with coverage, ruff, mypy

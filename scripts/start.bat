@@ -9,6 +9,7 @@ echo ============================================
 echo.
 
 set FLASK_ENV=development
+set FLASK_DEBUG=1
 set APP_HOST=127.0.0.1
 set APP_PORT=4666
 set AUTH_MODE=password

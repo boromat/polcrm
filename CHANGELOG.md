@@ -10,6 +10,11 @@
   mentions you, a snippet such as `<img src=x onerror=...>`, escaped by the template, became
   markup and ran as whoever clicked it, an administrator included. The button is now rebuilt
   from nodes, its text as text. Found by CodeQL (js/xss-through-dom) and checked in a browser.
+- **The Werkzeug debugger needs `FLASK_DEBUG=1`.** Without `FLASK_ENV=production` the app ran the
+  Flask server in debug mode, and `FLASK_ENV` defaults to `development`, so a deployment whose
+  `.env` left it out showed tracebacks and the debugger through the tunnel. The development server
+  now runs without it unless `FLASK_DEBUG=1` is set, which `scripts/start.bat` and the README's
+  local commands do. Found by CodeQL (py/flask-debug).
 
 ## 1.1.3 - 2026-11-19
 
