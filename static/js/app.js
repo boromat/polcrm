@@ -481,13 +481,18 @@
         if (!btn) return;
         if (btn.dataset.loading === '1') return;
         btn.dataset.loading = '1';
-        btn.dataset.originalHtml = btn.innerHTML;
-        btn.innerHTML = `<span class="btn-spinner"></span> ${btn.textContent.trim() || ''}`;
+        // Węzły, nie HTML: textContent jest już odkodowany, więc wstawiony przez innerHTML zamieniał
+        // tekst przycisku (np. fragment komentarza w skrzynce) z powrotem w znaczniki.
+        const original = [...btn.childNodes];
+        const label = btn.textContent.trim();
+        const spinner = document.createElement('span');
+        spinner.className = 'btn-spinner';
+        btn.replaceChildren(spinner, label ? ` ${label}` : '');
         btn.disabled = true;
         // Auto-reset po 8s jeśli submit się nie powiódł
         setTimeout(() => {
             if (btn.dataset.loading === '1') {
-                btn.innerHTML = btn.dataset.originalHtml || btn.innerHTML;
+                btn.replaceChildren(...original);
                 btn.disabled = false;
                 delete btn.dataset.loading;
             }
