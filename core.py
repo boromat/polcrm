@@ -12,6 +12,7 @@ import logging
 import os
 import re
 import shutil
+import uuid
 from datetime import date, datetime, timedelta
 from functools import wraps
 from pathlib import Path
@@ -493,6 +494,21 @@ def google_error(exc):
         return f"HTTP {exc.status_code}"
     log.warning("Google Maps call failed: %s", _KEY_IN_ADDRESS.sub(r"\1***", f"{type(exc).__name__}: {exc}"))
     return _("nie udało się zapytać Google, szczegóły w logu serwera")
+
+
+_PLAIN_SUFFIX = re.compile(r"\.[a-z0-9]{1,10}")
+
+
+def stored_upload_name(filename):
+    """The name an uploaded file gets on disk: a random id, and the extension in lower case when
+    it is a plain one of letters and digits.
+
+    The name the person gave stays in the database, and the download uses it. The extension came
+    from the client as it was: ".txt:ukryty" writes to an NTFS stream on Windows, and on Linux a
+    backslash is just a character of the name.
+    """
+    suffix = Path(filename).suffix.lower()
+    return uuid.uuid4().hex + (suffix if _PLAIN_SUFFIX.fullmatch(suffix) else "")
 
 
 def _parse_date(s):

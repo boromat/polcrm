@@ -1,9 +1,7 @@
 """Tasks: list, kanban, detail with comments and files, mention inbox."""
 
 import mimetypes
-import uuid
 from datetime import date, timedelta
-from pathlib import Path
 
 from flask import (
     flash,
@@ -24,6 +22,7 @@ from core import (
     _safe_referrer,
     app,
     get_current_user,
+    stored_upload_name,
 )
 from i18n import _
 from models import (
@@ -423,8 +422,7 @@ def task_file_upload(id):
 
     task_dir = UPLOADS_DIR / "tasks" / str(t.id)
     task_dir.mkdir(parents=True, exist_ok=True)
-    ext = Path(f.filename).suffix
-    stored_name = f"{uuid.uuid4().hex}{ext}"
+    stored_name = stored_upload_name(f.filename)
     target_path = task_dir / stored_name
     f.save(target_path)
 

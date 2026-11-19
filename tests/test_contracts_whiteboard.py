@@ -1,6 +1,9 @@
 """Contracts (template -> PDF -> client file), file uploads with versions, whiteboards and their API."""
 
 import io
+import re
+
+import pytest
 
 # ── contracts ───────────────────────────────────────────────────
 
@@ -115,6 +118,42 @@ def test_file_upload_versions_and_safe_storage(client, seeded):
         for f in ClientFile.query.filter_by(label="Oferta test").all():
             db.session.delete(f)
         db.session.commit()
+
+
+@pytest.mark.parametrize(
+    ("name", "suffix"),
+    [("Umowa.PDF", ".pdf"), ("notatka.txt:ukryty", ""), (r"skrypt.\..\evil", ""), ("bez-rozszerzenia", "")],
+)
+def test_a_stored_upload_keeps_only_a_plain_extension(name, suffix):
+    """The extension came from the client as it was: ".txt:ukryty" writes to an NTFS stream on
+    Windows, and on Linux a backslash is just a character of the name (CodeQL py/path-injection)."""
+    import core
+
+    stored = core.stored_upload_name(name)
+    assert re.fullmatch(r"[0-9a-f]{32}", stored.removesuffix(suffix)) and stored.endswith(suffix)
+
+
+def test_company_and_task_uploads_store_a_plain_name(client, seeded):
+    """Both upload forms store under the plain name, and the download still has the person's name."""
+    from core import BASE_DIR
+    from models import ClientFile, Task
+
+    cid = _company_id(seeded)
+    with seeded.app_context():
+        tid = Task.query.order_by(Task.id).first().id
+    for url in (f"/companies/{cid}/files/upload", f"/tasks/{tid}/upload"):
+        data = {"file": (io.BytesIO(b"tresc"), "notatka.txt:ukryty"), "label": "Strumien test"}
+        assert client.post(url, data=data, content_type="multipart/form-data").status_code == 302
+    with seeded.app_context():
+        stored = {f.id: f.stored_path for f in ClientFile.query.filter_by(filename="notatka.txt:ukryty")}
+    assert len(stored) == 2
+    for file_id, stored_path in stored.items():
+        assert re.fullmatch(r"uploads/(\d+|tasks/\d+)/[0-9a-f]{32}", stored_path)
+        # Closed before the delete: Windows keeps a file that is still open for reading.
+        with client.get(f"/files/{file_id}/download") as r:
+            assert r.data == b"tresc" and "notatka.txtukryty" in r.headers["Content-Disposition"]
+        assert client.post(f"/files/{file_id}/delete").status_code == 302
+        assert not (BASE_DIR / "output" / stored_path).exists()
 
 
 # ── whiteboards ─────────────────────────────────────────────────
