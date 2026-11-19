@@ -77,6 +77,7 @@ docker compose logs -f app           # "[PRODUKCJA] waitress na http://0.0.0.0:4
 - Port jest wystawiony tylko na `127.0.0.1:4666` hosta. Pierwsze konto: `http://127.0.0.1:4666/setup` (z serwera przez tunel SSH: `ssh -L 4666:127.0.0.1:4666 serwer`).
 - Kopie zapasowe: `docker compose exec db pg_dump -U polcrm polcrm > polcrm-$(date +%F).sql`.
 - Aktualizacja: `git pull && docker compose up -d --build`.
+- Gotowy obraz zamiast budowania: w `docker-compose.yml` zamień `build: .` na `image: ghcr.io/boromat/polcrm:1.1` (amd64 i arm64; tagi: wersja, np. `1.1.2`, wersja minor `1.1` i `latest`), potem `docker compose pull && docker compose up -d`. Aktualizacja to te same dwa polecenia; tag `1.1` dostaje poprawki tej wersji, a nowa wersja minor wymaga zmiany tagu.
 
 ## Linux VPS (zalecane bez Dockera)
 
