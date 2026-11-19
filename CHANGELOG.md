@@ -25,6 +25,11 @@
   saved key to anyone, and a flash travels in the session cookie as well. Both now show Google's
   own answer (`REQUEST_DENIED` and the like) or a plain sentence, and the details go to the server
   log with the key masked. Found by CodeQL (py/stack-trace-exposure).
+- **An uploaded file keeps only a plain extension on disk.** A file is stored under a random name
+  and the extension it was sent with, taken from the browser as it was, so `notatka.txt:ukryty`
+  wrote into an NTFS stream on Windows and left the stored file itself empty. The extension is
+  now kept only when it is a short run of letters and digits, in lower case; the download still
+  uses the name the file was sent with. Found by CodeQL (py/path-injection).
 
 ## 1.1.3 - 2026-11-19
 

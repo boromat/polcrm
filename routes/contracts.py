@@ -3,7 +3,6 @@
 import mimetypes
 import uuid
 from datetime import date, datetime
-from pathlib import Path
 
 from flask import (
     abort,
@@ -25,6 +24,7 @@ from core import (
     _parse_float,
     _safe_referrer,
     app,
+    stored_upload_name,
 )
 from models import (
     ClientFile,
@@ -199,8 +199,7 @@ def file_upload(company_id):
     # Storage
     comp_dir = UPLOADS_DIR / str(company_id)
     comp_dir.mkdir(parents=True, exist_ok=True)
-    ext = Path(f.filename).suffix
-    stored_name = f"{uuid.uuid4().hex}{ext}"
+    stored_name = stored_upload_name(f.filename)
     target_path = comp_dir / stored_name
     f.save(target_path)
 
