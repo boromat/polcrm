@@ -144,6 +144,10 @@ Design rules:
 - **Fail closed.** If masking is on and polanon is missing or raises, `MaskingUnavailable` stops the
   request before the first call to the model (or before the next one, if it fails on a tool
   result). The user gets an error; nothing is sent in clear text.
+- **A person named again in another case.** polanon 0.4 masks such a mention as
+  `<OSOBA_1:celownik>`, and the model writes the token back as it got it. The answer gets the
+  name declined through polanon's own restore ("Janowi Kowalskiemu"); tool arguments get it as
+  the mapping holds it, since the database keeps the original spelling.
 - **Known client names are always masked.** Tool results are masked field by field, so a
   company name arrives without a sentence around it, and polanon's rules alone let a name like
   "Auto Serwis Nowak" through. `build_masker()` therefore passes every client's trade and legal
