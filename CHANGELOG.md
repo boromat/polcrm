@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- polanon, used by the tests and by the optional masking of personal data before an AI call,
+  raised to 0.4.1 (from 0.3.6), the version `pip install polanon` installs today. Since 0.3.6 it
+  masks a PESEL however its digits are grouped, a name written with Cyrillic letters that look
+  Latin and a KRS number as KRS, and a person named again in another case gets a token with the
+  case. The test suite passes unchanged.
+
 ## 1.1.1 - 2026-11-19
 
 ### Changed
