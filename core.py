@@ -485,8 +485,8 @@ def google_error(exc):
 
     Google's own answer (REQUEST_DENIED and the like, with its explanation) says what to put right
     in the settings, so it is passed on. Anything else goes to the server log only, with the key
-    masked: a dropped connection quotes the whole request address, the address carries the API
-    key, and the settings never show a saved key to anyone.
+    masked: a dropped connection quotes the whole request address, and the address carries the API
+    key, which belongs neither in an error message nor in a flash kept in the session cookie.
     """
     if isinstance(exc, googlemaps.exceptions.ApiError):
         return f"{exc.status} ({exc.message})" if exc.message else str(exc.status)

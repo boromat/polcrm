@@ -269,8 +269,8 @@ def google_offline(seeded, monkeypatch):
 
 def test_a_failed_competitor_search_never_shows_the_google_key(client, google_offline, caplog):
     """The competitor search answered with str(exc), which for a dropped connection is the request
-    address with key= in it, while the settings never show a saved key to anyone (CodeQL
-    py/stack-trace-exposure). The details now go to the server log, with the key masked."""
+    address with key= in it (CodeQL py/stack-trace-exposure). The details now go to the server
+    log, with the key masked."""
     r = client.post("/api/search_competitor", json={"keyword": "kwiaciarnia", "lat": 52.1, "lng": 21.0})
     assert r.status_code == 502
     assert FAKE_GOOGLE_KEY not in r.get_data(as_text=True)
