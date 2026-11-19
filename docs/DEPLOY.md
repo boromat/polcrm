@@ -151,11 +151,12 @@ nano .env
 # OPENROUTER_URL=...       (opcjonalnie: inna bramka zgodna z OpenAI, np. LiteLLM albo lokalny model)
 ```
 
-Opcjonalne maskowanie danych osobowych dla asystenta AI:
+Maskowanie danych osobowych dla asystenta AI (polanon) instaluje się razem z wymaganiami i włącza w **Ustawienia → AI Asystent**. Dokładniejszy tryb z modelem spaCy:
 
 ```bash
 source venv/bin/activate
-pip install polanon
+pip install "polanon[ner]==0.4.1"
+python -m spacy download pl_core_news_md
 ```
 
 <details>

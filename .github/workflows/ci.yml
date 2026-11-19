@@ -90,6 +90,12 @@ jobs:
       - name: Budowanie obrazu
         run: docker build -t polcrm:ci .
 
+      # Obraz ma polanon, więc maskowanie danych osobowych da się w nim włączyć.
+      - name: Maskowanie działa w obrazie
+        run: >-
+          docker run --rm polcrm:ci python -c
+          "import privacy; m = privacy.polanon_masker(); print(m.mask('Jan Kowalski, kontakt@firma.example'))"
+
       - name: Walidacja docker-compose.yml
         run: cp .env.example .env && POSTGRES_PASSWORD=ci docker compose config --quiet
 

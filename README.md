@@ -56,7 +56,7 @@ Przykład: „znajdź klientów z zaległymi fakturami i dodaj każdemu zadanie 
 
 ## Ochrona danych osobowych (polanon) - opcjonalnie
 
-[polanon](https://github.com/boromat/polanon) to moja biblioteka Pythona (`pip install polanon`) do odwracalnego maskowania polskich danych osobowych przed wysłaniem tekstu do modelu językowego. W PolCRM włącza się ją w **Ustawienia → AI Asystent**.
+[polanon](https://github.com/boromat/polanon) to moja biblioteka Pythona do odwracalnego maskowania polskich danych osobowych przed wysłaniem tekstu do modelu językowego. Instaluje się razem z `requirements.txt` i jest w obrazie Dockera; w PolCRM włącza się ją w **Ustawienia → AI Asystent**.
 
 W asystencie z tool calling dane osobowe są nie tylko w pytaniu użytkownika, ale też w wynikach narzędzi (nazwy firm, osoby kontaktowe, e-maile, telefony). Dlatego maskowanie obejmuje cały obieg:
 
@@ -65,7 +65,7 @@ W asystencie z tool calling dane osobowe są nie tylko w pytaniu użytkownika, a
 3. zanim narzędzie dotknie bazy, **argumenty są odtwarzane** do prawdziwych wartości,
 4. w odpowiedzi dla użytkownika tokeny wracają do prawdziwych wartości.
 
-Mapowanie token → wartość istnieje tylko w pamięci, na czas jednego zapytania. Bez zainstalowanego polanonu i z wyłączonym maskowaniem asystent działa tak jak wcześniej. Gdy maskowanie jest **włączone**, a polanon nie działa, aplikacja **nic nie wysyła** do modelu i zwraca błąd. To pseudonimizacja, nie pełna anonimizacja: dokładniej działa z modelem spaCy (`pip install "polanon[ner]"` i `python -m spacy download pl_core_news_md`).
+Mapowanie token → wartość istnieje tylko w pamięci, na czas jednego zapytania. Z wyłączonym maskowaniem asystent działa tak jak wcześniej. Gdy maskowanie jest **włączone**, a polanon nie działa, aplikacja **nic nie wysyła** do modelu i zwraca błąd. To pseudonimizacja, nie pełna anonimizacja: dokładniej działa z modelem spaCy (`pip install "polanon[ner]"` i `python -m spacy download pl_core_news_md`).
 
 Kod: [`privacy.py`](privacy.py), pętla asystenta: [`ai_assistant.py`](ai_assistant.py), testy: [`tests/test_privacy.py`](tests/test_privacy.py), [`tests/test_polanon_real.py`](tests/test_polanon_real.py). Ten sam wzorzec stosuje [PolCV](https://github.com/boromat/polcv).
 
@@ -83,7 +83,7 @@ Jeśli masz 10 minut, te miejsca najlepiej pokazują, jak projekt jest zbudowany
 
 - **Backend:** Python 3.12+, Flask 3, SQLAlchemy 2 (SQLite albo PostgreSQL), waitress
 - **Frontend:** szablony Jinja2, Tailwind budowany lokalnie (`tailwind.config.js`) + własny CSS (dwa motywy), JavaScript bez frameworka, PWA (manifest + service worker)
-- **AI:** OpenRouter (API zgodne z OpenAI, tool calling), opcjonalnie polanon
+- **AI:** OpenRouter (API zgodne z OpenAI, tool calling), maskowanie polanon włączane w Ustawieniach
 - **Google:** Places API, PageSpeed Insights, Search Console i GA4 (OAuth 2.0)
 - **PDF:** fpdf2 z fontem DejaVu (polskie znaki)
 - **Bezpieczeństwo:** hasła scrypt, Flask-WTF (CSRF), Fernet (sekrety w bazie), SRI dla bibliotek z CDN, opcjonalnie Cloudflare Tunnel + Access
@@ -120,7 +120,7 @@ Do pełnego działania potrzebne są klucze, które admin wpisuje w **Ustawienia
 - **SMTP** - wysyłka e-maili,
 - **Google OAuth** - Search Console i GA4.
 
-Opcjonalne maskowanie: `pip install polanon`, potem **Ustawienia → AI Asystent → Maskuj dane osobowe**.
+Maskowanie danych osobowych przed wysłaniem do AI: **Ustawienia → AI Asystent → Maskuj dane osobowe** (polanon instaluje się z wymaganiami).
 
 ## Docker (z PostgreSQL)
 

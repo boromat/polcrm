@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+
+- polanon 0.4.1 comes with `requirements.txt`, so the Docker image can mask personal data before
+  an AI call too; it had no way to, and switching masking on there stopped the assistant. polanon
+  has no dependencies of its own; the more thorough NER mode still needs `polanon[ner]` and the
+  spaCy model.
+
 ### Fixed
 
 - With masking on, a token already in the text, one the model made up and the conversation kept
