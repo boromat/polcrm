@@ -1,4 +1,4 @@
-"""Optional PII masking for the AI assistant, powered by polanon (``pip install polanon``).
+"""Optional PII masking for the AI assistant, powered by polanon (in ``requirements.txt``).
 
 Before anything is sent to OpenRouter, personal data in the conversation (names, e-mails, phone
 numbers, NIP/PESEL, IBANs, company names...) is replaced with tokens such as ``<OSOBA_1>`` or

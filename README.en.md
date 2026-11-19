@@ -56,7 +56,7 @@ Example: "find clients with overdue invoices and add a follow-up task for each o
 
 ## Personal data protection (polanon) - optional
 
-[polanon](https://github.com/boromat/polanon) is my Python library (`pip install polanon`) for reversible masking of Polish personal data before text is sent to a language model. In PolCRM it is switched on in **Settings → AI Assistant**.
+[polanon](https://github.com/boromat/polanon) is my Python library for reversible masking of Polish personal data before text is sent to a language model. It comes with `requirements.txt` and in the Docker image; in PolCRM it is switched on in **Settings → AI Assistant**.
 
 With tool calling, personal data is not only in the user's question but also in tool results (company names, contact people, e-mails, phone numbers). So masking covers the whole round trip:
 
@@ -65,7 +65,7 @@ With tool calling, personal data is not only in the user's question but also in 
 3. before the tool touches the database, **its arguments are restored** to the real values,
 4. tokens in the answer are restored before the user sees it.
 
-The token → value mapping lives only in memory, for one request. Without polanon installed and with masking off, the assistant works as before. When masking is **on** and polanon fails, the app **sends nothing** to the model and returns an error. This is pseudonymisation, not full anonymisation; detection is better with the spaCy model (`pip install "polanon[ner]"` and `python -m spacy download pl_core_news_md`).
+The token → value mapping lives only in memory, for one request. With masking off, the assistant works as before. When masking is **on** and polanon fails, the app **sends nothing** to the model and returns an error. This is pseudonymisation, not full anonymisation; detection is better with the spaCy model (`pip install "polanon[ner]"` and `python -m spacy download pl_core_news_md`).
 
 Code: [`privacy.py`](privacy.py), the assistant loop: [`ai_assistant.py`](ai_assistant.py), tests: [`tests/test_privacy.py`](tests/test_privacy.py), [`tests/test_polanon_real.py`](tests/test_polanon_real.py). [PolCV](https://github.com/boromat/polcv) uses the same pattern.
 
@@ -83,7 +83,7 @@ If you have 10 minutes, these show best how the project is built:
 
 - **Backend:** Python 3.12+, Flask 3, SQLAlchemy 2 (SQLite or PostgreSQL), waitress
 - **Frontend:** Jinja2 templates, Tailwind built locally (`tailwind.config.js`) + custom CSS (two themes), framework-free JavaScript, PWA (manifest + service worker)
-- **AI:** OpenRouter (OpenAI-compatible API, tool calling), optional polanon
+- **AI:** OpenRouter (OpenAI-compatible API, tool calling), polanon masking switched on in Settings
 - **Google:** Places API, PageSpeed Insights, Search Console and GA4 (OAuth 2.0)
 - **PDF:** fpdf2 with the DejaVu font (Polish characters)
 - **Security:** scrypt password hashes, Flask-WTF (CSRF), Fernet (secrets at rest), SRI for CDN libraries, optional Cloudflare Tunnel + Access
@@ -120,7 +120,7 @@ For everything to work you need keys, entered by an administrator in **Settings*
 - **SMTP** - sending e-mails,
 - **Google OAuth** - Search Console and GA4.
 
-Optional masking: `pip install polanon`, then **Settings → AI Assistant → Mask personal data**.
+Masking personal data before an AI call: **Settings → AI Assistant → Mask personal data** (polanon comes with the requirements).
 
 ## Docker (with PostgreSQL)
 

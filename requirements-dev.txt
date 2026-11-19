@@ -1,7 +1,6 @@
-# Testy z pokryciem, lint, format, typy i opcjonalne maskowanie danych osobowych (polanon).
+# Testy z pokryciem, lint, format i typy. polanon przychodzi z requirements.txt.
 -r requirements.txt
 pytest==9.2.0
 pytest-cov==7.1.0
-polanon==0.4.1
 ruff==0.17.4
 mypy==2.4.1
