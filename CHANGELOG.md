@@ -15,6 +15,10 @@
   `.env` left it out showed tracebacks and the debugger through the tunnel. The development server
   now runs without it unless `FLASK_DEBUG=1` is set, which `scripts/start.bat` and the README's
   local commands do. Found by CodeQL (py/flask-debug).
+- **The address after login refuses a backslash and an encoded slash.** `next=/\evil.example`
+  passed the check, and a browser reads a backslash as a slash; it was safe only because Werkzeug
+  happened to encode the backslash in the redirect. The check now refuses a backslash, `/%2f`,
+  `/%5c` and control characters itself. Found by CodeQL (py/url-redirection).
 
 ## 1.1.3 - 2026-11-19
 
