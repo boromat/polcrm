@@ -131,6 +131,8 @@ docker compose up -d --build
 
 Compose uruchamia aplikację i PostgreSQL 16; aplikacja słucha tylko na `127.0.0.1:4666`. Pierwsze wejście prowadzi do `/setup`. Do internetu wystaw ją przez Cloudflare Tunnel albo reverse proxy z HTTPS ([docs/DEPLOY.md](docs/DEPLOY.md)).
 
+Zamiast budować, możesz uruchomić gotowy obraz [`ghcr.io/boromat/polcrm`](https://github.com/boromat/polcrm/pkgs/container/polcrm) dla amd64 i arm64, z tagami wersji (`1.1.2`), wersji minor (`1.1`) i `latest`: w `docker-compose.yml` zamień `build: .` na `image: ghcr.io/boromat/polcrm:1.1`, potem `docker compose pull && docker compose up -d`. Te same dwa polecenia go aktualizują.
+
 ## Konfiguracja
 
 Plik `.env` (wzór: [`.env.example`](.env.example)). Sekrety wygenerujesz poleceniem `python scripts/generate_keys.py`.
