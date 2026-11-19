@@ -35,12 +35,28 @@ from models import LANGUAGES, User, db
 _AVATAR_COLORS = ("#6c5ce7", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#ec4899", "#14b8a6", "#8b5cf6")
 
 
+#: Starts a browser reads as "somewhere else", even though the string starts with a slash.
+_OFF_SITE_PREFIXES = ("//", "/%2f", "/%5c")
+
+
 def _safe_next(target):
-    """Only same-site relative paths after login (no open redirect)."""
+    """Only same-site relative paths after login (no open redirect).
+
+    A browser reads a backslash as a slash, so "/\\evil.example" is "//evil.example", and it drops a
+    tab or a line break inside a URL: a backslash, an encoded slash and control characters are
+    refused as well as "//".
+    """
     if not target:
         return url_for("dashboard")
     parsed = urlparse(target)
-    if parsed.scheme or parsed.netloc or not target.startswith("/") or target.startswith("//"):
+    if (
+        parsed.scheme
+        or parsed.netloc
+        or not target.startswith("/")
+        or target.lower().startswith(_OFF_SITE_PREFIXES)
+        or "\\" in target
+        or any(ord(char) < 0x20 or ord(char) == 0x7F for char in target)
+    ):
         return url_for("dashboard")
     return target
 

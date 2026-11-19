@@ -61,6 +61,20 @@ def test_login_is_rate_limited(seeded):
     core.LOGIN_LIMITER.reset()
 
 
+@pytest.mark.parametrize("target", ["/\\evil.example/x", "/%5Cevil.example", "/%2F/evil.example", "/\t/evil.example"])
+def test_login_next_refuses_a_backslash_and_its_disguises(seeded, target):
+    """A browser reads "/\\evil.example" as "//evil.example". Werkzeug happened to encode the
+    backslash in the Location header; the guard now refuses it, and an encoded slash, itself
+    (CodeQL py/url-redirection)."""
+    import core
+
+    core.LOGIN_LIMITER.reset()
+    c = seeded.test_client()
+    r = c.post("/login", data={"email": "anna@example.com", "password": DEMO_PASSWORD, "next": target})
+    assert r.headers["Location"].endswith("/")
+    core.LOGIN_LIMITER.reset()
+
+
 def test_login_next_cannot_redirect_off_site(seeded):
     import core
 
