@@ -45,7 +45,7 @@ Trzy ścieżki do wyboru:
 | Przejęta lub stara sesja | nowa sesja przy logowaniu, odcisk hasła w sesji (zmiana hasła wylogowuje), dezaktywacja działa od razu |
 | Członek zespołu zmienia klucze API | ustawienia firmy, integracje i zespół tylko dla admina (sprawdzane na serwerze) |
 | CSRF | Flask-WTF `CSRFProtect` + automatyczny token w formularzach i `fetch()` |
-| Tryb debug na produkcji | `FLASK_ENV=production` uruchamia waitress, debug wyłączony |
+| Tryb debug na produkcji | `FLASK_ENV=production` uruchamia waitress; debugger Werkzeuga tylko przy `FLASK_DEBUG=1`, więc pominięte `FLASK_ENV` go nie włączy |
 | SSTI w szablonach e-maili | `SandboxedEnvironment` + `autoescape=True` |
 | Sekrety w bazie jawnym tekstem | `EncryptedText` (Fernet): klucze API, hasło SMTP, client secret i tokeny OAuth, linki do sejfów |
 | Klucz szyfrujący w bazie | `FERNET_KEY` w `.env`, poza bazą |

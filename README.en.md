@@ -108,7 +108,7 @@ scripts\start.bat
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python scripts/seed_test_data.py
-FLASK_ENV=development python app.py
+FLASK_ENV=development FLASK_DEBUG=1 python app.py
 ```
 
 Open <http://127.0.0.1:4666>. The test data creates three demo accounts: `anna@example.com` (administrator), `tomasz@example.com` and `ola@example.com` (members), all with the password `demo-polcrm`. Without test data, the first visit leads to `/setup`, which creates the administrator account. Remove the test data with `python scripts/seed_test_data.py --clean`.
@@ -141,7 +141,7 @@ A `.env` file (template: [`.env.example`](.env.example)). Generate secrets with 
 |---|---|
 | `FLASK_SECRET_KEY` | signs the session and CSRF tokens; required in production |
 | `FERNET_KEY` | encrypts API keys, the SMTP password and Google tokens in the database; required in production |
-| `FLASK_ENV` | `development` (Flask debug server) or `production` (waitress) |
+| `FLASK_ENV` | `development` (Flask server; the debugger only with `FLASK_DEBUG=1`) or `production` (waitress) |
 | `AUTH_MODE` | `password` (default), `cloudflare` (identity from Cloudflare Access) or `profile` (passwordless demo, refused in production) |
 | `ALLOWED_EMAILS` | for `cloudflare`: an extra e-mail allow-list checked by the app |
 | `DEFAULT_LANGUAGE` | `pl` or `en`: the language before login and of the default templates seeded on first start |
@@ -192,7 +192,7 @@ The tests cover:
 - finance and audit scoring logic and the main forms,
 - a crawl of every GET route with no server error and no network access.
 
-133 tests in total, the same suite on SQLite and PostgreSQL 16. CI checks lint, formatting and types, runs the tests with a coverage floor on Linux (Python 3.12, 3.13 and 3.15, the last as in the Docker image) and Windows, separately on PostgreSQL 16, builds the Docker image and checks that the built Tailwind is up to date.
+134 tests in total, the same suite on SQLite and PostgreSQL 16. CI checks lint, formatting and types, runs the tests with a coverage floor on Linux (Python 3.12, 3.13 and 3.15, the last as in the Docker image) and Windows, separately on PostgreSQL 16, builds the Docker image and checks that the built Tailwind is up to date.
 
 After changing Tailwind classes in templates, rebuild the CSS (Node.js is needed only for this step):
 
