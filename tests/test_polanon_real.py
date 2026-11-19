@@ -4,6 +4,7 @@ CI installs polanon, so these run on every push.
 """
 
 import json
+import re
 
 import pytest
 
@@ -101,3 +102,23 @@ def test_client_named_like_a_public_brand_is_still_masked():
     """polanon leaves well-known names (e.g. Facebook) unmasked; a client of the agency must not be."""
     m = privacy.polanon_masker(terms=["Facebook Studio"])
     assert "Facebook" not in m.mask("Zaległa faktura: Facebook Studio, termin piątek.")
+
+
+def test_a_person_named_again_in_another_case_comes_back_declined():
+    """polanon 0.4 masks the second mention as <OSOBA_1:celownik>; the answer shows the name."""
+    m = privacy.polanon_masker()
+    assert m.mask("Jan Testowski zamówił audyt strony.") == "<OSOBA_1> zamówił audyt strony."
+    masked = m.mask("Wyślij Janowi Testowskiemu ofertę.")
+    assert masked == "Wyślij <OSOBA_1:celownik> ofertę."
+    assert m.restore(masked) == "Wyślij Janowi Testowskiemu ofertę."
+    assert m.restore_data({"query": "<OSOBA_1:celownik>"}) == {"query": "Jan Testowski"}
+    assert m.unknown_tokens(masked) == []
+
+
+def test_the_token_shape_is_polanons():
+    """privacy.TOKEN_RE mirrors polanon's CASED_TOKEN_PATTERN without importing polanon on load."""
+    from polanon.policy import CASED_TOKEN_PATTERN
+
+    samples = ["<OSOBA_1>", "<OSOBA_1:celownik>", "<KOD_POCZTOWY_12>", "<OSOBA_3:wołacz>", "<OSOBA_1:>", "<OSOBA_1: x>"]
+    for sample in samples:
+        assert bool(privacy.TOKEN_RE.fullmatch(sample)) == bool(re.fullmatch(CASED_TOKEN_PATTERN, sample)), sample

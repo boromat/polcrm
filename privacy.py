@@ -9,6 +9,11 @@ for the duration of one request and is used to:
   (the model may call ``get_company(name="<FIRMA_1>")``),
 * restore real values in the final answer shown to the user.
 
+polanon 0.4 masks a person named again in another case as ``<OSOBA_1:celownik>``, and the model
+writes such a token back as it got it. In the answer the name comes back declined ("Janowi
+Kowalskiemu"), through polanon's own restore; in tool arguments, which go to the database, it comes
+back as the mapping holds it.
+
 Rules (the same as in PolCV, https://github.com/boromat/polcv):
 
 * without polanon installed and with masking switched off, the assistant works exactly as before,
@@ -28,8 +33,16 @@ from typing import Any, Callable
 import i18n
 from i18n import _
 
-#: Shape of a polanon token: ``<OSOBA_1>``, ``<EMAIL_12>``, ``<FIRMA_3>``...
-TOKEN_RE = re.compile(r"<[A-Z][A-Z_]*_\d+>")
+#: Shape of a polanon token: ``<OSOBA_1>``, ``<EMAIL_12>``, ``<FIRMA_3>``..., and a person's token with
+#: the grammatical case polanon 0.4 adds after a colon, ``<OSOBA_1:celownik>`` (as its
+#: ``CASED_TOKEN_PATTERN``). No capturing group, so ``findall`` returns whole tokens.
+TOKEN_RE = re.compile(r"<[A-Z][A-Z_]*_\d+(?::[^\W\d_]+)?>")
+
+
+def _as_held(token: str) -> str:
+    """Return the token as the mapping holds it: ``<OSOBA_1>`` for ``<OSOBA_1:celownik>``."""
+    return token.split(":", 1)[0] + ">" if ":" in token else token
+
 
 #: Appended to the system prompt when masking is on, so the model treats tokens as real values.
 TOKENS_NOTE = (
@@ -145,14 +158,31 @@ class Masker:
     # ── incoming: tokens -> real ───────────────────────────────
 
     def restore(self, text: str) -> str:
+        """Replace known tokens in the answer with real values; unknown ones stay.
+
+        A token with a case gives the name declined, ``<OSOBA_1:celownik>`` "Janowi Kowalskiemu",
+        through polanon's own restore; a name it cannot decline for sure comes back as written.
+        """
         if not text or not isinstance(text, str) or not self.mapping:
             return text
-        return TOKEN_RE.sub(lambda m: self.mapping.get(m.group(0), m.group(0)), text)
+        from polanon.stream_restore import restored
+
+        return restored(text, self.mapping)
+
+    def _restore_as_held(self, text: str) -> str:
+        """Replace known tokens with the values as the mapping holds them, a case dropped."""
+        if not text or not self.mapping:
+            return text
+        return TOKEN_RE.sub(lambda m: self.mapping.get(_as_held(m.group(0)), m.group(0)), text)
 
     def restore_data(self, value: Any) -> Any:
-        """Restore tokens inside a JSON-like value (tool call arguments)."""
+        """Restore tokens inside a JSON-like value (tool call arguments).
+
+        A tool searches the database, which holds the original spelling, so a token with a case
+        gives the value as the mapping holds it, not declined.
+        """
         if isinstance(value, str):
-            return self.restore(value)
+            return self._restore_as_held(value)
         if isinstance(value, dict):
             return {k: self.restore_data(v) for k, v in value.items()}
         if isinstance(value, (list, tuple)):
@@ -161,7 +191,7 @@ class Masker:
 
     def unknown_tokens(self, text: str) -> list[str]:
         """Tokens in a model answer that are not in the mapping (the model invented or mangled them)."""
-        return [t for t in TOKEN_RE.findall(text or "") if t not in self.mapping]
+        return [t for t in TOKEN_RE.findall(text or "") if _as_held(t) not in self.mapping]
 
 
 def ensure_available(with_ner: bool = False) -> None:

@@ -120,6 +120,34 @@ def test_unknown_tokens_are_left_untouched_and_reported():
     assert m.unknown_tokens("<OSOBA_1> i <OSOBA_9>") == ["<OSOBA_9>"]
 
 
+# ── A person named again in another case (polanon 0.4) ────────
+
+
+def test_a_token_with_a_case_comes_back_declined_in_the_answer():
+    """polanon 0.4 masks a person named again in another case as <OSOBA_1:celownik>, and the model
+    writes the token as it got it. The restore read only tokens without a case, so the user saw
+    the token itself instead of the name."""
+    m = make_masker()
+    m.mask("Jan Kowalski zamówił audyt.")
+    reply = "Wysłałem <OSOBA_1:celownik> ofertę."
+    assert m.restore(reply) == "Wysłałem Janowi Kowalskiemu ofertę."
+    assert m.unknown_tokens(reply) == []
+
+
+def test_a_token_with_a_case_in_tool_arguments_gives_the_name_as_written():
+    """A tool searches the database, which holds the name as it was written, not declined."""
+    m = make_masker()
+    m.mask("Jan Kowalski")
+    assert m.restore_data({"query": "<OSOBA_1:dopełniacz>", "limit": 5}) == {"query": "Jan Kowalski", "limit": 5}
+
+
+def test_an_unknown_token_with_a_case_is_left_and_reported():
+    m = make_masker()
+    m.mask("Jan Kowalski")
+    assert m.restore("<OSOBA_9:celownik>") == "<OSOBA_9:celownik>"
+    assert m.unknown_tokens("<OSOBA_1:celownik> i <OSOBA_9:celownik>") == ["<OSOBA_9:celownik>"]
+
+
 def test_anonymizer_crash_becomes_masking_unavailable():
     def broken(text, mapping):
         raise ValueError("boom")
@@ -173,6 +201,27 @@ def test_model_never_sees_real_values(monkeypatch):
     assert result["masked"] == 3
     # the local trace keeps real values (it never leaves the server)
     assert result["tools_called"][0]["result"]["companies"][0]["contact_person"] == "Jan Kowalski"
+
+
+def test_a_token_with_a_case_reaches_the_tool_as_written_and_the_user_declined(monkeypatch):
+    seen_args = []
+
+    def fake_execute(name, args, *a, **kw):
+        seen_args.append(args)
+        return {"companies": [{"id": 1, "name": "Gabinet", "contact_person": "Jan Kowalski"}]}
+
+    monkeypatch.setattr(ai_assistant, "execute_tool", fake_execute)
+    model = FakeModel(
+        tool_call("list_companies", {"query": "<OSOBA_1:dopełniacz>"}),
+        answer("Wyślę <OSOBA_1:celownik> ofertę."),
+    )
+    result = ai_assistant.run_conversation(
+        "Znajdź Jan Kowalski", [], models={}, db=None, finance_helpers=None, masker=make_masker(), call=model
+    )
+
+    assert seen_args == [{"query": "Jan Kowalski"}]
+    assert result["reply"] == "Wyślę Janowi Kowalskiemu ofertę."
+    assert result["error"] is None
 
 
 def test_masking_failure_sends_nothing():

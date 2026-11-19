@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+
+- With masking on, the assistant's answer showed a person named again in another case as the
+  token itself, `<OSOBA_1:celownik>`, which polanon 0.4 writes for such a mention and the model
+  copies. Its restore read only tokens without a case, so a tool also got the token as an
+  argument and the count of unknown tokens missed it. The answer now gets the name declined
+  ("Janowi Kowalskiemu") through polanon's own restore, and a tool gets it as written.
+
 ### Changed
 
 - polanon, used by the tests and by the optional masking of personal data before an AI call,
