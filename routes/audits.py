@@ -15,6 +15,7 @@ from core import (
     app,
     get_api_key,
     get_gmaps,
+    google_error,
 )
 from i18n import _
 from models import (
@@ -300,7 +301,7 @@ def api_search_competitor():
             )
         return jsonify({"results": results})
     except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+        return jsonify({"error": _("Błąd wyszukiwania: %(error)s", error=google_error(exc))}), 502
 
 
 @app.route("/api/add_competitor", methods=["POST"])

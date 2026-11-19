@@ -8,7 +8,9 @@ content calendar, client credentials links, email templates + SMTP sending,
 contract templates + PDF + file uploads, knowledge base, GSC/GA integrations.
 """
 
+import logging
 import os
+import re
 import shutil
 from datetime import date, datetime, timedelta
 from functools import wraps
@@ -52,6 +54,8 @@ from models import (
     ensure_schema,
     seed_defaults,
 )
+
+log = logging.getLogger(__name__)
 
 # ── Konfiguracja z ENV ─────────────────────────────────────────
 
@@ -469,6 +473,26 @@ def get_gmaps():
 
 def get_api_key():
     return Settings.get().google_api_key
+
+
+# Klucz API Google ma tylko litery, cyfry, "_" i "-" (AIza i 35 znaków).
+_KEY_IN_ADDRESS = re.compile(r"(key=)[\w-]+")
+
+
+def google_error(exc):
+    """What a failed Google Maps call may tell the person who started it.
+
+    Google's own answer (REQUEST_DENIED and the like, with its explanation) says what to put right
+    in the settings, so it is passed on. Anything else goes to the server log only, with the key
+    masked: a dropped connection quotes the whole request address, the address carries the API
+    key, and the settings never show a saved key to anyone.
+    """
+    if isinstance(exc, googlemaps.exceptions.ApiError):
+        return f"{exc.status} ({exc.message})" if exc.message else str(exc.status)
+    if isinstance(exc, googlemaps.exceptions.HTTPError):
+        return f"HTTP {exc.status_code}"
+    log.warning("Google Maps call failed: %s", _KEY_IN_ADDRESS.sub(r"\1***", f"{type(exc).__name__}: {exc}"))
+    return _("nie udało się zapytać Google, szczegóły w logu serwera")
 
 
 def _parse_date(s):
