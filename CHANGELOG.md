@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- **A comment could run a script in the browser of the person it mentioned.** When a form was
+  sent, the button showed a spinner by putting its own text back through `innerHTML`. That text
+  is already decoded, so in the inbox, where the button holds the snippet of the comment that
+  mentions you, a snippet such as `<img src=x onerror=...>`, escaped by the template, became
+  markup and ran as whoever clicked it, an administrator included. The button is now rebuilt
+  from nodes, its text as text. Found by CodeQL (js/xss-through-dom) and checked in a browser.
+
 ## 1.1.3 - 2026-11-19
 
 ### Changed

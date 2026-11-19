@@ -194,6 +194,18 @@ def test_every_pinned_cdn_asset_has_subresource_integrity():
     assert not missing, missing
 
 
+def test_the_loading_button_never_puts_its_text_back_as_html():
+    """The submit spinner rebuilt the button from btn.textContent through innerHTML. textContent is
+    already decoded, so an inbox entry whose comment snippet held "<img src=x onerror=...>", which
+    Jinja had escaped, became live markup and ran as whoever clicked it (CodeQL js/xss-through-dom)."""
+    import re
+    from pathlib import Path
+
+    js = (Path(__file__).resolve().parents[1] / "static" / "js" / "app.js").read_text(encoding="utf-8")
+    assert not re.search(r"innerHTML\s*=\s*`[^`]*textContent", js)
+    assert "originalHtml" not in js
+
+
 def test_tailwind_is_served_locally_not_from_the_play_cdn(client):
     """The Play CDN compiled CSS in the browser (not for production, no SRI possible)."""
     from pathlib import Path
