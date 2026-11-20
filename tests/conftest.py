@@ -25,6 +25,8 @@ if _TEST_DB:
     os.environ["DATABASE_URL"] = _TEST_DB
 else:
     os.environ["DATABASE_URL"] = "sqlite:///" + (_TMP / "test.db").as_posix()
+# Uploads, contracts and reports go to the temporary folder too, not to output/ next to the app.
+os.environ["OUTPUT_DIR"] = str(_TMP / "output")
 os.environ["FLASK_ENV"] = "development"
 os.environ["CF_ACCESS_ENABLED"] = "false"
 os.environ.pop("OPENROUTER_API_KEY", None)

@@ -146,6 +146,7 @@ Plik `.env` (wzór: [`.env.example`](.env.example)). Sekrety wygenerujesz polece
 | `ALLOWED_EMAILS` | dla `cloudflare`: dodatkowa biała lista e-maili po stronie aplikacji |
 | `DEFAULT_LANGUAGE` | `pl` albo `en`: język przed zalogowaniem i domyślnych szablonów przy pierwszym starcie |
 | `DATABASE_URL` | domyślnie SQLite w `instance/hub.db`; PostgreSQL: `postgresql+psycopg://...` |
+| `OUTPUT_DIR` | folder na wgrane pliki, umowy, raporty PDF i obrazy z tablic; domyślnie `output/` obok aplikacji (ścieżka względna liczy się od niej). W Dockerze zostaw puste, bo wolumen jest podpięty pod `/app/output`; w usłudze systemd dopisz ten folder do `ReadWritePaths` |
 | `POSTGRES_PASSWORD` | hasło bazy dla `docker-compose.yml` |
 | `APP_HOST`, `APP_PORT` | domyślnie `127.0.0.1:4666` |
 | `SESSION_COOKIE_SECURE` | `true` za HTTPS |
@@ -192,7 +193,7 @@ Testy obejmują:
 - logikę finansów i oceny audytu oraz główne formularze,
 - przejście po każdej trasie GET bez błędu serwera i bez dostępu do sieci.
 
-Razem 147 testów, ten sam zestaw na SQLite i PostgreSQL 16. CI sprawdza lint, format i typy, uruchamia testy z progiem pokrycia na Linuksie (Python 3.12, 3.13 i 3.15, ten ostatni jak w obrazie Dockera) i Windowsie, osobno na PostgreSQL 16, buduje obraz Dockera i sprawdza, czy zbudowany Tailwind jest aktualny.
+Razem 148 testów, ten sam zestaw na SQLite i PostgreSQL 16. CI sprawdza lint, format i typy, uruchamia testy z progiem pokrycia na Linuksie (Python 3.12, 3.13 i 3.15, ten ostatni jak w obrazie Dockera) i Windowsie, osobno na PostgreSQL 16, buduje obraz Dockera i sprawdza, czy zbudowany Tailwind jest aktualny.
 
 Po zmianie klas Tailwinda w szablonach przebuduj CSS (Node.js potrzebny tylko do tego kroku):
 

@@ -17,8 +17,8 @@ from werkzeug.utils import secure_filename
 
 import email_sender
 from core import (
-    BASE_DIR,
     CONTRACTS_DIR,
+    OUTPUT_DIR,
     UPLOADS_DIR,
     _log_audit,
     _parse_float,
@@ -223,7 +223,7 @@ def file_upload(company_id):
 @app.route("/files/<int:id>/download")
 def file_download(id):
     cf = db.get_or_404(ClientFile, id)
-    output_root = (BASE_DIR / "output").resolve()
+    output_root = OUTPUT_DIR.resolve()
     path = (output_root / cf.stored_path).resolve()
     try:
         path.relative_to(output_root)
@@ -239,7 +239,7 @@ def file_download(id):
 @app.route("/files/<int:id>/delete", methods=["POST"])
 def file_delete(id):
     cf = db.get_or_404(ClientFile, id)
-    path = BASE_DIR / "output" / cf.stored_path
+    path = OUTPUT_DIR / cf.stored_path
     company_id = cf.company_id
     task_id = cf.task_id
     filename = cf.filename
