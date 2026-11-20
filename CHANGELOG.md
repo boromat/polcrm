@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- **`OUTPUT_DIR` sets the folder for the app's files.** Uploaded files, contracts, audit reports,
+  whiteboard images and CSV exports go to `output/` next to the app unless `OUTPUT_DIR` names
+  another folder. The tests point it at their temporary folder, so a test run no longer leaves
+  contract PDFs and uploads in `output/`. Leave it unset in Docker, where the volume is mounted at
+  `/app/output`, and add the folder to `ReadWritePaths` under systemd.
+
 ### Security
 
 - **A failed PageSpeed call no longer writes the API key to the log.** When the connection to

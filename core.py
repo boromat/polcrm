@@ -115,13 +115,17 @@ csrf = CSRFProtect(app)
 db.init_app(app)
 
 BASE_DIR = Path(__file__).parent
-CSV_DIR = BASE_DIR / "output"
-CSV_DIR.mkdir(exist_ok=True)
-UPLOADS_DIR = BASE_DIR / "output" / "uploads"
+# Wgrane pliki, umowy, raporty PDF, obrazy z tablic i eksport CSV. OUTPUT_DIR przenosi je gdzie
+# indziej (ścieżka względna liczy się od katalogu aplikacji); testy kierują go do katalogu
+# tymczasowego, żeby nie mieszać swoich plików z prawdziwymi.
+OUTPUT_DIR = BASE_DIR / (os.environ.get("OUTPUT_DIR", "").strip() or "output")
+CSV_DIR = OUTPUT_DIR
+CSV_DIR.mkdir(parents=True, exist_ok=True)
+UPLOADS_DIR = OUTPUT_DIR / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-CONTRACTS_DIR = BASE_DIR / "output" / "contracts"
+CONTRACTS_DIR = OUTPUT_DIR / "contracts"
 CONTRACTS_DIR.mkdir(parents=True, exist_ok=True)
-WHITEBOARD_IMG_DIR = BASE_DIR / "output" / "whiteboard_images"
+WHITEBOARD_IMG_DIR = OUTPUT_DIR / "whiteboard_images"
 WHITEBOARD_IMG_DIR.mkdir(parents=True, exist_ok=True)
 
 DETAIL_FIELDS = [

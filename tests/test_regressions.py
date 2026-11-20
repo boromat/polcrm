@@ -84,7 +84,7 @@ def test_contract_pdf_with_polish_characters(tmp_path):
     assert out.read_bytes()[:5] == b"%PDF-"
 
 
-def test_audit_pdf(seeded):
+def test_audit_pdf(seeded, tmp_path):
     from models import Audit, Company, Settings, db
     from pdf_report import generate_audit_pdf
 
@@ -101,7 +101,7 @@ def test_audit_pdf(seeded):
         )
         db.session.add(audit)
         db.session.commit()
-        path = generate_audit_pdf(audit, company, [], Settings.get())
+        path = generate_audit_pdf(audit, company, [], Settings.get(), tmp_path)
     with open(path, "rb") as f:
         assert f.read(5) == b"%PDF-"
 
@@ -294,3 +294,11 @@ def test_google_errors_pass_on_what_google_answered():
     assert app_module.google_error(denied) == "REQUEST_DENIED (This API project is not authorized to use this API.)"
     assert app_module.google_error(googlemaps.exceptions.ApiError("ZERO_RESULTS")) == "ZERO_RESULTS"
     assert app_module.google_error(googlemaps.exceptions.HTTPError(403)) == "HTTP 403"
+
+
+def test_the_suite_keeps_its_files_out_of_the_output_folder():
+    """Every run left contract PDFs and an upload in output/ next to the app and rewrote two audit
+    reports there. conftest now points OUTPUT_DIR at the temporary folder of the run."""
+    assert app_module.OUTPUT_DIR != app_module.BASE_DIR / "output"
+    for folder in (app_module.UPLOADS_DIR, app_module.CONTRACTS_DIR, app_module.WHITEBOARD_IMG_DIR):
+        assert folder.parent == app_module.OUTPUT_DIR

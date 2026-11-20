@@ -146,6 +146,7 @@ A `.env` file (template: [`.env.example`](.env.example)). Generate secrets with 
 | `ALLOWED_EMAILS` | for `cloudflare`: an extra e-mail allow-list checked by the app |
 | `DEFAULT_LANGUAGE` | `pl` or `en`: the language before login and of the default templates seeded on first start |
 | `DATABASE_URL` | SQLite in `instance/hub.db` by default; PostgreSQL: `postgresql+psycopg://...` |
+| `OUTPUT_DIR` | the folder for uploaded files, contracts, PDF reports and whiteboard images; `output/` next to the app by default (a relative path counts from there). Leave it unset in Docker, where the volume is mounted at `/app/output`; under systemd add the folder to `ReadWritePaths` |
 | `POSTGRES_PASSWORD` | the database password for `docker-compose.yml` |
 | `APP_HOST`, `APP_PORT` | `127.0.0.1:4666` by default |
 | `SESSION_COOKIE_SECURE` | `true` behind HTTPS |
@@ -192,7 +193,7 @@ The tests cover:
 - finance and audit scoring logic and the main forms,
 - a crawl of every GET route with no server error and no network access.
 
-147 tests in total, the same suite on SQLite and PostgreSQL 16. CI checks lint, formatting and types, runs the tests with a coverage floor on Linux (Python 3.12, 3.13 and 3.15, the last as in the Docker image) and Windows, separately on PostgreSQL 16, builds the Docker image and checks that the built Tailwind is up to date.
+148 tests in total, the same suite on SQLite and PostgreSQL 16. CI checks lint, formatting and types, runs the tests with a coverage floor on Linux (Python 3.12, 3.13 and 3.15, the last as in the Docker image) and Windows, separately on PostgreSQL 16, builds the Docker image and checks that the built Tailwind is up to date.
 
 After changing Tailwind classes in templates, rebuild the CSS (Node.js is needed only for this step):
 

@@ -12,6 +12,7 @@ from flask import (
 
 import i18n
 from core import (
+    OUTPUT_DIR,
     app,
     get_api_key,
     get_gmaps,
@@ -258,7 +259,7 @@ def audit_pdf(id):
     company = audit.company
     competitors = Competitor.query.filter_by(audit_id=audit.id).all()
     s = Settings.get()
-    pdf_path = generate_audit_pdf(audit, company, competitors, s)
+    pdf_path = generate_audit_pdf(audit, company, competitors, s, OUTPUT_DIR)
     return send_file(
         pdf_path,
         mimetype="application/pdf",

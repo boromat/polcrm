@@ -135,7 +135,7 @@ def test_a_stored_upload_keeps_only_a_plain_extension(name, suffix):
 
 def test_company_and_task_uploads_store_a_plain_name(client, seeded):
     """Both upload forms store under the plain name, and the download still has the person's name."""
-    from core import BASE_DIR
+    from core import OUTPUT_DIR
     from models import ClientFile, Task
 
     cid = _company_id(seeded)
@@ -153,7 +153,7 @@ def test_company_and_task_uploads_store_a_plain_name(client, seeded):
         with client.get(f"/files/{file_id}/download") as r:
             assert r.data == b"tresc" and "notatka.txtukryty" in r.headers["Content-Disposition"]
         assert client.post(f"/files/{file_id}/delete").status_code == 302
-        assert not (BASE_DIR / "output" / stored_path).exists()
+        assert not (OUTPUT_DIR / stored_path).exists()
 
 
 # ── whiteboards ─────────────────────────────────────────────────

@@ -94,7 +94,7 @@ class AuditPDF(FPDF):
         self.ln(7)
 
 
-def generate_audit_pdf(audit, company, competitors, settings):
+def generate_audit_pdf(audit, company, competitors, settings, output_dir):
     """Generate a PDF report and return the file path."""
     agency_name = settings.agency_name if settings else ""
     pdf = AuditPDF(agency_name=agency_name)
@@ -294,8 +294,8 @@ def generate_audit_pdf(audit, company, competitors, settings):
         pdf.ln(4)
 
     # Save
-    output_dir = Path(__file__).parent / "output"
-    output_dir.mkdir(exist_ok=True)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     safe_name = "".join(c if c.isalnum() or c in " _-" else "_" for c in company.name)
     pdf_path = output_dir / f"audyt_{safe_name}_{audit.id}.pdf"
     pdf.output(str(pdf_path))

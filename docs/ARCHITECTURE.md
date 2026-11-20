@@ -173,8 +173,8 @@ Tests: `tests/test_privacy.py` (contract with a fake anonymizer), `tests/test_po
 
 ## Data and secrets
 
-- Data: `instance/hub.db` (SQLite) and `output/` (generated CSV/PDF files, uploads, whiteboard
-  images). Both are ignored by git.
+- Data: `instance/hub.db` (SQLite) and `output/`, or the folder `OUTPUT_DIR` names (generated
+  CSV/PDF files, uploads, whiteboard images). Both are ignored by git.
 - Secrets in the database (Google Maps API key, OpenRouter key, SMTP password, OAuth client secret
   and refresh tokens) are encrypted with Fernet. The key comes from `FERNET_KEY`; in development,
   when it is missing, a key is generated once into `instance/fernet_dev.key`. Older installations
@@ -184,8 +184,9 @@ Tests: `tests/test_privacy.py` (contract with a fake anonymizer), `tests/test_po
 ## Tests and CI
 
 `python -m pytest` runs every test on a throw-away database filled by `scripts/seed_test_data.py`
-(SQLite by default, PostgreSQL with `TEST_DATABASE_URL`). Generated PDFs and uploads land in
-`output/` and the development Fernet key in `instance/`, as when the app runs (both git-ignored). GitHub Actions runs `ruff check .`
+(SQLite by default, PostgreSQL with `TEST_DATABASE_URL`). Generated PDFs and uploads go to a
+throw-away `OUTPUT_DIR` as well, and the development Fernet key to `instance/`, as when the app
+runs (git-ignored). GitHub Actions runs `ruff check .`
 (pyflakes rules), `ruff format --check .`, `mypy .` (`mypy.ini`: the app code, function bodies included)
 and the suite with coverage, which fails below the floor in `.coveragerc`, on Ubuntu (Python 3.12, 3.13
 and 3.15, the one the image runs) and Windows (Python 3.13) with polanon installed, the same suite on PostgreSQL 16, builds the Docker image and validates

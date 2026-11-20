@@ -206,7 +206,7 @@ ss -tlnp | grep 4666
 sudo journalctl -u polcrm -f
 ```
 
-Usługa restartuje się po awarii i startuje razem z serwerem. Ma utwardzenie systemd (`ProtectSystem=strict`, `NoNewPrivileges`, zapis tylko do `instance/` i `output/`).
+Usługa restartuje się po awarii i startuje razem z serwerem. Ma utwardzenie systemd (`ProtectSystem=strict`, `NoNewPrivileges`, zapis tylko do `instance/` i `output/`; inny `OUTPUT_DIR` dopisz do `ReadWritePaths`).
 
 ### 8. Test
 
@@ -271,7 +271,7 @@ Cloudflare Access dodaje też podpisany nagłówek `Cf-Access-Jwt-Assertion`. Po
 
 ## Utrzymanie
 
-- **Kopie zapasowe:** na SQLite `instance/backup_*.db` powstają przy każdym starcie (10 ostatnich); dodatkowo kopiuj regularnie `instance/hub.db` poza serwer (np. `rsync` albo timer systemd). Na PostgreSQL rób `pg_dump` (np. z timera systemd) i też trzymaj kopie poza serwerem. W obu przypadkach kopiuj `output/` (umowy, załączniki) i trzymaj `FERNET_KEY` osobno: bez niego zaszyfrowanych sekretów z kopii nie odczytasz.
+- **Kopie zapasowe:** na SQLite `instance/backup_*.db` powstają przy każdym starcie (10 ostatnich); dodatkowo kopiuj regularnie `instance/hub.db` poza serwer (np. `rsync` albo timer systemd). Na PostgreSQL rób `pg_dump` (np. z timera systemd) i też trzymaj kopie poza serwerem. W obu przypadkach kopiuj `output/` albo folder z `OUTPUT_DIR` (umowy, załączniki) i trzymaj `FERNET_KEY` osobno: bez niego zaszyfrowanych sekretów z kopii nie odczytasz.
 - **Logi:** waitress pisze na stdout, w systemd: `journalctl -u polcrm`.
 - **Podatności w zależnościach:** `pip install pip-audit && pip-audit -r requirements.txt`.
 
