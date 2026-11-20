@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- **A failed PageSpeed call no longer writes the API key to the log.** When the connection to
+  Google dropped, the audit scoring logged the error as `requests` gave it, and that quotes the
+  whole request address with `key=` in it. The key is now masked in that warning, as 1.1.4 did for
+  the Google Maps errors.
+
 ## 1.1.4 - 2026-11-20
 
 ### Security
