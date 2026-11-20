@@ -38,6 +38,24 @@ def test_visibility_rewards_a_complete_google_profile(seeded):
     assert strong == 5
 
 
+def test_a_failed_pagespeed_call_keeps_the_key_out_of_the_log(monkeypatch, caplog):
+    """When the connection fails, requests quotes the whole address it asked for, and the key is
+    one of its parameters, so the warning wrote the Google key into the server log."""
+    import requests
+
+    key = "AIza" + "TestKeyNotRealExample0123456789abcd"  # made up: "AIza" and 35 characters
+
+    def unreachable(self, request, **kwargs):
+        raise requests.exceptions.ConnectionError(
+            f"Max retries exceeded with url: {request.path_url} (Caused by NameResolutionError)"
+        )
+
+    monkeypatch.setattr(requests.adapters.HTTPAdapter, "send", unreachable)
+    assert scoring.fetch_pagespeed("kwiaciarnia.example", key) == {}
+    assert caplog.text.count("NameResolutionError") == 2  # mobile and desktop
+    assert key not in caplog.text and "runPagespeed" in caplog.text
+
+
 # ── finance helpers ─────────────────────────────────────────────
 
 

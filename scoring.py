@@ -174,7 +174,8 @@ def fetch_pagespeed(url, api_key):
         except requests.exceptions.Timeout:
             log.warning("PageSpeed timeout for %s (%s)", url, strategy)
         except Exception as exc:
-            log.warning("PageSpeed error for %s (%s): %s", url, strategy, exc)
+            # A failed connection quotes the whole address it asked for, and the key is in it.
+            log.warning("PageSpeed error for %s (%s): %s", url, strategy, str(exc).replace(api_key, "***"))
 
     return result
 
