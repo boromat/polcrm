@@ -16,4 +16,4 @@ python-dotenv==1.2.4
 psycopg[binary]==3.3.8
 # Maskowanie danych osobowych przed wywołaniem AI (włączane w Ustawieniach). Bez własnych zależności;
 # tryb NER wymaga polanon[ner] i modelu spaCy.
-polanon==0.4.1
+polanon==0.4.2
