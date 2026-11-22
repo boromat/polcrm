@@ -193,7 +193,7 @@ Testy obejmują:
 - logikę finansów i oceny audytu oraz główne formularze,
 - przejście po każdej trasie GET bez błędu serwera i bez dostępu do sieci.
 
-Razem 153 testy, ten sam zestaw na SQLite i PostgreSQL 16. CI sprawdza lint, format i typy, uruchamia testy z progiem pokrycia na Linuksie (Python 3.12, 3.13 i 3.15, ten ostatni jak w obrazie Dockera) i Windowsie, osobno na PostgreSQL 16, buduje obraz Dockera i sprawdza, czy zbudowany Tailwind jest aktualny.
+Razem 152 testy, ten sam zestaw na SQLite i PostgreSQL 16. CI sprawdza lint, format i typy, uruchamia testy z progiem pokrycia na Linuksie (Python 3.12, 3.13 i 3.15, ten ostatni jak w obrazie Dockera) i Windowsie, osobno na PostgreSQL 16, buduje obraz Dockera i sprawdza, czy zbudowany Tailwind jest aktualny.
 
 Po zmianie klas Tailwinda w szablonach przebuduj CSS (Node.js potrzebny tylko do tego kroku):
 

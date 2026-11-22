@@ -10,7 +10,8 @@ for the duration of one request and is used to:
 * restore real values in the final answer shown to the user.
 
 The masking itself is polanon's :class:`~polanon.MaskedTurn`, one per request: it keeps the mapping,
-masks client names the CRM knows (``known=``) and restores. polanon 0.4 masks a person named again
+masks client names the CRM knows (``known=``), writes a token already in the input as ``[OSOBA_1]``
+(``plain_input=True``) and restores. polanon 0.4 masks a person named again
 in another case as ``<OSOBA_1:celownik>``, and the model writes such a token back as it got it. In
 the answer the name comes back declined ("Janowi Kowalskiemu"); in tool arguments, which go to the
 database, it comes back as it was masked (``restore_data(..., as_held=True)``).
@@ -27,7 +28,6 @@ This module imports nothing from Flask or the database, so it can be unit tested
 from __future__ import annotations
 
 import importlib.util
-import re
 from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:  # polanon is imported lazily, see polanon_masker
@@ -35,40 +35,6 @@ if TYPE_CHECKING:  # polanon is imported lazily, see polanon_masker
 
 import i18n
 from i18n import _
-
-#: Shape of a polanon token: ``<OSOBA_1>``, ``<EMAIL_12>``, ``<FIRMA_3>``..., and a person's token with
-#: the grammatical case polanon 0.4 adds after a colon, ``<OSOBA_1:celownik>`` (as its
-#: ``CASED_TOKEN_PATTERN``). No capturing group, so ``findall`` returns whole tokens.
-TOKEN_RE = re.compile(r"<[A-Z][A-Z_]*_\d+(?::[^\W\d_]+)?>")
-
-
-def _defused(text: str) -> str:
-    """Write token-shaped text as ``[OSOBA_2]`` (``[OSOBA_3:celownik]``), so no turn reads it as a token.
-
-    Numbering starts again in every request, while the history, a note in the database or what the
-    user types may hold a token from an earlier one, or one the model made up. polanon keeps such a
-    token as standing for itself only when it comes before the turn hands the same token out; after
-    that it reads it as masked text and restores it as whoever got that token this time.
-    """
-    return TOKEN_RE.sub(lambda m: "[" + m.group(0)[1:-1] + "]", text)
-
-
-def _defused_data(value: Any) -> Any:
-    """:func:`_defused` on every string inside a JSON-like value, keys and numbers as they are.
-
-    Anything else becomes its ``str`` first (a date, a ``Decimal``), as ``json.dumps(default=str)``
-    would send it, so it is masked too and not sent as text after the masking.
-    """
-    if isinstance(value, str):
-        return _defused(value)
-    if value is None or isinstance(value, (bool, int, float)):
-        return value
-    if isinstance(value, dict):
-        return {k: _defused_data(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_defused_data(v) for v in value]
-    return _defused(str(value))
-
 
 #: Appended to the system prompt when masking is on, so the model treats tokens as real values.
 TOKENS_NOTE = (
@@ -163,10 +129,14 @@ class Masker:
     """Masks one assistant request with polanon's :class:`~polanon.MaskedTurn`.
 
     The turn keeps one mapping for the whole request, so a value gets one token in the history, the
-    question and every tool result. Around it PolCRM adds what the turn leaves to the caller:
-    token-shaped text in the input is defused first (:func:`_defused`), any failure is
-    :class:`MaskingUnavailable` with a message in the interface language, a text that is empty or
-    not a string passes as it is, and tool arguments come back as the records hold them.
+    question and every tool result. :func:`polanon_masker` starts it with ``plain_input=True``:
+    numbering starts again in every request, while the history, a note in the database or what the
+    user types may hold a token from an earlier one, so token-shaped text in the input is written
+    as ``[OSOBA_1]`` and never restored to whoever gets ``<OSOBA_1>`` this time. Around the turn
+    PolCRM adds what it leaves to the caller: any failure is :class:`MaskingUnavailable` with a
+    message in the interface language, a text that is empty or not a string passes as it is, a
+    date or a ``Decimal`` in a tool result is masked as the text it is sent as, and tool arguments
+    come back as the records hold them.
     """
 
     def __init__(self, turn: MaskedTurn) -> None:
@@ -180,25 +150,27 @@ class Masker:
     # ── outgoing: real -> tokens ───────────────────────────────
 
     def mask(self, text: str) -> str:
-        """Mask one text, a token already in it defused first."""
+        """Mask one text."""
         if not text or not isinstance(text, str):
             return text
-        return _fail_closed(self.turn.mask, _defused(text))
+        return _fail_closed(self.turn.mask, text)
 
     def mask_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Mask chat messages (``role``, ``content``) together, a token already in them defused first.
+        """Mask chat messages (``role``, ``content``) together.
 
         A value polanon recognises in a later message is masked in the earlier ones too: the history
         says "Testowski dzwonił", a surname no rule reads alone, and the question names "Jan Testowski".
         """
-        return _fail_closed(self.turn.mask_messages, [_defused_data(m) for m in messages])
+        return _fail_closed(self.turn.mask_messages, messages)
 
     def mask_data(self, value: Any) -> Any:
         """Mask every string inside a JSON-like value (tool results). Keys and numbers stay as they are.
 
         A value polanon recognises in one string is masked in the others too, also in one before it.
+        Anything else becomes its ``str`` first (a date, a ``Decimal``), as ``json.dumps(default=str)``
+        sends it, so it is masked too and not sent as text after the masking.
         """
-        return _fail_closed(self.turn.mask_data, _defused_data(value))
+        return _fail_closed(lambda v: self.turn.mask_data(v, default=str), value)
 
     # ── incoming: tokens -> real ───────────────────────────────
 
@@ -238,8 +210,9 @@ def polanon_masker(with_ner: bool = False, terms=()) -> Masker:
     The turn masks known terms always, as ``<FIRMA_n>``: also without the legal form a term is
     listed with, when two words or more are left, and also when polanon's allowlist of public names
     holds them, since a client of the agency is never "just public". The turn reuses the cached
-    guards, so the spaCy model is not loaded again.
+    guards, so the spaCy model is not loaded again. ``plain_input=True``: PolCRM keeps the history
+    with real values and starts a turn per request (see :class:`Masker`).
     """
     anonymizer = _get_anonymizer(with_ner)
     known = [t for t in dict.fromkeys(t.strip() for t in terms if t) if len(t) >= 3]
-    return Masker(_fail_closed(lambda values: anonymizer.turn(known=values), known))
+    return Masker(_fail_closed(lambda values: anonymizer.turn(known=values, plain_input=True), known))

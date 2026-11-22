@@ -4,17 +4,18 @@
 
 ### Changed
 
-- **The masking runs on polanon 0.4.2's own `MaskedTurn`.** `privacy.Masker` kept its own mapping
-  and restore, gave tool arguments the values as masked by cutting the case off each token itself,
-  and built a new anonymizer for every request with a `DenylistGuard` for the client names and an
-  allowlist without their words. polanon 0.4.2 does all of that: the turn keeps the mapping,
-  `restore_data(..., as_held=True)` gives tool arguments the names as the database holds them, and
-  `known=` masks the client names, which polanon's allowlist no longer lets through. It also finds
-  a client's name without the legal form the CRM lists it with ("Kwiaciarnia Testowa" for
-  "Kwiaciarnia Testowa Sp. z o.o."), and masks surnames in more cases ("Lisowi", "Dudzie") and the
-  town after a postcode. A date or an amount in a tool result is now masked as the text it is sent
-  as. PolCRM still defuses a token already in the input, since polanon reads one that comes after
-  it handed the same token out as this request's person. `requirements.txt` pins polanon 0.4.2.
+- **The masking runs on polanon's own `MaskedTurn`.** `privacy.Masker` kept its own mapping and
+  restore, gave tool arguments the values as masked by cutting the case off each token itself,
+  wrote a token already in the input as `[OSOBA_1]` itself, and built a new anonymizer for every
+  request with a `DenylistGuard` for the client names and an allowlist without their words.
+  polanon 0.4.2 and 0.4.3 do all of that: the turn keeps the mapping, `restore_data(...,
+  as_held=True)` gives tool arguments the names as the database holds them, `plain_input=True`
+  writes a token from an earlier request in square brackets, and `known=` masks the client names,
+  which polanon's allowlist no longer lets through. It also finds a client's name without the legal
+  form the CRM lists it with ("Kwiaciarnia Testowa" for "Kwiaciarnia Testowa Sp. z o.o."), and
+  masks surnames in more cases ("Lisowi", "Dudzie") and the town after a postcode. A date or an
+  amount in a tool result is now masked as the text it is sent as. `requirements.txt` pins polanon
+  0.4.3.
 
 ### Security
 

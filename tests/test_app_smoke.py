@@ -100,7 +100,9 @@ def test_assistant_api_masks_end_to_end(client, seeded, monkeypatch):
             return SimpleNamespace(anonymized=masked, mapping=mapping)
 
     monkeypatch.setattr(
-        ai_assistant, "build_masker", lambda settings=None: privacy.Masker(MaskedTurn(FakeAnonymizer()))
+        ai_assistant,
+        "build_masker",
+        lambda settings=None: privacy.Masker(MaskedTurn(FakeAnonymizer(), plain_input=True)),
     )
     sent = []
 

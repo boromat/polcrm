@@ -156,7 +156,7 @@ Maskowanie danych osobowych dla asystenta AI (polanon) instaluje się razem z wy
 
 ```bash
 source venv/bin/activate
-pip install "polanon[ner]==0.4.2"
+pip install "polanon[ner]==0.4.3"
 python -m spacy download pl_core_news_md
 ```
 
