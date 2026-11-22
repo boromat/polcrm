@@ -7,6 +7,7 @@ its mapping, restore and failure handling, is polanon's own.
 
 import json
 from datetime import date
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -51,7 +52,7 @@ class FakeAnonymizer:
 
 
 def make_masker(anonymize=fake_anonymize):
-    return privacy.Masker(MaskedTurn(FakeAnonymizer(anonymize)))
+    return privacy.Masker(MaskedTurn(FakeAnonymizer(anonymize), plain_input=True))
 
 
 class FakeModel:
@@ -125,9 +126,10 @@ def test_mask_data_sends_a_date_as_masked_text():
     """A tool result may hold a date or a Decimal, which json.dumps(default=str) sends as text,
     so it is masked as text, not passed by and written out after the masking."""
     m = make_masker()
-    assert m.mask_data({"due": date(2026, 11, 22), "who": ("Jan Kowalski",)}) == {
+    assert m.mask_data({"due": date(2026, 11, 22), "fee": Decimal("1500.00"), "who": "Jan Kowalski"}) == {
         "due": "2026-11-22",
-        "who": ["<OSOBA_1>"],
+        "fee": "1500.00",
+        "who": "<OSOBA_1>",
     }
 
 

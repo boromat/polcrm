@@ -10,8 +10,12 @@ import pytest
 
 pytest.importorskip("polanon")
 
+from polanon.policy import CASED_TOKEN_PATTERN  # noqa: E402
+
 import ai_assistant  # noqa: E402
 import privacy  # noqa: E402
+
+TOKEN_RE = re.compile(CASED_TOKEN_PATTERN)
 
 TEXT = (
     "Klient Jan Kowalski (jan.kowalski@example.com, tel. 501 234 567) prosi o fakturę "
@@ -25,7 +29,7 @@ def test_polanon_masks_polish_pii_and_restores_it():
     masked = m.mask(TEXT)
     for value in REAL_VALUES:
         assert value not in masked
-    assert privacy.TOKEN_RE.search(masked)
+    assert TOKEN_RE.search(masked)
     assert m.restore(masked) == TEXT
 
 
@@ -33,8 +37,8 @@ def test_polanon_keeps_tokens_consistent_within_a_request():
     m = privacy.polanon_masker()
     first = m.mask("Spotkanie: Jan Kowalski, piątek.")
     second = m.mask("Jan Kowalski potwierdził spotkanie.")
-    tokens_first = set(privacy.TOKEN_RE.findall(first))
-    tokens_second = set(privacy.TOKEN_RE.findall(second))
+    tokens_first = {t[0] for t in TOKEN_RE.finditer(first)}
+    tokens_second = {t[0] for t in TOKEN_RE.finditer(second)}
     assert tokens_first and tokens_second
     assert tokens_first & tokens_second, "the same person should get the same token"
 
@@ -51,7 +55,7 @@ def test_full_loop_with_polanon(monkeypatch):
     def model(messages):
         requests.append(json.dumps(messages, ensure_ascii=False))
         if len(requests) == 1:
-            token = privacy.TOKEN_RE.findall(messages[-1]["content"])[0]
+            token = TOKEN_RE.search(messages[-1]["content"])[0]
             return {
                 "choices": [
                     {
@@ -68,7 +72,7 @@ def test_full_loop_with_polanon(monkeypatch):
                     }
                 ]
             }
-        token = privacy.TOKEN_RE.findall(messages[-1]["content"])[0]
+        token = TOKEN_RE.search(messages[-1]["content"])[0]
         return {"choices": [{"message": {"content": f"Mail: {token}"}}]}
 
     result = ai_assistant.run_conversation(
@@ -145,9 +149,10 @@ def test_client_name_without_its_legal_form_is_masked():
 
 
 def test_a_token_from_an_earlier_request_is_defused_also_after_this_one_handed_it_out():
-    """polanon keeps a token the caller wrote as standing for itself only when it comes before the
-    turn hands the same token out. A note saved with a token from an earlier request arrives in a
-    tool result after that, and polanon would read it as this request's person."""
+    """By default polanon keeps a token the caller wrote as standing for itself only when it comes
+    before the turn hands the same token out. A note saved with a token from an earlier request
+    arrives in a tool result after that, and would be read as this request's person; PolCRM starts
+    its turn with plain_input=True (polanon 0.4.3), which writes such a token in square brackets."""
     m = privacy.polanon_masker()
     assert m.mask("Co z Jan Kowalski?") == "Co z <OSOBA_1>?"
     sent = m.mask_data({"note": "Oddzwonić do <OSOBA_1>"})
@@ -164,12 +169,3 @@ def test_a_person_named_again_in_another_case_comes_back_declined():
     assert m.restore(masked) == "Wyślij Janowi Testowskiemu ofertę."
     assert m.restore_data({"query": "<OSOBA_1:celownik>"}) == {"query": "Jan Testowski"}
     assert m.unknown_tokens(masked) == []
-
-
-def test_the_token_shape_is_polanons():
-    """privacy.TOKEN_RE mirrors polanon's CASED_TOKEN_PATTERN without importing polanon on load."""
-    from polanon.policy import CASED_TOKEN_PATTERN
-
-    samples = ["<OSOBA_1>", "<OSOBA_1:celownik>", "<KOD_POCZTOWY_12>", "<OSOBA_3:wołacz>", "<OSOBA_1:>", "<OSOBA_1: x>"]
-    for sample in samples:
-        assert bool(privacy.TOKEN_RE.fullmatch(sample)) == bool(re.fullmatch(CASED_TOKEN_PATTERN, sample)), sample

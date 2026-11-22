@@ -153,9 +153,10 @@ Design rules:
   original spelling.
 - **A token already in the input is defused.** Numbering starts again in every request, so a
   token the history kept, a note in the database holds or the user typed becomes `[OSOBA_1]`
-  before masking and is never restored to whoever gets `<OSOBA_1>` this time. polanon itself keeps
-  such a token as standing for itself only when it comes before the turn hands the same token out,
-  so PolCRM defuses every text it masks, tool results included.
+  before masking and is never restored to whoever gets `<OSOBA_1>` this time. PolCRM keeps the
+  history with real values and starts a turn per request, so it starts the turn with
+  `plain_input=True` (polanon 0.4.3), which does this for every text the turn masks, tool results
+  included.
 - **Known client names are always masked.** Tool results are masked field by field, so a
   company name arrives without a sentence around it, and polanon's rules alone let a name like
   "Auto Serwis Nowak" through. `build_masker()` therefore passes every client's trade and legal
