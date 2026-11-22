@@ -185,6 +185,14 @@ class Masker:
             return text
         return _fail_closed(self.turn.mask, _defused(text))
 
+    def mask_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Mask chat messages (``role``, ``content``) together, a token already in them defused first.
+
+        A value polanon recognises in a later message is masked in the earlier ones too: the history
+        says "Testowski dzwonił", a surname no rule reads alone, and the question names "Jan Testowski".
+        """
+        return _fail_closed(self.turn.mask_messages, [_defused_data(m) for m in messages])
+
     def mask_data(self, value: Any) -> Any:
         """Mask every string inside a JSON-like value (tool results). Keys and numbers stay as they are.
 

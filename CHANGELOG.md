@@ -16,6 +16,15 @@
   as. PolCRM still defuses a token already in the input, since polanon reads one that comes after
   it handed the same token out as this request's person. `requirements.txt` pins polanon 0.4.2.
 
+### Security
+
+- **A surname in the history no longer goes out when only the question says who it is.** The
+  history was masked message by message, before the question, so "Testowski dzwonił wczoraj" in an
+  earlier message, a surname no rule reads alone, reached the model in the clear even when the
+  question then named "Jan Testowski". The history and the question are now masked together
+  (`MaskedTurn.mask_messages`), and a value recognised in a later message is masked in the earlier
+  ones too.
+
 ## 1.2.0 - 2026-11-20
 
 ### Added

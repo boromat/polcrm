@@ -809,18 +809,23 @@ def run_conversation(
 
 
 def _run(user_message, history, models, db, finance_helpers, user_id, max_iterations, masker, call, tools_called):
-    out = masker.mask if masker else (lambda t: t)  # real -> tokens (to the model)
     back = masker.restore if masker else (lambda t: t)  # tokens -> real (from the model)
 
     lang = i18n.current_language()
     system = system_prompt(lang) + "\n\n" + _build_context_prefix(lang)
     if masker:
         system += privacy.tokens_note(lang)
-    messages = [{"role": "system", "content": system}]
-    for h in history[-10:]:  # ostatnie 10 wpisów, żeby nie rozdmuchać kontekstu
-        if h.get("role") in ("user", "assistant"):
-            messages.append({"role": h["role"], "content": out(h.get("content", ""))})
-    messages.append({"role": "user", "content": out(user_message)})
+    # ostatnie 10 wpisów historii, żeby nie rozdmuchać kontekstu, i pytanie
+    conversation = [
+        {"role": h["role"], "content": h.get("content", "")}
+        for h in history[-10:]
+        if h.get("role") in ("user", "assistant")
+    ]
+    conversation.append({"role": "user", "content": user_message})
+    if masker:
+        # razem: nazwisko, które rozpoznaje dopiero pytanie, jest zamaskowane także w historii
+        conversation = masker.mask_messages(conversation)
+    messages = [{"role": "system", "content": system}, *conversation]
 
     def _result(reply, error=None):
         return {

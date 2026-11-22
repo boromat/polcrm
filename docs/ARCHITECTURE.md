@@ -115,7 +115,9 @@ so the model can correct its arguments in the next round instead of the request 
 When **Settings → AI Assistant → Mask personal data** is on, `ai_assistant.build_masker()` returns
 a `privacy.Masker` for the request, around one polanon `MaskedTurn`. The turn holds one mapping
 (token → real value) in memory for the whole request, so the same value gets the same token in the
-question, the history and every tool result.
+question, the history and every tool result. The history and the question are masked together
+(`mask_messages`), so a surname an earlier message gives alone is masked once the question names
+the person.
 
 ```mermaid
 sequenceDiagram
