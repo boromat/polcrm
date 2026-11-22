@@ -9,10 +9,11 @@ for the duration of one request and is used to:
   (the model may call ``get_company(name="<FIRMA_1>")``),
 * restore real values in the final answer shown to the user.
 
-polanon 0.4 masks a person named again in another case as ``<OSOBA_1:celownik>``, and the model
-writes such a token back as it got it. In the answer the name comes back declined ("Janowi
-Kowalskiemu"), through polanon's own restore; in tool arguments, which go to the database, it comes
-back as the mapping holds it.
+The masking itself is polanon's :class:`~polanon.MaskedTurn`, one per request: it keeps the mapping,
+masks client names the CRM knows (``known=``) and restores. polanon 0.4 masks a person named again
+in another case as ``<OSOBA_1:celownik>``, and the model writes such a token back as it got it. In
+the answer the name comes back declined ("Janowi Kowalskiemu"); in tool arguments, which go to the
+database, it comes back as it was masked (``restore_data(..., as_held=True)``).
 
 Rules (the same as in PolCV, https://github.com/boromat/polcv):
 
@@ -27,8 +28,10 @@ from __future__ import annotations
 
 import importlib.util
 import re
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
+
+if TYPE_CHECKING:  # polanon is imported lazily, see polanon_masker
+    from polanon import MaskedTurn
 
 import i18n
 from i18n import _
@@ -39,9 +42,32 @@ from i18n import _
 TOKEN_RE = re.compile(r"<[A-Z][A-Z_]*_\d+(?::[^\W\d_]+)?>")
 
 
-def _as_held(token: str) -> str:
-    """Return the token as the mapping holds it: ``<OSOBA_1>`` for ``<OSOBA_1:celownik>``."""
-    return token.split(":", 1)[0] + ">" if ":" in token else token
+def _defused(text: str) -> str:
+    """Write token-shaped text as ``[OSOBA_2]`` (``[OSOBA_3:celownik]``), so no turn reads it as a token.
+
+    Numbering starts again in every request, while the history, a note in the database or what the
+    user types may hold a token from an earlier one, or one the model made up. polanon keeps such a
+    token as standing for itself only when it comes before the turn hands the same token out; after
+    that it reads it as masked text and restores it as whoever got that token this time.
+    """
+    return TOKEN_RE.sub(lambda m: "[" + m.group(0)[1:-1] + "]", text)
+
+
+def _defused_data(value: Any) -> Any:
+    """:func:`_defused` on every string inside a JSON-like value, keys and numbers as they are.
+
+    Anything else becomes its ``str`` first (a date, a ``Decimal``), as ``json.dumps(default=str)``
+    would send it, so it is masked too and not sent as text after the masking.
+    """
+    if isinstance(value, str):
+        return _defused(value)
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, dict):
+        return {k: _defused_data(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_defused_data(v) for v in value]
+    return _defused(str(value))
 
 
 #: Appended to the system prompt when masking is on, so the model treats tokens as real values.
@@ -122,83 +148,73 @@ def _get_anonymizer(with_ner: bool):
     return _ANONYMIZERS[with_ner]
 
 
-@dataclass
-class Masker:
-    """Masks one assistant request. Tokens stay consistent across every text masked with it.
+def _fail_closed(mask: Callable[[Any], Any], value: Any) -> Any:
+    """Run one of polanon's masks; any failure becomes :class:`MaskingUnavailable` (fail closed).
 
-    ``anonymize`` is injectable for tests: ``(text, mapping) -> (masked_text, full_mapping)``.
+    polanon's own ``MaskingUnavailableError`` names the failure and never quotes the text.
+    """
+    try:
+        return mask(value)
+    except Exception as exc:
+        raise MaskingUnavailable(_("blad polanon: %(error)s", error=exc)) from exc
+
+
+class Masker:
+    """Masks one assistant request with polanon's :class:`~polanon.MaskedTurn`.
+
+    The turn keeps one mapping for the whole request, so a value gets one token in the history, the
+    question and every tool result. Around it PolCRM adds what the turn leaves to the caller:
+    token-shaped text in the input is defused first (:func:`_defused`), any failure is
+    :class:`MaskingUnavailable` with a message in the interface language, a text that is empty or
+    not a string passes as it is, and tool arguments come back as the records hold them.
     """
 
-    anonymize: Callable[[str, dict[str, str]], tuple[str, dict[str, str]]]
-    mapping: dict[str, str] = field(default_factory=dict)
+    def __init__(self, turn: MaskedTurn) -> None:
+        self.turn = turn
+
+    @property
+    def mapping(self) -> dict[str, str]:
+        """A copy of the request's token -> real value mapping."""
+        return self.turn.mapping
 
     # ── outgoing: real -> tokens ───────────────────────────────
 
     def mask(self, text: str) -> str:
-        """Mask one text. Any failure of the anonymizer becomes :class:`MaskingUnavailable`.
-
-        Token-shaped text already in the input (one the model made up and the history kept, one the
-        user typed) is defused to ``[OSOBA_2]`` first: numbering starts again in every request, so
-        an old ``<OSOBA_2>`` must never be restored to whoever gets that token this time.
-        """
+        """Mask one text, a token already in it defused first."""
         if not text or not isinstance(text, str):
             return text
-        text = TOKEN_RE.sub(lambda m: "[" + m.group(0)[1:-1] + "]", text)
-        try:
-            masked, self.mapping = self.anonymize(text, self.mapping)
-        except MaskingUnavailable:
-            raise
-        except Exception as exc:  # any polanon failure must stop the request (fail closed)
-            raise MaskingUnavailable(_("blad polanon: %(error)s", error=exc)) from exc
-        return masked
+        return _fail_closed(self.turn.mask, _defused(text))
 
     def mask_data(self, value: Any) -> Any:
-        """Mask every string inside a JSON-like value (tool results). Keys and numbers stay as they are."""
-        if isinstance(value, str):
-            return self.mask(value)
-        if isinstance(value, dict):
-            return {k: self.mask_data(v) for k, v in value.items()}
-        if isinstance(value, (list, tuple)):
-            return [self.mask_data(v) for v in value]
-        return value
+        """Mask every string inside a JSON-like value (tool results). Keys and numbers stay as they are.
+
+        A value polanon recognises in one string is masked in the others too, also in one before it.
+        """
+        return _fail_closed(self.turn.mask_data, _defused_data(value))
 
     # ── incoming: tokens -> real ───────────────────────────────
 
     def restore(self, text: str) -> str:
         """Replace known tokens in the answer with real values; unknown ones stay.
 
-        A token with a case gives the name declined, ``<OSOBA_1:celownik>`` "Janowi Kowalskiemu",
-        through polanon's own restore; a name it cannot decline for sure comes back as written.
+        A token with a case gives the name declined, ``<OSOBA_1:celownik>`` "Janowi Kowalskiemu";
+        a name polanon cannot decline for sure comes back as written.
         """
-        if not text or not isinstance(text, str) or not self.mapping:
+        if not text or not isinstance(text, str):
             return text
-        from polanon.stream_restore import restored
-
-        return restored(text, self.mapping)
-
-    def _restore_as_held(self, text: str) -> str:
-        """Replace known tokens with the values as the mapping holds them, a case dropped."""
-        if not text or not self.mapping:
-            return text
-        return TOKEN_RE.sub(lambda m: self.mapping.get(_as_held(m.group(0)), m.group(0)), text)
+        return self.turn.restore(text)
 
     def restore_data(self, value: Any) -> Any:
         """Restore tokens inside a JSON-like value (tool call arguments).
 
         A tool searches the database, which holds the original spelling, so a token with a case
-        gives the value as the mapping holds it, not declined.
+        gives the value as it was masked, ``<OSOBA_1:dopełniacz>`` "Jan Kowalski", not declined.
         """
-        if isinstance(value, str):
-            return self._restore_as_held(value)
-        if isinstance(value, dict):
-            return {k: self.restore_data(v) for k, v in value.items()}
-        if isinstance(value, (list, tuple)):
-            return [self.restore_data(v) for v in value]
-        return value
+        return self.turn.restore_data(value, as_held=True)
 
     def unknown_tokens(self, text: str) -> list[str]:
-        """Tokens in a model answer that are not in the mapping (the model invented or mangled them)."""
-        return [t for t in TOKEN_RE.findall(text or "") if _as_held(t) not in self.mapping]
+        """Tokens in a model answer the request never handed out, each without its case, sorted."""
+        return self.turn.unknown_tokens(text or "")
 
 
 def ensure_available(with_ner: bool = False) -> None:
@@ -207,27 +223,15 @@ def ensure_available(with_ner: bool = False) -> None:
 
 
 def polanon_masker(with_ner: bool = False, terms=()) -> Masker:
-    """A :class:`Masker` backed by polanon. Raises :class:`MaskingUnavailable` when it cannot run.
+    """A :class:`Masker` on a turn of polanon's anonymizer. Raises :class:`MaskingUnavailable` when it cannot run.
 
     ``terms`` are values the CRM already knows are sensitive (client company names). polanon's
-    rules find names with a legal form ("sp. z o.o.") or a first name, but not "Auto Serwis Nowak";
-    known terms are masked always, through polanon's DenylistGuard (token ``<FIRMA_n>``).
+    rules find names with a legal form ("sp. z o.o.") or a first name, but not "Auto Serwis Nowak".
+    The turn masks known terms always, as ``<FIRMA_n>``: also without the legal form a term is
+    listed with, when two words or more are left, and also when polanon's allowlist of public names
+    holds them, since a client of the agency is never "just public". The turn reuses the cached
+    guards, so the spaCy model is not loaded again.
     """
     anonymizer = _get_anonymizer(with_ner)
-    terms = [t for t in dict.fromkeys(t.strip() for t in terms if t) if len(t) >= 3]
-    if terms:
-        from polanon import WELL_KNOWN_NAMES, Allowlist, Anonymizer, DenylistGuard  # noqa: PLC0415
-
-        # polanon leaves allowlisted public names (big brands, cities) unmasked - also when a
-        # DenylistGuard found them. A client of the agency is never "just public", so its words
-        # are taken out of the allowlist for this request.
-        client_words = {w.lower() for t in terms for w in t.split()}
-        allowlist = Allowlist([n for n in WELL_KNOWN_NAMES if not ({w.lower() for w in n.split()} & client_words)])
-        # Same guard instances (the spaCy model stays loaded), plus this request's known terms.
-        anonymizer = Anonymizer([*anonymizer.guards, DenylistGuard(terms)], allowlist=allowlist)
-
-    def _anonymize(text: str, mapping: dict[str, str]) -> tuple[str, dict[str, str]]:
-        result = anonymizer.anonymize_sync(text, mapping)
-        return result.anonymized, dict(result.mapping)
-
-    return Masker(anonymize=_anonymize)
+    known = [t for t in dict.fromkeys(t.strip() for t in terms if t) if len(t) >= 3]
+    return Masker(_fail_closed(lambda values: anonymizer.turn(known=values), known))

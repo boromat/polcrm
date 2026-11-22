@@ -104,6 +104,33 @@ def test_client_named_like_a_public_brand_is_still_masked():
     assert "Facebook" not in m.mask("Zaległa faktura: Facebook Studio, termin piątek.")
 
 
+def test_client_whose_whole_name_is_on_the_allowlist_is_still_masked():
+    """Every word of "Gemini" is a well-known name, so polanon's allowlist would let it through;
+    PolCRM took the words of client names out of the allowlist for it. polanon 0.4.2 never lets the
+    allowlist drop what its denylist, fed with MaskedTurn(known=...), found."""
+    m = privacy.polanon_masker(terms=["Gemini"])
+    assert "Gemini" not in m.mask("Zaległa faktura: Gemini, termin piątek.")
+    assert "Gemini" in privacy.polanon_masker().mask("Zapytaj Gemini o termin.")
+
+
+def test_client_name_without_its_legal_form_is_masked():
+    """polanon 0.4.2: a known company is found without the legal form the CRM lists it with."""
+    m = privacy.polanon_masker(terms=["Kwiaciarnia Testowa Sp. z o.o."])
+    masked = m.mask("Zaległa faktura: Kwiaciarnia Testowa, termin piątek.")
+    assert "Kwiaciarnia" not in masked and "Testowa" not in masked
+
+
+def test_a_token_from_an_earlier_request_is_defused_also_after_this_one_handed_it_out():
+    """polanon keeps a token the caller wrote as standing for itself only when it comes before the
+    turn hands the same token out. A note saved with a token from an earlier request arrives in a
+    tool result after that, and polanon would read it as this request's person."""
+    m = privacy.polanon_masker()
+    assert m.mask("Co z Jan Kowalski?") == "Co z <OSOBA_1>?"
+    sent = m.mask_data({"note": "Oddzwonić do <OSOBA_1>"})
+    assert sent == {"note": "Oddzwonić do [OSOBA_1]"}
+    assert m.restore(sent["note"]) == "Oddzwonić do [OSOBA_1]"
+
+
 def test_a_person_named_again_in_another_case_comes_back_declined():
     """polanon 0.4 masks the second mention as <OSOBA_1:celownik>; the answer shows the name."""
     m = privacy.polanon_masker()

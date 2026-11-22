@@ -1,12 +1,16 @@
-"""PII masking in the assistant loop, tested with a fake anonymizer (no polanon needed).
+"""PII masking in the assistant loop, tested with a fake anonymizer inside polanon's MaskedTurn.
 
 The fake masks a fixed list of values, which is enough to check the contract that matters:
-what reaches the model, what reaches the tools and what reaches the user.
+what reaches the model, what reaches the tools and what reaches the user. The turn around it,
+its mapping, restore and failure handling, is polanon's own.
 """
 
 import json
+from datetime import date
+from types import SimpleNamespace
 
 import pytest
+from polanon import MaskedTurn
 
 import ai_assistant
 import privacy
@@ -33,8 +37,21 @@ def fake_anonymize(text, mapping):
     return text, mapping
 
 
-def make_masker():
-    return privacy.Masker(anonymize=fake_anonymize)
+class FakeAnonymizer:
+    """Stands in for polanon's Anonymizer in a MaskedTurn: ``anonymize(text, mapping)`` does the masking."""
+
+    judge = None
+
+    def __init__(self, anonymize=fake_anonymize):
+        self._anonymize = anonymize
+
+    def anonymize_sync(self, text, mapping):
+        masked, mapping = self._anonymize(text, mapping)
+        return SimpleNamespace(anonymized=masked, mapping=mapping)
+
+
+def make_masker(anonymize=fake_anonymize):
+    return privacy.Masker(MaskedTurn(FakeAnonymizer(anonymize)))
 
 
 class FakeModel:
@@ -104,6 +121,16 @@ def test_mask_data_keeps_keys_numbers_and_structure():
     }
 
 
+def test_mask_data_sends_a_date_as_masked_text():
+    """A tool result may hold a date or a Decimal, which json.dumps(default=str) sends as text,
+    so it is masked as text, not passed by and written out after the masking."""
+    m = make_masker()
+    assert m.mask_data({"due": date(2026, 11, 22), "who": ("Jan Kowalski",)}) == {
+        "due": "2026-11-22",
+        "who": ["<OSOBA_1>"],
+    }
+
+
 def test_restore_data_in_nested_tool_arguments():
     m = make_masker()
     m.mask("Jan Kowalski")
@@ -165,16 +192,19 @@ def test_an_unknown_token_with_a_case_is_left_and_reported():
     m = make_masker()
     m.mask("Jan Kowalski")
     assert m.restore("<OSOBA_9:celownik>") == "<OSOBA_9:celownik>"
-    assert m.unknown_tokens("<OSOBA_1:celownik> i <OSOBA_9:celownik>") == ["<OSOBA_9:celownik>"]
+    # polanon reports a made-up token as the mapping would hold it, once, without its case
+    assert m.unknown_tokens("<OSOBA_1:celownik> i <OSOBA_9:celownik>, <OSOBA_9>") == ["<OSOBA_9>"]
 
 
 def test_anonymizer_crash_becomes_masking_unavailable():
     def broken(text, mapping):
         raise ValueError("boom")
 
-    m = privacy.Masker(anonymize=broken)
+    m = make_masker(broken)
     with pytest.raises(privacy.MaskingUnavailable):
         m.mask("Jan Kowalski")
+    with pytest.raises(privacy.MaskingUnavailable):
+        m.mask_data({"contact": "Jan Kowalski"})
 
 
 # ── run_conversation with masking ──────────────────────────────
@@ -255,7 +285,7 @@ def test_masking_failure_sends_nothing():
         models={},
         db=None,
         finance_helpers=None,
-        masker=privacy.Masker(anonymize=broken),
+        masker=make_masker(broken),
         call=model,
     )
     assert model.requests == []
@@ -275,7 +305,7 @@ def test_failure_while_masking_a_tool_result_stops_before_next_call(monkeypatch)
     monkeypatch.setattr(ai_assistant, "execute_tool", lambda *a, **k: {"note": "WYNIK Jan Kowalski"})
     model = FakeModel(tool_call("search_global", {"query": "x"}), answer("nie powinno dojść"))
     result = ai_assistant.run_conversation(
-        "szukaj", [], models={}, db=None, finance_helpers=None, masker=privacy.Masker(anonymize=flaky), call=model
+        "szukaj", [], models={}, db=None, finance_helpers=None, masker=make_masker(flaky), call=model
     )
     assert len(model.requests) == 1  # the tool result never went out
     assert result["error"] == "masking_unavailable"

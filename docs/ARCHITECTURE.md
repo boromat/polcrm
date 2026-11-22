@@ -113,9 +113,9 @@ so the model can correct its arguments in the next round instead of the request 
 ## PII masking with polanon
 
 When **Settings → AI Assistant → Mask personal data** is on, `ai_assistant.build_masker()` returns
-a `privacy.Masker` for the request. It holds one mapping (token → real value) in memory for the
-whole request, so the same value gets the same token in the question, the history and every tool
-result.
+a `privacy.Masker` for the request, around one polanon `MaskedTurn`. The turn holds one mapping
+(token → real value) in memory for the whole request, so the same value gets the same token in the
+question, the history and every tool result.
 
 ```mermaid
 sequenceDiagram
@@ -146,18 +146,22 @@ Design rules:
   result). The user gets an error; nothing is sent in clear text.
 - **A person named again in another case.** polanon 0.4 masks such a mention as
   `<OSOBA_1:celownik>`, and the model writes the token back as it got it. The answer gets the
-  name declined through polanon's own restore ("Janowi Kowalskiemu"); tool arguments get it as
-  the mapping holds it, since the database keeps the original spelling.
+  name declined through polanon's own restore ("Janowi Kowalskiemu"); tool arguments get it as it
+  was masked, the case dropped (`restore_data(..., as_held=True)`), since the database keeps the
+  original spelling.
 - **A token already in the input is defused.** Numbering starts again in every request, so a
-  token the history kept or the user typed becomes `[OSOBA_1]` before masking and is never
-  restored to whoever gets `<OSOBA_1>` this time.
+  token the history kept, a note in the database holds or the user typed becomes `[OSOBA_1]`
+  before masking and is never restored to whoever gets `<OSOBA_1>` this time. polanon itself keeps
+  such a token as standing for itself only when it comes before the turn hands the same token out,
+  so PolCRM defuses every text it masks, tool results included.
 - **Known client names are always masked.** Tool results are masked field by field, so a
   company name arrives without a sentence around it, and polanon's rules alone let a name like
   "Auto Serwis Nowak" through. `build_masker()` therefore passes every client's trade and legal
-  name from the CRM to polanon's `DenylistGuard` (`privacy.client_terms`), reusing the cached
-  guards so the spaCy model is not reloaded. The words of those names are also removed from
-  polanon's allowlist of well-known names for that request, so a client called like a big brand
-  is not let through as "public".
+  name from the CRM to the turn as `known=` (`privacy.client_terms`), and the turn masks them with
+  polanon's denylist on the cached guards, so the spaCy model is not reloaded. A name is found also
+  without the legal form it is listed with, when two words or more are left, and polanon's
+  allowlist of well-known names never lets the denylist's findings through, so a client called
+  like a big brand is not let through as "public".
 - **Optional dependency.** polanon is imported lazily. Without it, and with masking off, the
   assistant behaves exactly as before.
 - **One anonymizer per process.** Building polanon's guards (and loading the spaCy model when NER is
@@ -167,9 +171,10 @@ Design rules:
 - **Tokens the model invents** (not in the mapping) are left as they are and logged as a count,
   never with a value.
 
-Tests: `tests/test_privacy.py` (contract with a fake anonymizer), `tests/test_polanon_real.py`
-(the same with the real library), `tests/test_app_smoke.py::test_assistant_api_masks_end_to_end`
-(HTTP request → masked model calls → note saved with the real value).
+Tests: `tests/test_privacy.py` (contract with a fake anonymizer inside a real `MaskedTurn`),
+`tests/test_polanon_real.py` (the same with the real library),
+`tests/test_app_smoke.py::test_assistant_api_masks_end_to_end` (HTTP request → masked model calls →
+note saved with the real value).
 
 ## Data and secrets
 

@@ -1,8 +1,10 @@
 """Smoke tests: the app boots on fictional seed data and every main screen renders."""
 
 import json
+from types import SimpleNamespace
 
 import pytest
+from polanon import MaskedTurn
 
 import ai_assistant
 import privacy
@@ -90,7 +92,16 @@ def test_assistant_api_masks_end_to_end(client, seeded, monkeypatch):
                 text = text.replace(value, token)
         return text, mapping
 
-    monkeypatch.setattr(ai_assistant, "build_masker", lambda settings=None: privacy.Masker(anonymize=fake_anonymize))
+    class FakeAnonymizer:  # stands in for polanon's Anonymizer in a real MaskedTurn
+        judge = None
+
+        def anonymize_sync(self, text, mapping):
+            masked, mapping = fake_anonymize(text, mapping)
+            return SimpleNamespace(anonymized=masked, mapping=mapping)
+
+    monkeypatch.setattr(
+        ai_assistant, "build_masker", lambda settings=None: privacy.Masker(MaskedTurn(FakeAnonymizer()))
+    )
     sent = []
 
     def fake_call(messages, **kw):
