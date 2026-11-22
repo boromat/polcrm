@@ -80,6 +80,30 @@ def test_full_loop_with_polanon(monkeypatch):
     assert result["reply"] == "Mail: jan.kowalski@example.com"
 
 
+def test_a_surname_the_question_names_is_masked_in_the_history_too():
+    """The history went out message by message, so "Testowski" alone in an earlier one, which no
+    rule reads as a person, reached the model before the question named "Jan Testowski"."""
+    requests = []
+
+    def model(messages):
+        requests.append(json.dumps(messages, ensure_ascii=False))
+        return {"choices": [{"message": {"content": "Gotowe."}}]}
+
+    history = [{"role": "user", "content": "Testowski dzwonił wczoraj w sprawie audytu."}]
+    result = ai_assistant.run_conversation(
+        "Co z Jan Testowski?",
+        history,
+        models={},
+        db=None,
+        finance_helpers=None,
+        masker=privacy.polanon_masker(),
+        call=model,
+    )
+
+    assert result["error"] is None
+    assert "Testowski" not in requests[0]
+
+
 def test_known_client_names_are_always_masked():
     """A tool result field holds just the company name, with no context. polanon's rules cannot
     tell "Auto Serwis Nowak" is sensitive there, so the CRM passes its client names as known terms."""
